@@ -91,7 +91,10 @@ trait Symbols {
       attributes.exists {
         case AnnotationInfo(tp, _, _) if tp.typeSymbol == cls => true
         case _ => false
-    }
+      }
+    
+    /** Does this symbol have an attribute of the given class? */
+    def hasAttribute(cls: Symbol): Boolean = !attributes(cls).isEmpty
 
     var privateWithin: Symbol = _
 

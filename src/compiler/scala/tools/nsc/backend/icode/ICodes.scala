@@ -64,8 +64,6 @@ abstract class ICodes extends AnyRef
     val global: ICodes.this.global.type = ICodes.this.global
   }
 
-  lazy val AnyRefReference: TypeKind = REFERENCE(global.definitions.ObjectClass)
-
   import global.settings
   if (settings.XO.value) {
     settings.inline.value = true

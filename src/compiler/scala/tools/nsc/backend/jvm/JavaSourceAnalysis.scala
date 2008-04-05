@@ -1,0 +1,72 @@
+/*                     __                                               *\
+**     ________ ___   / /  ___     Scala API                            **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2008, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
+** /____/\___/_/ |_/____/_/ | |                                         **
+**                          |/                                          **
+\*                                                                      */
+
+// $Id$
+package scala.tools.nsc.backend.jvm
+import nsc.symtab.SymbolTable
+import scala.collection.mutable
+
+/**
+ * Analyses that are used by {@link GenJava}.
+ */
+trait JavaSourceAnalysis {
+  val global: SymbolTable
+  import global._
+  
+  private lazy val remoteClass = definitions.getClass("scala.remote")
+  private lazy val remoteExceptionClass = definitions.getClass("java.rmi.RemoteException")
+  
+  /**
+   * Analyze an expression and return the classes of the exceptions
+   * it can throw.
+   * 
+   * TODO(spoon): this is currently very sloppy.  It needs to deal with
+   * catch expressions, and it needs to combine expressions that overlap,
+   * and it needs to deal with declared Java exceptions.
+   */
+  def exceptionsThrown(exp: Tree): List[Symbol] = {
+    val exceptions = mutable.Set.empty[Symbol]
+    for (e <- exp)
+      e match {
+        case Throw(exc) => 	
+          val sym = exc.tpe.typeSymbol
+          if (sym != NoSymbol && sym.isClass)
+            exceptions += sym
+          
+        case Apply(fun, args) =>
+          if (fun.symbol.hasAttribute(remoteClass))
+            exceptions += remoteExceptionClass
+          
+        case _ =>
+      }
+    
+    return exceptions.toList
+  }
+  
+    
+  def isNothing(tpe: Type): Boolean =
+    tpe =:= definitions.AllClass.tpe
+  
+  def isUnit(tpe: Type): Boolean =
+    tpe =:= definitions.UnitClass.tpe
+
+  def isUnitLiteral(tree: Tree): Boolean =
+    tree match {
+      case Literal(Constant(())) => true
+      case _ => false
+    }
+  def isReturnable(tree: Tree): Boolean = {
+    def typeReturnable(tpe: Type) = !isUnit(tpe) && !isNothing(tpe)
+    def treeTypeReturnable(tree: Tree) = tree match {
+      case _:Try => false
+      case _:Block => false
+      case _ => true
+    }
+    return treeTypeReturnable(tree) && typeReturnable(tree.tpe)
+  }
+}

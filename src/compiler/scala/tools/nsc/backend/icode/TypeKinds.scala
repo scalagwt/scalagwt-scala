@@ -24,9 +24,14 @@ package scala.tools.nsc.backend.icode
 */
 
 import scala.collection.mutable.{Map, HashMap}
+import nsc.symtab.SymbolTable
 
-trait TypeKinds { self: ICodes =>
+trait TypeKinds {
+  val global: SymbolTable { def abort(msg: String): Nothing }
   import global._
+  
+  // TODO(spoon): put in better location
+  lazy val AnyRefReference: TypeKind = REFERENCE(global.definitions.ObjectClass)
 
   /** This class represents a type kind. Type kinds
    * represent the types that the VM know (or the ICode

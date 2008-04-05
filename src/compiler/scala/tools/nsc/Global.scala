@@ -27,7 +27,7 @@ import typechecker._
 import transform._
 import backend.icode.{ICodes, GenICode, Checkers}
 import backend.ScalaPrimitives
-import backend.jvm.GenJVM
+import backend.jvm.{GenJVM, GenJava}
 import backend.msil.GenMSIL
 import backend.opt.{Inliners, ClosureElimination, DeadCodeElimination}
 import backend.icode.analysis._

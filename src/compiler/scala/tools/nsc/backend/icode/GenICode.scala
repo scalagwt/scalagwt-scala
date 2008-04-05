@@ -27,6 +27,11 @@ abstract class GenICode extends SubComponent  {
   val phaseName = "icode"
 
   override def newPhase(prev: Phase) = new ICodePhase(prev)
+  
+  
+  /** Is this symbol static in the Java sense? */
+  def isStaticSymbol(s: Symbol): Boolean =
+    s.hasFlag(Flags.STATIC) || s.hasFlag(Flags.STATICMEMBER) || s.owner.isImplClass
 
   class ICodePhase(prev: Phase) extends StdPhase(prev) {
 
@@ -1052,10 +1057,6 @@ abstract class GenICode extends SubComponent  {
         case _ =>
           abort("Unknown qualifier " + tree)
       }
-
-    /** Is this symbol static in the Java sense? */
-    def isStaticSymbol(s: Symbol): Boolean =
-      s.hasFlag(Flags.STATIC) || s.hasFlag(Flags.STATICMEMBER) || s.owner.isImplClass
 
     /**
      * Generate code that loads args into label parameters.

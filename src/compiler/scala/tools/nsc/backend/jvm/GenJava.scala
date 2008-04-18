@@ -29,6 +29,7 @@ with JavaSourceNormalization
   import global._
   import global.scalaPrimitives._
   protected val typeKinds: global.icodes.type = global.icodes
+  protected val scalaPrimitives: global.scalaPrimitives.type = global.scalaPrimitives
   protected def typed(tree: Tree): Tree = global.typer.typed(tree)
   
   val phaseName = "genjavasrc"
@@ -147,6 +148,10 @@ with JavaSourceNormalization
     override def printRaw(tree: Tree): Unit = printRaw(tree, false)
     
     override def print(name: Name) = super.print(name.encode)
+
+    def printStats(stats: List[Tree]) =
+    	printSeq(stats) {s => print(s); if (needsSemi(s)) print(";")} {println}
+
     
     override def symName(tree: Tree, name: Name): String =
       if (tree.symbol != null && tree.symbol != NoSymbol) {
@@ -223,7 +228,7 @@ with JavaSourceNormalization
 
       case Block(stats, expr) =>
         print("{");indent; println
-        printSeq(stats) {s => print(s); if (needsSemi(s)) print(";")} {println}
+        printStats(stats)
         println
         if (isUnitLiteral(expr)) {
           if (ret)
@@ -236,12 +241,16 @@ with JavaSourceNormalization
         }
         undent; println; print("}")
 
-      case LabelDef(lname1, List(), If(cond,
-                                       Block(List(body), Apply(Ident(lname2), List())),
-                                       Literal(Constant(()))))
-      if (lname1.startsWith("while") && lname1 == lname2) =>
-      print("while ("); print(cond); print(") {") 
-      indent; println; print(body); undent; println; print("}") 
+      case lab@LabelDef(_, List(), If(cond,
+                                      Block(body, app@Apply(_, List())),
+                                      Literal(Constant(()))))
+      => // TODO(spoon) put the real test back in
+//      if (lname1.startsWith("while$") && lname1 == lname2) =>
+                 // if (lab.symbol.name.toString.startsWith("while$") && lab.symbol==app.symbol) =>
+        print("while ("); print(cond); print(") {") 
+        indent; println
+        printStats(body);
+        undent; println; print("}") 
 
       case Apply(t @ Select(New(tpt), nme.CONSTRUCTOR), args) if (tpt.tpe.typeSymbol == definitions.ArrayClass) =>
         tpt.tpe match {
@@ -250,21 +259,25 @@ with JavaSourceNormalization
             print("["); print(args.head); print("]")
         }
 
-      case Apply(fun @ Select(receiver, name), args) if isPrimitive(fun.symbol) =>
-        getPrimitive(fun.symbol) match {
+      case Apply(fun @ Select(receiver, name), args) if isPrimitive(fun.symbol) => {
+        val prim = getPrimitive(fun.symbol) 
+        prim match {
           case POS | NEG | NOT | ZNOT =>
-            print(name.decode); print("("); print(receiver); print(")") 
-          case ADD | SUB | MUL | DIV | MOD | OR | XOR | AND |
-               LSL | LSR | ASR |EQ | NE | LT | LE | GT | GE | ZOR | ZAND=>
-            print(receiver); print(" "); print(name.decode); print(" "); print(args.head)
+            print(javaPrimName(prim)); print("("); print(receiver); print(")") 
+          case ADD | SUB | MUL | DIV | MOD | OR | XOR | AND | ID |
+               LSL | LSR | ASR |EQ | NE | LT | LE | GT | GE | ZOR | ZAND |
+               CONCAT =>
+            // TODO(spoon): this does not seem to parenthesize for precedence handling
+            print(receiver); print(" "); print(javaPrimName(prim)); print(" "); print(args.head)
           case APPLY => print(receiver); print("["); print(args.head); print("]")
           case UPDATE =>
             print(receiver); print("["); print(args.head); print("] = ") 
             print(args.tail.head); print("")
           case SYNCHRONIZED => print("synchronized ("); print(receiver); print(") {") 
             indent; println; print(args.head); undent; println; print("}") 
-          case _ => print("Unhandled primitive: " + tree)
+          case prim => print("Unhandled primitive ("+prim+") for "+tree)
         }
+      }
         
       case tree@Apply(fun, args) if genicode.isStaticSymbol(tree.symbol) =>
         print(javaName(tree.symbol.owner))

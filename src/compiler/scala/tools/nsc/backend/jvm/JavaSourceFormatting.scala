@@ -23,7 +23,10 @@ trait JavaSourceFormatting {
     val global: JavaSourceFormatting.this.global.type
   }
   import typeKinds._
-  
+  protected val scalaPrimitives: ScalaPrimitives {
+    val global: JavaSourceFormatting.this.global.type
+  }
+
   protected def javaName(sym: Symbol, fullyQualify: Boolean): String = {
     def suffix = if (sym.isModuleClass && !sym.isTrait) "$" else ""
 
@@ -59,5 +62,58 @@ trait JavaSourceFormatting {
         case ARRAY(elem)     => tpstr(elem) + "[]"
       }
     return tpstr(toTypeKind(tpe))
+  }
+  
+  protected def javaPrimName(prim: Int): String = {
+    import scalaPrimitives._
+
+    (prim : @unchecked) match {
+      // Arithmetic unary operations
+	  case POS => "+"                            // +x
+	  case NEG => "-"                           // -x
+	  case NOT => "~"                           // ~x
+	
+	  // Arithmetic binary operations
+	  case ADD => "+"                          // x + y
+	  case SUB => "-"                           // x - y
+	  case MUL => "*"                           // x * y
+	  case DIV => "/"                           // x / y
+	  case MOD => "%"                           // x % y
+	
+	  // Bitwise operations
+	  case OR  => "|"                           // x | y
+	  case XOR => "^"                           // x ^ y
+	  case AND => "&"                           // x & y
+	
+	  // Shift operations
+	  case LSL => "<<"                           // x << y
+	  case LSR => ">>"                           // x >>> y
+	  case ASR => ">>>"                           // x >> y
+	
+	  // Comparison operations
+	  case ID => "=="                            // x eq y
+	  case NI => "!="                            // x ne y
+	  case EQ => "=="                            // x == y
+	  case NE => "!="                            // x != y
+	  case LT => "<"                            // x < y
+	  case LE => "<="                            // x <= y
+	  case GE => ">="                            // x > y
+	  case GT => ">"                            // x >= y
+	
+	  // Boolean unary operations
+	  case ZNOT => "!"                          // !x
+	
+	  // Boolean binary operations
+	  case ZOR => "||"                           // x || y
+	  case ZAND => "&&"                          // x && y
+	
+	  // Array operations
+	  case LENGTH => ""                        // x.length
+	  case APPLY  => ""                        // x(y)
+	  case UPDATE => ""                        // x(y) => ""z
+	
+	  // String operations
+	  case CONCAT => "+"                       // String.valueOf(x)+String.valueOf(y)
+    }
   }
 }

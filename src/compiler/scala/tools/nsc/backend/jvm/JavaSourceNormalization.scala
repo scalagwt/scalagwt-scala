@@ -25,6 +25,7 @@ trait JavaSourceNormalization {
   protected def typed(tree: Tree): Tree
   
   // TODO(spoon): don't hide exceptions that the method is declared as throwing
+  // TODO(spoon): move this to some rewrite phase
   def hideExceptions(body: Tree): Tree = {
     val exceptions = exceptionsThrown(body)
     if (exceptions.isEmpty) {

@@ -373,7 +373,15 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
 
   object typer extends analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, Global.this.definitions.RootClass, newScope))
-
+  
+  private def icodePhases =
+    List(
+      genicode,        // generate portable intermediate code
+      inliner,         // optimization: do inlining
+      closureElimination, // optimization: get rid of uncalled closures
+      deadCode            // optimization: get rid of dead cpde
+    )
+  
   /** The built-in components.  The full list of components, including
    *  plugins, is computed in the Plugins trait.
    */
@@ -397,13 +405,12 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
     constructors,    // move field definitions into constructors
     flatten,         // get rid of inner classes
     mixer,           // do mixin composition
-    cleanup,         // some platform-specific cleanups
-
-    genicode,        // generate portable intermediate code
-    inliner,         // optimization: do inlining
-    closureElimination, // optimization: get rid of uncalled closures
-    deadCode,           // optimization: get rid of dead cpde
-    if (forMSIL) genMSIL else genJVM, // generate .class files
+    cleanup          // some platform-specific cleanups
+  ) ::: (
+    if (settings.target.value != "jvm-src") icodePhases else Nil
+  ) ::: List(
+    if (forMSIL) genMSIL else
+    if (settings.target.value == "jvm-src") genJava else genJVM,
     sampleTransform
   )
 

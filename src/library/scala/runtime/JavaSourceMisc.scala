@@ -28,4 +28,7 @@ object JavaSourceMisc {
    * their method as throwing any exceptions.
    */
   def hiddenThrow(exc: Throwable) = throw exc
+  
+  def ifExpression[T](cond: Boolean, exp1: T, exp2: T): T =
+    if (cond) exp1 else exp2
 }

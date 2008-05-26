@@ -2297,7 +2297,7 @@ trait Typers { self: Analyzer =>
           } else {
             context.enclMethod.returnsSeen = true
             val expr1: Tree = typed(expr, restpt0.tpe)
-            copy.Return(tree, checkDead(expr1)) setSymbol enclMethod.owner setType AllClass.tpe
+            copy.Return(tree, checkDead(expr1)) setSymbol enclMethod.owner
           }
         }
       }
@@ -3003,7 +3003,7 @@ trait Typers { self: Analyzer =>
 
         case Throw(expr) =>
           val expr1 = typed(expr, ThrowableClass.tpe)
-          copy.Throw(tree, expr1) setType AllClass.tpe
+          copy.Throw(tree, expr1)
 
         case New(tpt: Tree) =>
           typedNew(tpt)

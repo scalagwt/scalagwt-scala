@@ -649,6 +649,9 @@ trait Trees {
   /** Return expression */
   case class Return(expr: Tree)
        extends TermTree with SymTree
+       {
+         setType(definitions.AllClass.tpe)
+       }
 
   case class Try(block: Tree, catches: List[CaseDef], finalizer: Tree)
        extends TermTree
@@ -656,6 +659,9 @@ trait Trees {
   /** Throw expression */
   case class Throw(expr: Tree)
        extends TermTree
+       {
+         setType(definitions.AllClass.tpe)
+       }
 
   /** Object instantiation
    *  One should always use factory method below to build a user level new.

@@ -303,6 +303,25 @@ trait Iterable[+A] {
     return -1
   }
 
+  /** Returns index of the last element satisying a predicate, or -1.
+   *
+   *  @note does not terminate for infinite-sized collections.
+   *  @param  p the predicate
+   *  @return   the index of the first element satisfying <code>p</code>,
+   *            or -1 if such an element does not exist
+   */
+  def findLastIndexOf(p: A => Boolean): Int = {
+    val it = elements
+    var i = 0
+    var idx = -1
+    while (it.hasNext) {
+      if (p(it.next))
+        idx = i
+      i = i + 1
+    }
+    return idx
+  }
+
   /** Returns the index of the first occurence of the specified
    *  object in this iterable object.
    *

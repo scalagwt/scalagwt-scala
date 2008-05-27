@@ -20,8 +20,9 @@ trait JavaDefinitions {
   import global._
   
   object javaDefinitions {
-    import definitions.{getModule, getMember}
+    import definitions.{getMember, getModule}
     lazy val JavaSourceMiscModule: Symbol = getModule("scala.runtime.JavaSourceMisc")
     lazy val JavaSourceMisc_hiddenThrow = getMember(JavaSourceMiscModule, "hiddenThrow")
+    lazy val RuntimeExceptionClass = definitions.getClass("java.lang.RuntimeException")
   }
 }

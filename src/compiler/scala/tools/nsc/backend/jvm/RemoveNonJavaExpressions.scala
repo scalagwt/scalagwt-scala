@@ -26,7 +26,13 @@ import scala.tools.nsc.util.Position
  * <li> All methods that don't return Unit get an explicit return
  * <li> Expressions in statement position that Java disallows as
  *      statements are discarded.  Examples are literals,
- *      field selections, and <code>this</code>
+ *      field selections, and <code>this</code>.
+ * <li> Many expressions are made to be a block if they aren't already:
+ *      the body of a LabelDef, the three subexpressions of
+ *      a try-catch-finally expression, the two branches of any
+ *      if expression appearing as a statement in a block.
+ * <li> The expression of any block is simply a unit constant.
+ *      
  * </ul>
  * 
  * TODO(spoon): in constructor calls within a constructor, the extracted
@@ -168,7 +174,9 @@ with JavaSourceNormalization
           }
           val (expNewStats, expT) = removeNonJavaExpressions(exp, false)
           newBlockStats ++= expNewStats
-          copy.Block(tree, newBlockStats.toList, expT)
+          if (canBeStatement(expT))
+            newBlockStats += expT
+          copy.Block(tree, newBlockStats.toList, Literal(()))
         case ValDef(mods, name, tpt, rhs) =>
           copy.ValDef(tree, mods, name, tpt, transform(rhs))
 	    case LabelDef(name, params, rhs) =>

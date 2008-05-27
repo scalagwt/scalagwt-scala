@@ -37,6 +37,12 @@ trait JavaSourceAnalysis {
     }
   
   /**
+   * Return whether the given expression can ever complete and fall through
+   * to an expression that follows it in a block.
+   */
+  def canFallThrough(exp: Tree) = false; // TODO(spoon)
+  
+  /**
    * Analyze an expression and return the classes of the exceptions
    * it can throw.
    * 

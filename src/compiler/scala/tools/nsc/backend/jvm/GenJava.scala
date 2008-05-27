@@ -6,6 +6,7 @@
 
 package scala.tools.nsc.backend.jvm
 
+import scala.collection.{mutable=>mut}
 import java.io.{File, FileOutputStream, PrintWriter, IOException}
 
 import symtab.Flags._
@@ -152,6 +153,11 @@ with JavaSourceNormalization
   }
 
   private final class JavaPrinter(out: PrintWriter) extends treePrinters.TreePrinter(out) {
+    /**
+     * Symbols in scope that are for a while loop.  Apply's to
+     * them should be printed as continue's.
+     */
+    val labelSyms = mut.Set.empty[Symbol]
 
     override def printRaw(tree: Tree): Unit = printRaw(tree, false)
     
@@ -248,16 +254,19 @@ with JavaSourceNormalization
         }
         undent; println; print("}")
 
-      case lab@LabelDef(_, List(), If(cond,
-                                      Block(body, app@Apply(_, List())),
-                                      Literal(Constant(()))))
-      => // TODO(spoon) LabelDef should make a labelled while loop, and applies 
-        // on the label should become labelled continues
-        print("while ("); print(cond); print(") {") 
-        indent; println
-        printStats(body);
-        undent; println; print("}") 
+      case tree@LabelDef(_, List(), body@Block(bodyStats, _)) =>
+        labelSyms += tree.symbol
+        print(tree.symbol.name); print(": while(true) {"); indent; println;
+        printStats(bodyStats)
+        if (canFallThrough(body)) {
+          print("break;"); println
+        }
+        undent; println; print("}")
+        labelSyms -= tree.symbol
 
+      case tree:Apply if labelSyms.contains(tree.symbol) =>
+        print("continue "); print(tree.symbol.name)
+        
       case Apply(t @ Select(New(tpt), nme.CONSTRUCTOR), args) if (tpt.tpe.typeSymbol == definitions.ArrayClass) =>
         tpt.tpe match {
           case TypeRef(_, _, List(elemType)) =>
@@ -301,7 +310,7 @@ with JavaSourceNormalization
         print(tpe)
         print(")")
 
-      case tree@Apply(fun, args) if genicode.isStaticSymbol(tree.symbol) =>
+      case tree@Apply(fun, args) if tree.symbol != NoSymbol && genicode.isStaticSymbol(tree.symbol) =>
         print(javaName(tree.symbol.owner))
         print(".")
         print(tree.symbol.name)
@@ -355,12 +364,7 @@ with JavaSourceNormalization
         }
       
       case Throw(expr) => 
-        // TODO(spoon): this shouldn't really need the semi, and the semi could be wrong in some contexts
-        print("scala.runtime.JavaSourceMisc.hiddenThrow(")
-        print(expr)
-        print("); ")
-        print("throw new RuntimeException(\"not reached\")")
-
+        print("throw "); print(expr)
         
       case tree@TypeTree() =>
         print(tree.tpe)

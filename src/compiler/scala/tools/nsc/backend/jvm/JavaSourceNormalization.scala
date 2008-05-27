@@ -34,7 +34,7 @@ with JavaSourceAnalysis
   
   // TODO(spoon): don't hide exceptions that the method is declared as throwing
   // TODO(spoon): don't rewrite throws of run-time exceptions
-  // TODO(spoon): move this to some rewrite phase
+  // TODO(spoon): make this part of RemoveJavaNonExpressions
   def hideExceptions(body: Tree): Tree = {
     val exceptions = exceptionsThrown(body)
     if (exceptions.isEmpty) {
@@ -45,9 +45,17 @@ with JavaSourceAnalysis
         val exSym = NoSymbol.newValue(body.pos, "ex")
         exSym setInfo excType
         
+        val hiddenThrow = 
+          Apply(mkAttributedSelect(mkAttributedRef(JavaSourceMiscModule), JavaSourceMisc_hiddenThrow),
+                List(mkAttributedRef(exSym))) setSymbol JavaSourceMisc_hiddenThrow
+        val notReachedThrow =
+          Throw(New(TypeTree(RuntimeExceptionClass.tpe), List(List(Literal("not reached"))))) setType AllClass.tpe
+        
         CaseDef(Bind(exSym, Typed(Ident(nme.WILDCARD), TypeTree(excType))),
                 EmptyTree,
-                Throw(mkAttributedIdent(exSym)) setType AllClass.tpe)
+                Block(
+                  List(hiddenThrow, notReachedThrow),
+                  Literal(())))
       }
       Try(body, catches, EmptyTree) setType body.tpe
     }

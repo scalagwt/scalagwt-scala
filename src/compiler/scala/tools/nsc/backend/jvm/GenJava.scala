@@ -13,13 +13,19 @@ import symtab.Flags._
 import scala.collection.mutable.ListBuffer
 
 
-/** Generates code in the form of Java source
+/** Generates code in the form of Java source.
+ * 
+ * TODO(spoon): In order to get the prettiest trees, the tree printer in this file
+ * should do almost nothing magic; it should simply do local changes in syntax such 
+ * as the syntax of types.  Any non-trivial changes should be done in a transformation 
+ * pass.
  *
  *  @author  Nikolay Mihaylov, Lex Spoon
  */
 abstract class GenJava 
 extends SubComponent 
 with JavaSourceAnalysis 
+with JavaDefinitions
 with JavaSourceFormatting 
 with JavaSourceNormalization
 {
@@ -30,7 +36,6 @@ with JavaSourceNormalization
   import global.scalaPrimitives._
   protected val typeKinds: global.icodes.type = global.icodes
   protected val scalaPrimitives: global.scalaPrimitives.type = global.scalaPrimitives
-  protected def typed(tree: Tree): Tree = global.typer.typed(tree)
   
   val phaseName = "genjavasrc"
 
@@ -107,6 +112,9 @@ with JavaSourceNormalization
     def isStaticSymbol(s: Symbol): Boolean =
       s.hasFlag(STATIC) || s.hasFlag(STATICMEMBER) || s.owner.isImplClass 
 
+    // TODO(spoon): change this to make a tree and then print the tree with the
+    // Java Printer.  using raw print's gives bad input and risks giving
+    // incorrect output.
     def dumpMirrorClass(printer: JavaPrinter)(clazz: Symbol): Unit = {
       import printer.{print, println, indent, undent}
       
@@ -159,7 +167,6 @@ with JavaSourceNormalization
          tree.symbol.simpleName.encode.toString)
       } else name.encode.toString;
 
-    // TODO(spoon): give this a comment.  It has a weird name. I don't understand print vs. printRaw.
     // TODO(spoon): read all cases carefully.
     // TODO(spoon): sort the cases in the order they are listed in Trees
     def printRaw(tree: Tree, ret: Boolean): Unit = tree match {
@@ -244,9 +251,8 @@ with JavaSourceNormalization
       case lab@LabelDef(_, List(), If(cond,
                                       Block(body, app@Apply(_, List())),
                                       Literal(Constant(()))))
-      => // TODO(spoon) put the real test back in
-//      if (lname1.startsWith("while$") && lname1 == lname2) =>
-                 // if (lab.symbol.name.toString.startsWith("while$") && lab.symbol==app.symbol) =>
+      => // TODO(spoon) LabelDef should make a labelled while loop, and applies 
+        // on the label should become labelled continues
         print("while ("); print(cond); print(") {") 
         indent; println
         printStats(body);
@@ -278,7 +284,23 @@ with JavaSourceNormalization
           case prim => print("Unhandled primitive ("+prim+") for "+tree)
         }
       }
-        
+    
+      case Apply(TypeApply(fun@Select(rcvr, _), List(tpe)), Nil)
+      if fun.symbol == definitions.Object_asInstanceOf =>
+        print("(")
+        print(tpe)
+        print(") (")
+        print(rcvr)
+        print(")")
+
+      case Apply(TypeApply(fun@Select(rcvr, _), List(tpe)), Nil)
+      if fun.symbol == definitions.Object_isInstanceOf =>
+        print("(")
+        print(rcvr)
+        print(" instanceof ")
+        print(tpe)
+        print(")")
+
       case tree@Apply(fun, args) if genicode.isStaticSymbol(tree.symbol) =>
         print(javaName(tree.symbol.owner))
         print(".")
@@ -298,6 +320,19 @@ with JavaSourceNormalization
 
       case Super(_, _) | Select(Super(_, _), nme.CONSTRUCTOR) => print("super")
       
+      case If(cond, exp1: Block, exp2) =>
+        // If statement
+        super.printRaw(tree)
+        
+      case If(cond, exp1, exp2) =>
+        // If expression
+        print("(")
+        print(cond)
+        print(") ? (")
+        print(exp1)
+        print(") : (")
+        print(exp2)
+        print(")")
       
       case Try(block, catches, finalizer) =>
         print("try ");
@@ -320,15 +355,21 @@ with JavaSourceNormalization
         }
       
       case Throw(expr) => 
-        // TODO(spoon): this impl assumes the throw is at the statement level
+        // TODO(spoon): this shouldn't really need the semi, and the semi could be wrong in some contexts
         print("scala.runtime.JavaSourceMisc.hiddenThrow(")
         print(expr)
         print("); ")
         print("throw new RuntimeException(\"not reached\")")
 
+        
+      case tree@TypeTree() =>
+        print(tree.tpe)
+        
       case _ => super.printRaw(tree)
     }
 
+    // TODO(spoon): drop the explicit "ret" and "return" from this file;
+    // earlier normalization should make returns explicit
     def printInBraces(exp: Tree, ret: Boolean) {
       exp match {
         case _:Block => printRaw(exp, ret);
@@ -379,7 +420,7 @@ with JavaSourceNormalization
       if (flagstr.length != 0) { print(flagstr); print(" ")  }
     }
     
-    def print(tpe: Type): Unit = {
+    def print(tpe: Type) {
       print(javaName(tpe))
     }
     
@@ -430,4 +471,3 @@ with JavaSourceNormalization
 //         case Select(qualifier, selector) => ;
 //         case Ident(name) => ;
 //         case Literal(value) => ;
-//         case TypeTree() => ;

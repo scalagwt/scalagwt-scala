@@ -22,6 +22,21 @@ trait JavaSourceAnalysis {
   private lazy val remoteExceptionClass = definitions.getClass("java.rmi.RemoteException")
   
   /**
+   * Return whether the argument, which must be a valid Scala expression, can
+   * be used as a Java statement.
+   */
+  def canBeStatement(exp: Tree): Boolean =
+    exp match {
+      case EmptyTree => false
+      case _:Super => false
+      case _:This => false
+      case _:Select => false
+      case _:Ident => false
+      case _:Literal => false
+      case _ => true
+    }
+  
+  /**
    * Analyze an expression and return the classes of the exceptions
    * it can throw.
    * 
@@ -55,16 +70,19 @@ trait JavaSourceAnalysis {
   def isUnit(tpe: Type): Boolean =
     tpe =:= definitions.UnitClass.tpe
 
+  def typeReturnable(tpe: Type) = !isUnit(tpe) && !isNothing(tpe)
+
   def isUnitLiteral(tree: Tree): Boolean =
     tree match {
       case Literal(Constant(())) => true
       case _ => false
     }
+
   def isReturnable(tree: Tree): Boolean = {
-    def typeReturnable(tpe: Type) = !isUnit(tpe) && !isNothing(tpe)
     def treeTypeReturnable(tree: Tree) = tree match {
       case _:Try => false
       case _:Block => false
+      case _:Return => false
       case _ => true
     }
     return treeTypeReturnable(tree) && typeReturnable(tree.tpe)

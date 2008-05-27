@@ -13,9 +13,11 @@ package scala.runtime
 /**
  * Miscellaneous utilities for Java source code.
  * 
- * TODO(spoon): annotate this as only to be translated when
- * building for Java bytecode.  When generating Java source,
- * this should not be included.
+ * NOTE: Although these compile to correct Java bytecode, they
+ * do not compile to correct Java source code.
+ * 
+ * TODO(spoon): Check with scala-devel on how to make this
+ * object be ignored for .NET.
  * 
  * @author Lex Spoon
  */
@@ -28,7 +30,4 @@ object JavaSourceMisc {
    * their method as throwing any exceptions.
    */
   def hiddenThrow(exc: Throwable) = throw exc
-  
-  def ifExpression[T](cond: Boolean, exp1: T, exp2: T): T =
-    if (cond) exp1 else exp2
 }

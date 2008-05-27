@@ -27,7 +27,7 @@ import typechecker._
 import transform._
 import backend.icode.{ICodes, GenICode, Checkers}
 import backend.ScalaPrimitives
-import backend.jvm.{GenJVM, GenJava}
+import backend.jvm.{GenJVM, GenJava, RemoveNonJavaExpressions}
 import backend.msil.GenMSIL
 import backend.opt.{Inliners, ClosureElimination, DeadCodeElimination}
 import backend.icode.analysis._
@@ -364,6 +364,10 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
   object genJVM extends GenJVM {
     val global: Global.this.type = Global.this
   }
+  
+  object removeNonJavaExpressions extends RemoveNonJavaExpressions {
+    val global: Global.this.type = Global.this    
+  }
 
   object genMSIL extends GenMSIL {
     val global: Global.this.type = Global.this
@@ -380,6 +384,11 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
       inliner,         // optimization: do inlining
       closureElimination, // optimization: get rid of uncalled closures
       deadCode            // optimization: get rid of dead cpde
+    )
+  
+  private def javaSourcePhases = 
+    List(
+      removeNonJavaExpressions
     )
   
   /** The built-in components.  The full list of components, including
@@ -407,10 +416,11 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
     mixer,           // do mixin composition
     cleanup          // some platform-specific cleanups
   ) ::: (
-    if (settings.target.value != "jvm-src") icodePhases else Nil
+    if (settings.target.value == "jvm-src") javaSourcePhases else icodePhases
   ) ::: List(
-    if (forMSIL) genMSIL else
-    if (settings.target.value == "jvm-src") genJava else genJVM,
+    if (forMSIL) genMSIL
+    else if (settings.target.value == "jvm-src") genJava
+    else genJVM,
     sampleTransform
   )
 

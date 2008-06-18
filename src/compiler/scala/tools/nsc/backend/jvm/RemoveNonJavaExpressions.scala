@@ -48,8 +48,9 @@ with JavaSourceNormalization
 {
   val global: Global
   import global._
+  import global.definitions._
+  import global.gen.mkAttributedIdent
   import javaDefinitions._
-  import definitions._
 
   override val phaseName = "nonjavaexps"
   
@@ -145,7 +146,7 @@ with JavaSourceNormalization
               val newLocal = allocLocal(exp.tpe, exp.pos)
               val newValDef = ValDef(newLocal, exp)
               newStats += newValDef
-              resultExps += (Ident(newLocal) setType exp.tpe)
+              resultExps += (mkAttributedIdent(newLocal) setType exp.tpe)
             }
           }
         }
@@ -211,9 +212,19 @@ with JavaSourceNormalization
                                 transformStatement(explicitBlockWithReturn(rhs)))
           currentMethodSym = savedMethodSym
           res
-        case tree:LabelDef =>
-          newStats += transformStatement(tree)
-          unitLiteral
+        case tree@LabelDef(name, params, rhs) =>
+          assert (params == Nil)
+          // TODO(spoon): investigate whether the params can be non-empty at this phase
+          if (isUnit(rhs.tpe)) {
+            newStats += transformStatement(tree)
+            unitLiteral
+          } else {
+            val resultLocal = allocLocal(rhs.tpe, tree.pos)
+            newStats += transformStatement(
+              LabelDef(name, Nil, 
+                       Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe) copyAttrs tree)
+            mkAttributedIdent(resultLocal) setPos tree.pos
+          }
 
 	    case Block(stats, expr) =>
            for (stat <- stats) {
@@ -238,11 +249,11 @@ with JavaSourceNormalization
               newStats += ValDef(resV)
               def statForBranch(branch: Tree) =
                 if (isNothing(branch)) branch else {
-                  Assign(Ident(resV), branch) setType branch.tpe
+                  Assign(mkAttributedIdent(resV), branch) setType branch.tpe
                 }
               newStats += transformStatement(
                 If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe)
-              Ident(resV) setType tree.tpe
+              mkAttributedIdent(resV)
             }
           }
         case tree:Try =>

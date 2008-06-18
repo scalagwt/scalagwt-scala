@@ -27,7 +27,7 @@ import typechecker._
 import transform._
 import backend.icode.{ICodes, GenICode, Checkers}
 import backend.ScalaPrimitives
-import backend.jvm.{GenJVM, GenJava, RemoveNonJavaExpressions}
+import backend.jvm.{GenJVM, GenJava, RemoveNothingExpressions, RemoveNonJavaExpressions}
 import backend.msil.GenMSIL
 import backend.opt.{Inliners, ClosureElimination, DeadCodeElimination}
 import backend.icode.analysis._
@@ -365,6 +365,10 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
     val global: Global.this.type = Global.this
   }
   
+  object removeNothingExpressions extends RemoveNothingExpressions {
+    val global: Global.this.type = Global.this
+  }
+  
   object removeNonJavaExpressions extends RemoveNonJavaExpressions {
     val global: Global.this.type = Global.this    
   }
@@ -388,7 +392,8 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
   
   private def javaSourcePhases = 
     List(
-      removeNonJavaExpressions
+      removeNothingExpressions,  // move Nothing-type expressions to top level
+      removeNonJavaExpressions   // fix up non-Java expressions and statements
     )
   
   /** The built-in components.  The full list of components, including

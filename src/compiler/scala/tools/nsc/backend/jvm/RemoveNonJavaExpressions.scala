@@ -223,10 +223,11 @@ with JavaSourceNormalization
 	    case If(cond, exp1, exp2) =>
 	      val condT = transform(cond)
           val (branchStats, List(condTT, exp1T, exp2T)) = removeNonJavaExpressions(List(condT, exp1, exp2))
-          if (branchStats.isEmpty) {
+          if (branchStats.isEmpty && !isNothing(exp1T) && !isNothing(exp2T)) {
             If(condTT, exp1T, exp2T) setType tree.tpe setPos tree.pos
           } else {
-            // If either branch needs statements, then it is necessary to
+            // If either branch needs statements, or if either branch is
+            // of type nothing, then it is necessary to
             // make a top-level if
             if (isUnit(tree.tpe)) {
               newStats += transformStatement(
@@ -235,8 +236,12 @@ with JavaSourceNormalization
             } else {
               val resV = allocLocal(tree.tpe, tree.pos)
               newStats += ValDef(resV)
+              def statForBranch(branch: Tree) =
+                if (isNothing(branch)) branch else {
+                  Assign(Ident(resV), branch) setType branch.tpe
+                }
               newStats += transformStatement(
-                If(condT, Assign(Ident(resV), exp1), Assign(Ident(resV), exp2)) setType tree.tpe)
+                If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe)
               Ident(resV) setType tree.tpe
             }
           }

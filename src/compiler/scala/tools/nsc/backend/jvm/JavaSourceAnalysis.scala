@@ -73,6 +73,8 @@ trait JavaSourceAnalysis {
   def isNothing(tpe: Type): Boolean =
     (tpe != null) && (tpe =:= definitions.AllClass.tpe)
   
+  def isNothing(tree: Tree): Boolean = isNothing(tree.tpe)
+  
   def isUnit(tpe: Type): Boolean =
     tpe =:= definitions.UnitClass.tpe
 

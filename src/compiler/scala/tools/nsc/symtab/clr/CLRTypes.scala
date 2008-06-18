@@ -125,7 +125,7 @@ abstract class CLRTypes {
         }
       }
 
-    Arrays.sort(alltypes.asInstanceOf[Array[Object]], typeNameComparator)
+    Arrays.sort(alltypes.asInstanceOf[Array[Any]], typeNameComparator)
     this.alltypes = alltypes
   }
   catch {

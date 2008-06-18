@@ -22,7 +22,7 @@ package scala
  * @author <a href="mailto:research@workingmouse.com">Tony Morris</a>, Workingmouse
  * @version 1.0, 06/02/2008
  */
-sealed trait Either[+A, +B] {
+ trait Either[+A, +B] {
   /**
    * Returns the value from this <code>Left</code> or fails with the given message if this is a
    * <code>Right</code>.

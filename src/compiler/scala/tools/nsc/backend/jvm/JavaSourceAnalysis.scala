@@ -40,8 +40,8 @@ trait JavaSourceAnalysis {
    * Return whether the given expression can ever complete and fall through
    * to an expression that follows it in a block.
    */
-  def canFallThrough(exp: Tree) = false; // TODO(spoon)
-  
+  def canFallThrough(exp: Tree) = !isNothing(exp.tpe)
+
   /**
    * Analyze an expression and return the classes of the exceptions
    * it can throw.
@@ -71,7 +71,7 @@ trait JavaSourceAnalysis {
   
     
   def isNothing(tpe: Type): Boolean =
-    tpe =:= definitions.AllClass.tpe
+    (tpe != null) && (tpe =:= definitions.AllClass.tpe)
   
   def isUnit(tpe: Type): Boolean =
     tpe =:= definitions.UnitClass.tpe

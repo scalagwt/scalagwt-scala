@@ -32,15 +32,13 @@ import scala.tools.nsc.util.Position
  *      a try-catch-finally expression, the two branches of any
  *      if expression appearing as a statement in a block.
  * <li> The expression of any block is simply a unit constant.
- *      
+ *      Thus, after this phase, blocks are only used for
+ *      side effects.
  * </ul>
  * 
  * TODO(spoon): in constructor calls within a constructor, the extracted
  * code needs to be moved to a method in some top-level object, because the
  * Java compiler will not allow any statements to precede the constructor call.
- * 
- * TODO(spoon): probably need to handle expressions of type Nothing and Unit;
- * for Nothing, substitute a literal depending on the expected type. 
  */
 trait RemoveNonJavaExpressions
 extends Transform
@@ -69,11 +67,15 @@ with JavaSourceNormalization
     /**
      * The nearest enclosing method.
      */
-    var currentMethodSym: Symbol = NoSymbol    
-
+    var currentMethodSym: Symbol = NoSymbol
+    
+    val unitLiteral = Literal(Constant()) setType UnitClass.tpe
+      
     def allocLocal(tpe: Type, pos: Position): Symbol = {
+      assert (tpe != UnitClass.tpe) // don't create a unit variable
+      assert (tpe != null)
       val newLocal = currentMethodSym.newValue(pos, cunit.fresh.newName())
-      newLocal.setInfo(if(tpe == null) UnitClass.tpe else tpe)
+      newLocal.setInfo(tpe)
       newLocal
     }
     
@@ -136,10 +138,15 @@ with JavaSourceNormalization
             // TODO(spoon): also skip the val for stable, side-effect-free expressions like literals
             resultExps += exp
           } else {
-            val newLocal = allocLocal(exp.tpe, exp.pos)
-            val newValDef = ValDef(newLocal, exp)
-            newStats += newValDef
-            resultExps += (Ident(newLocal) setType exp.tpe)
+            if (isUnit(exp.tpe)) {
+              newStats += exp
+              resultExps += unitLiteral
+            } else {
+              val newLocal = allocLocal(exp.tpe, exp.pos)
+              val newValDef = ValDef(newLocal, exp)
+              newStats += newValDef
+              resultExps += (Ident(newLocal) setType exp.tpe)
+            }
           }
         }
         for ((stats, exp) <- toLeaveAlone) {
@@ -176,7 +183,7 @@ with JavaSourceNormalization
           newBlockStats ++= expNewStats
           if (canBeStatement(expT))
             newBlockStats += expT
-          copy.Block(tree, newBlockStats.toList, Literal(()))
+          copy.Block(tree, newBlockStats.toList, unitLiteral)
         case ValDef(mods, name, tpt, rhs) =>
           copy.ValDef(tree, mods, name, tpt, transform(rhs))
 	    case LabelDef(name, params, rhs) =>
@@ -206,7 +213,7 @@ with JavaSourceNormalization
           res
         case tree:LabelDef =>
           newStats += transformStatement(tree)
-          Literal(())
+          unitLiteral
 
 	    case Block(stats, expr) =>
            for (stat <- stats) {
@@ -221,14 +228,21 @@ with JavaSourceNormalization
           } else {
             // If either branch needs statements, then it is necessary to
             // make a top-level if
-            val resV = allocLocal(tree.tpe, tree.pos)
-            newStats += ValDef(resV)
-            newStats += transformStatement(If(condT, Assign(Ident(resV), exp1), Assign(Ident(resV), exp2)))
-            Ident(resV) setType tree.tpe
+            if (isUnit(tree.tpe)) {
+              newStats += transformStatement(
+                If(condT, exp1, exp2) setType tree.tpe)
+              unitLiteral
+            } else {
+              val resV = allocLocal(tree.tpe, tree.pos)
+              newStats += ValDef(resV)
+              newStats += transformStatement(
+                If(condT, Assign(Ident(resV), exp1), Assign(Ident(resV), exp2)) setType tree.tpe)
+              Ident(resV) setType tree.tpe
+            }
           }
         case tree:Try =>
           newStats += transformStatement(tree)
-          Literal(()) // TODO(spoon): need to get the actual value computed, just like with if
+          unitLiteral // TODO(spoon): need to get the actual value computed, just like with if
 	    case Apply(fun, args) =>
           val funT :: argsT = transformTrees(fun :: args)
           copy.Apply(tree, funT, argsT)

@@ -26,11 +26,14 @@ import scala.tools.nsc.util.Position
  * <li> All methods that don't return Unit get an explicit return
  * <li> Expressions in statement position that Java disallows as
  *      statements are discarded.  Examples are literals,
- *      field selections, and <code>this</code>.
+ *      field selections, and <code>this</code>.  TODO(spoon): check that field selects are safe to drop; the instance can have a side effect!
+ * <li> All thrown, checked exceptions are hidden from Java using
+ *      <code>JavaSourceMisc.hiddenThrow()</code>.
  * <li> Many expressions are made to be a block if they aren't already:
  *      the body of a LabelDef, the three subexpressions of
  *      a try-catch-finally expression, the two branches of any
- *      if expression appearing as a statement in a block.
+ *      if expression appearing as a statement in a block, the
+ *      rhs of a DefDef.
  * <li> The expression of any block is simply a unit constant.
  *      Thus, after this phase, blocks are only used for
  *      side effects.
@@ -70,8 +73,6 @@ with JavaSourceNormalization
      */
     var currentMethodSym: Symbol = NoSymbol
     
-    val unitLiteral = Literal(Constant()) setType UnitClass.tpe
-      
     def allocLocal(tpe: Type, pos: Position): Symbol = {
       assert (tpe != UnitClass.tpe) // don't create a unit variable
       assert (tpe != null)
@@ -206,10 +207,15 @@ with JavaSourceNormalization
      */
     override def transform(tree: Tree): Tree =
       tree match {
-	    case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        case tree@CaseDef(pat, guard, body) =>
+          CaseDef(pat, guard, transformStatement(explicitBlock(body)))
+	    case tree@DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           val savedMethodSym = currentMethodSym
+          currentMethodSym = tree.symbol
+          val rhsHiddenExceptions = if (isConstructor(tree)) rhs else hideExceptions(rhs)
+          // TODO(spoon): handle constructors
           val res = copy.DefDef(tree, mods, name, tparams, vparamss, tpt, 
-                                transformStatement(explicitBlockWithReturn(rhs)))
+                                transformStatement(explicitBlockWithReturn(rhsHiddenExceptions)))
           currentMethodSym = savedMethodSym
           res
         case tree@LabelDef(name, params, rhs) =>
@@ -249,16 +255,33 @@ with JavaSourceNormalization
               newStats += ValDef(resV)
               def statForBranch(branch: Tree) =
                 if (isNothing(branch)) branch else {
-                  Assign(mkAttributedIdent(resV), branch) setType branch.tpe
+                  Assign(mkAttributedIdent(resV), branch) setType branch.tpe  // TODO(spoon): should be type unit?
                 }
               newStats += transformStatement(
                 If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe)
               mkAttributedIdent(resV)
             }
           }
-        case tree:Try =>
-          newStats += transformStatement(tree)
-          unitLiteral // TODO(spoon): need to get the actual value computed, just like with if
+        case tree@Try(block, catches, finalizer) =>
+          if (isUnit(tree.tpe)) {
+            newStats += transformStatement(tree)
+            unitLiteral
+          } else {
+            val resV = allocLocal(tree.tpe, tree.pos)
+            newStats += ValDef(resV)
+            
+            val newBlock =
+              if (isUnitOrNothing(block)) block 
+              else Assign(mkAttributedIdent(resV), block) setType definitions.UnitClass.tpe
+            
+            val newCatches =
+              for (CaseDef(pat, guard, body) <- catches)
+              yield 
+                if (isUnitOrNothing(body)) CaseDef(pat, guard, body)
+                else CaseDef(pat, guard, Assign(mkAttributedIdent(resV), body) setType definitions.UnitClass.tpe)
+            newStats += transformStatement(Try(newBlock, newCatches, finalizer) setType tree.tpe)
+            mkAttributedIdent(resV)
+          }
 	    case Apply(fun, args) =>
           val funT :: argsT = transformTrees(fun :: args)
           copy.Apply(tree, funT, argsT)

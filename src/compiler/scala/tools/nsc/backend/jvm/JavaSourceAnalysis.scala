@@ -69,6 +69,8 @@ trait JavaSourceAnalysis {
     return exceptions.toList
   }
   
+  
+  def isConstructor(defDef: DefDef) = defDef.name == nme.CONSTRUCTOR
     
   def isNothing(tpe: Type): Boolean =
     (tpe != null) && (tpe =:= definitions.AllClass.tpe)
@@ -76,7 +78,11 @@ trait JavaSourceAnalysis {
   def isNothing(tree: Tree): Boolean = isNothing(tree.tpe)
   
   def isUnit(tpe: Type): Boolean =
-    tpe =:= definitions.UnitClass.tpe
+    (tpe != null) && (tpe =:= definitions.UnitClass.tpe)
+  
+  def isUnit(tree: Tree): Boolean = isUnit(tree.tpe)
+  
+  def isUnitOrNothing(tree: Tree) = isUnit(tree) || isNothing(tree)
 
   def typeReturnable(tpe: Type) = !isUnit(tpe) && !isNothing(tpe)
 

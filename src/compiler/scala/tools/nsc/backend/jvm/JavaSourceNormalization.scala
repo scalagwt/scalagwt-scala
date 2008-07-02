@@ -34,7 +34,6 @@ with JavaSourceAnalysis
   
   // TODO(spoon): don't hide exceptions that the method is declared as throwing
   // TODO(spoon): don't rewrite throws of run-time exceptions
-  // TODO(spoon): make this part of RemoveJavaNonExpressions
   def hideExceptions(body: Tree): Tree = {
     val exceptions = exceptionsThrown(body)
     if (exceptions.isEmpty) {
@@ -49,13 +48,13 @@ with JavaSourceAnalysis
           Apply(mkAttributedSelect(mkAttributedRef(JavaSourceMiscModule), JavaSourceMisc_hiddenThrow),
                 List(mkAttributedRef(exSym))) setSymbol JavaSourceMisc_hiddenThrow
         val notReachedThrow =
-          Throw(New(TypeTree(RuntimeExceptionClass.tpe), List(List(Literal("not reached"))))) setType AllClass.tpe
+          Throw(New(TypeTree(RuntimeExceptionClass.tpe), List(List(Literal("not reached") /* TODO(spoon): setType string*/)))) setType AllClass.tpe
         
         CaseDef(Bind(exSym, Typed(Ident(nme.WILDCARD), TypeTree(excType))),
                 EmptyTree,
                 Block(
                   List(hiddenThrow, notReachedThrow),
-                  Literal(())))
+                  unitLiteral) setType AllClass.tpe)
       }
       Try(body, catches, EmptyTree) setType body.tpe
     }
@@ -70,7 +69,7 @@ with JavaSourceAnalysis
     tree match {
     case tree@EmptyTree => tree
     case block: Block => block
-    case tree => Block(Nil, tree)
+    case tree => mkBlock(Nil, tree)
     }
     
   /**
@@ -78,12 +77,18 @@ with JavaSourceAnalysis
    * be a return statement, unless its type is Unit or Nothing.
    */
   def explicitBlockWithReturn(tree: Tree): Tree =
-    if (typeReturnable(tree.tpe) : @unchecked)
-      explicitBlock(tree) match {
-      case tree@EmptyTree => tree
-      case tree@Block(stats, Return(exp)) => tree
-      case tree@Block(stats, exp) => Block(stats, Return(exp))
+    if (typeReturnable(tree.tpe))
+      (explicitBlock(tree) : @unchecked) match {
+        case tree@EmptyTree => tree
+        case tree@Block(_, _:Return) => tree
+        case tree@Block(stats, exp) => mkBlock(stats, mkReturn(exp))
       }
     else
       explicitBlock(tree)
+  
+  // TODO(spoon): factor out these tree constructors to their own class
+  def mkBlock(stats: List[Tree], exp: Tree) = Block(stats, exp) setType exp.tpe
+  def mkReturn(exp: Tree) = Return(exp) setType AllClass.tpe
+  
+  val unitLiteral = Literal(Constant()) setType UnitClass.tpe
 }

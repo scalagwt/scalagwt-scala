@@ -172,10 +172,21 @@ with JavaSourceNormalization
         ((if (tree.symbol.isMixinConstructor) "/*"+tree.symbol.owner.name+"*/" else "") +
          tree.symbol.simpleName.encode.toString)
       } else name.encode.toString;
+    
+    def logIfException[T](tree: Tree)(process: =>T): T =
+      try {
+        process
+      } catch {
+      case ex:Error =>
+        Console.println("Exception while traversing: " + tree)
+        throw ex
+      } 
 
     // TODO(spoon): read all cases carefully.
     // TODO(spoon): sort the cases in the order they are listed in Trees
-    def printRaw(tree: Tree, ret: Boolean): Unit = tree match {
+    // TODO(spoon): remove the "ret" flag
+    def printRaw(tree: Tree, ret: Boolean): Unit = 
+      logIfException(tree) { tree match {
       case EmptyTree =>  
         
       case ClassDef(mods, name, _, Template(superclass :: ifaces, _, body)) =>
@@ -216,15 +227,14 @@ with JavaSourceNormalization
         if (!rhs.isEmpty) { print(" = "); print(rhs) }
         print(";")
 
-      case DefDef(mods, name, tparams, vparamss, tp, rhs0) =>
-        val isCons = name == nme.CONSTRUCTOR
+      case tree@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
         val resultType = tree.symbol.tpe.resultType
-        val rhs = if (isCons) rhs0 else hideExceptions(rhs0)  // TODO(spoon) handle constructors
         
+        // TODO(spoon): decide about these two prints; put them in or delete the comments
         //printAttributes(tree)
         //printFlags(mods.flags)
         printFlags(tree.symbol)
-        if (isCons) print(javaShortName(tree.symbol.owner))
+        if (isConstructor(tree)) print(javaShortName(tree.symbol.owner))
         else {
           print(tp.tpe)
           print(" ")
@@ -240,21 +250,13 @@ with JavaSourceNormalization
         }
 
       case Block(stats, expr) =>
-        print("{");indent; println
+        assert (expr equalsStructure Literal(()))
+        print("{"); indent; println
         printStats(stats)
-        println
-        if (isUnitLiteral(expr)) {
-          if (ret)
-            print("return;")
-        } else {
-          if (ret && isReturnable(expr))
-            print("return ");
-          print(expr)
-          if (needsSemi(expr)) print(";")
-        }
         undent; println; print("}")
 
-      case tree@LabelDef(_, List(), body@Block(bodyStats, _)) =>
+      case tree@LabelDef(_, List(), body@Block(bodyStats, bodyExpr)) =>
+        assert (bodyExpr equalsStructure Literal(()))
         labelSyms += tree.symbol
         print(tree.symbol.name); print(": while(true) {"); indent; println;
         printStats(bodyStats)
@@ -370,7 +372,7 @@ with JavaSourceNormalization
         print(tree.tpe)
         
       case _ => super.printRaw(tree)
-    }
+      } }
 
     // TODO(spoon): drop the explicit "ret" and "return" from this file;
     // earlier normalization should make returns explicit
@@ -378,6 +380,8 @@ with JavaSourceNormalization
       exp match {
         case _:Block => printRaw(exp, ret);
         case _ => 
+          assert(false, exp.toString)
+          // TODO(spoon): try to eliminate this case through earlier normalization
           print("{")
           indent; println
           if (ret && isReturnable(exp)) {

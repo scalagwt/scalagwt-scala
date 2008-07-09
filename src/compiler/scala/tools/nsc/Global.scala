@@ -27,7 +27,7 @@ import typechecker._
 import transform._
 import backend.icode.{ICodes, GenICode, Checkers}
 import backend.ScalaPrimitives
-import backend.jvm.{GenJVM, GenJava, RemoveNothingExpressions, RemoveNonJavaExpressions}
+import backend.jvm.{GenJVM, GenJava, RemoveNothingExpressions, NormalizeForJavaSource}
 import backend.msil.GenMSIL
 import backend.opt.{Inliners, ClosureElimination, DeadCodeElimination}
 import backend.icode.analysis._
@@ -369,7 +369,7 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
     val global: Global.this.type = Global.this
   }
   
-  object removeNonJavaExpressions extends RemoveNonJavaExpressions {
+  object normalizeForJavaSource extends NormalizeForJavaSource {
     val global: Global.this.type = Global.this    
   }
 
@@ -393,7 +393,7 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
   private def javaSourcePhases = 
     List(
       removeNothingExpressions,  // move Nothing-type expressions to top level
-      removeNonJavaExpressions   // fix up non-Java expressions and statements
+      normalizeForJavaSource     // many normalizations needed for emitting Java source
     )
   
   /** The built-in components.  The full list of components, including

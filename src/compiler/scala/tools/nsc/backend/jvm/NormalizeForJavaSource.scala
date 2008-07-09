@@ -6,7 +6,7 @@
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
+// $Id: RemoveNonJavaExpressions.scala 15515 2008-07-09 15:30:59Z spoon $
 
 package scala.tools.nsc.backend.jvm
 import scala.collection.mutable.ListBuffer
@@ -44,10 +44,8 @@ import scala.tools.nsc.util.Position
  * TODO(spoon): in constructor calls within a constructor, the extracted
  * code needs to be moved to a method in some top-level object, because the
  * Java compiler will not allow any statements to precede the constructor call.
- * 
- * TODO(spoon): rename this to JavaSourceNormalize and rename the phase appropriately
  */
-trait RemoveNonJavaExpressions
+trait NormalizeForJavaSource
 extends Transform
 with JavaDefinitions
 with JavaSourceAnalysis
@@ -59,7 +57,7 @@ with JavaSourceNormalization
   import global.gen.mkAttributedIdent
   import javaDefinitions._
 
-  override val phaseName = "nonjavaexps"
+  override val phaseName = "normjvmsrc"
   
   override protected def newTransformer(unit: CompilationUnit): Transformer =
     new Trans(unit)

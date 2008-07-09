@@ -15,7 +15,7 @@ import nsc.typechecker.Typers
 import nsc.util.Position
 
 /**
- * Utilities for normalizing code for the purpose of generating Java source code.
+ * Miscellaneous methods that create and modify trees.
  * 
  * @author Lex Spoon
  */

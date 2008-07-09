@@ -74,7 +74,7 @@ with JavaSourceAnalysis
           if (isNothing(cond)) {
             cond
           } else {
-            // RemoveNonJavaExpressions takes care of the case where
+            // NormalizeForJavaSource takes care of the case where
             // a conditional expression has a type-Nothing branch
             tree
           }

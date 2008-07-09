@@ -183,7 +183,7 @@ with JavaSourceNormalization
       } 
 
     // TODO(spoon): read all cases carefully.
-    // TODO(spoon): sort the cases in the order they are listed in Trees
+    // TODO(spoon): sort the cases in alphabetical order
     // TODO(spoon): remove the "ret" flag
     def printRaw(tree: Tree, ret: Boolean): Unit = 
       logIfException(tree) { tree match {

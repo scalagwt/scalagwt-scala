@@ -37,11 +37,15 @@ import scala.tools.nsc.util.Position
  * <li> The expression of any block is simply a unit constant.
  *      Thus, after this phase, blocks are only used for
  *      side effects.
+ * <li> Replace box and unbox operations by calls into the Scala
+ *      runtime.
  * </ul>
  * 
  * TODO(spoon): in constructor calls within a constructor, the extracted
  * code needs to be moved to a method in some top-level object, because the
  * Java compiler will not allow any statements to precede the constructor call.
+ * 
+ * TODO(spoon): rename this to JavaSourceNormalize and rename the phase appropriately
  */
 trait RemoveNonJavaExpressions
 extends Transform
@@ -61,7 +65,7 @@ with JavaSourceNormalization
     new Trans(unit)
   
   /**
-   * Rewrite a tree to be a sequence of statements followed by a single expression.
+   * The main transformer of this phase.
    */
   private class Trans(cunit: CompilationUnit) extends Transformer {
     /** A list of statements that need to be inserted at the
@@ -204,6 +208,8 @@ with JavaSourceNormalization
      * in an expression context.  As a side effect, add statements to <code>newStats</code>
      * whose execution should precede that of the returned tree.  The <code>tree</code>
      * passed as an argument is assumed to be in an expression context.
+     * 
+     * TODO(spoon): alphabetize the cases
      */
     override def transform(tree: Tree): Tree =
       tree match {
@@ -281,7 +287,11 @@ with JavaSourceNormalization
                 else CaseDef(pat, guard, Assign(mkAttributedIdent(resV), body) setType definitions.UnitClass.tpe)
             newStats += transformStatement(Try(newBlock, newCatches, finalizer) setType tree.tpe)
             mkAttributedIdent(resV)
-          }
+          }     
+        case Apply(fun, List(expr)) if (definitions.isBox(fun.symbol)) =>
+          transform(box(fun.symbol, expr))
+        case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
+          transform(unbox(fun.symbol, expr))
 	    case Apply(fun, args) =>
           val funT :: argsT = transformTrees(fun :: args)
           copy.Apply(tree, funT, argsT)

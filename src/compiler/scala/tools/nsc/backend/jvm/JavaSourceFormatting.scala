@@ -28,7 +28,8 @@ trait JavaSourceFormatting {
   }
 
   protected def javaName(sym: Symbol, fullyQualify: Boolean): String = {
-    def suffix = if (sym.isModuleClass && !sym.isTrait) "$" else ""
+    import nsc.symtab.Flags._
+    def suffix = if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
 
     // TODO(spoon): why the special cases?  double check that they are needed
     if (sym == definitions.AllClass)

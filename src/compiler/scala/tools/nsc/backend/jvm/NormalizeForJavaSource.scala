@@ -230,6 +230,7 @@ with JavaSourceNormalization
             unitLiteral
           } else {
             val resultLocal = allocLocal(rhs.tpe, tree.pos)
+            newStats += ValDef(resultLocal)
             newStats += transformStatement(
               LabelDef(name, Nil, 
                        Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe) copyAttrs tree)

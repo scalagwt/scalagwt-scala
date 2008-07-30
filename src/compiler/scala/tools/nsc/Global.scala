@@ -566,7 +566,7 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
         phase = globalPhase
         globalPhase.run
         if (settings.print contains globalPhase.name)
-          if (globalPhase.id >= icodePhase.id) writeICode()
+          if (icodePhase != NoPhase  &&  globalPhase.id >= icodePhase.id) writeICode()
           else if (settings.Xshowtrees.value) nodePrinters.printAll()
           else printAllUnits()
         if (settings.printLate.value && globalPhase.name == "cleanup")

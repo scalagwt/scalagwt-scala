@@ -9,6 +9,7 @@
 // $Id: RemoveNonJavaExpressions.scala 15515 2008-07-09 15:30:59Z spoon $
 
 package scala.tools.nsc.backend.jvm
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.tools.nsc.transform.Transform
 import scala.tools.nsc.symtab.SymbolTable
@@ -75,6 +76,18 @@ with JavaSourceNormalization
      */
     var currentMethodSym: Symbol = NoSymbol
     
+    /**
+     * The symbols for LabelDef's that enclose the current scope.
+     */
+    val labelDefs = mutable.Set.empty[Symbol]
+
+    def recordLabelDefDuring[A](label: Symbol)(f: =>A) = {
+      labelDefs += label
+      val res = f
+      labelDefs -= label
+      res
+    }
+
     def allocLocal(tpe: Type, pos: Position): Symbol = {
       assert (tpe != UnitClass.tpe) // don't create a unit variable
       assert (tpe != null)
@@ -187,11 +200,15 @@ with JavaSourceNormalization
           newBlockStats ++= expNewStats
           if (canBeStatement(expT))
             newBlockStats += expT
-          copy.Block(tree, newBlockStats.toList, unitLiteral)
+            
+          // TODO(spoon): reuse the original tree when possible
+          mkBlock(newBlockStats.toList, unitLiteral)
         case ValDef(mods, name, tpt, rhs) =>
           copy.ValDef(tree, mods, name, tpt, transform(rhs))
-	    case LabelDef(name, params, rhs) =>
-	      copy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
+	    case tree@LabelDef(name, params, rhs) =>
+	      recordLabelDefDuring(tree.symbol) {
+            copy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
+	      }
         case Try(block, catches, finalizer) =>
           val blockT = transformStatement(explicitBlock(block))
           val catchesT = catches map (transform(_).asInstanceOf[CaseDef])
@@ -225,16 +242,18 @@ with JavaSourceNormalization
         case tree@LabelDef(name, params, rhs) =>
           assert (params == Nil)
           // TODO(spoon): investigate whether the params can be non-empty at this phase
-          if (isUnit(rhs.tpe)) {
-            newStats += transformStatement(tree)
-            unitLiteral
-          } else {
-            val resultLocal = allocLocal(rhs.tpe, tree.pos)
-            newStats += ValDef(resultLocal)
-            newStats += transformStatement(
-              LabelDef(name, Nil, 
-                       Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe) copyAttrs tree)
-            mkAttributedIdent(resultLocal) setPos tree.pos
+	      recordLabelDefDuring(tree.symbol) {
+            if (isUnit(rhs.tpe)) {
+              newStats += transformStatement(tree)
+              unitLiteral
+            } else {
+              val resultLocal = allocLocal(rhs.tpe, tree.pos)
+              newStats += ValDef(resultLocal)
+              newStats += transformStatement(
+                LabelDef(name, Nil, 
+                         Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe) copyAttrs tree)
+              mkAttributedIdent(resultLocal) setPos tree.pos
+            }
           }
 
 	    case Block(stats, expr) =>
@@ -291,6 +310,9 @@ with JavaSourceNormalization
           transform(box(fun.symbol, expr))
         case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
           transform(unbox(fun.symbol, expr))
+	    case Apply(fun, args) if (labelDefs contains fun.symbol) =>
+          // the type of a continue should be Nothing
+	      mkApply(fun, args) setType definitions.AllClass.tpe
 	    case Apply(fun, args) =>
           val funT :: argsT = transformTrees(fun :: args)
           copy.Apply(tree, funT, argsT)

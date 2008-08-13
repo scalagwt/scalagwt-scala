@@ -15,11 +15,6 @@ import scala.collection.mutable.ListBuffer
 
 
 /** Generates code in the form of Java source.
- * 
- * TODO(spoon): In order to get the prettiest trees, the tree printer in this file
- * should do almost nothing magic; it should simply do local changes in syntax such 
- * as the syntax of types.  Any non-trivial changes should be done in a transformation 
- * pass.
  *
  *  @author  Nikolay Mihaylov, Lex Spoon
  */
@@ -114,7 +109,7 @@ with JavaSourceNormalization
       s.hasFlag(STATIC) || s.hasFlag(STATICMEMBER) || s.owner.isImplClass 
 
     // TODO(spoon): change this to make a tree and then print the tree with the
-    // Java Printer.  using raw print's gives bad input and risks giving
+    // Java Printer.  using raw print's gives bad output and risks giving
     // incorrect output.
     def dumpMirrorClass(printer: JavaPrinter)(clazz: Symbol): Unit = {
       import printer.{print, println, indent, undent}
@@ -261,7 +256,7 @@ with JavaSourceNormalization
         print(tree.symbol.name); print(": while(true) {"); indent; println;
         printStats(bodyStats)
         if (canFallThrough(body)) {
-          print("break;"); println
+          println; print("break;")
         }
         undent; println; print("}")
         labelSyms -= tree.symbol

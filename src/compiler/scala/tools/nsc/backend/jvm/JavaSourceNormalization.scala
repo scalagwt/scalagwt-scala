@@ -93,6 +93,7 @@ with JavaSourceAnalysis
       (explicitBlock(tree) : @unchecked) match {
         case tree@EmptyTree => tree
         case tree@Block(_, _:Return) => tree
+        case tree if isNothing(tree) => mkBlock(stats, tree)
         case tree@Block(stats, exp) => mkBlock(stats, mkReturn(exp))
       }
     else
@@ -100,7 +101,10 @@ with JavaSourceAnalysis
   
   def mkApply(fun: Tree, args: List[Tree]) =
     Apply(fun, args) setType fun.symbol.tpe.resultType setSymbol fun.symbol
-  def mkBlock(stats: List[Tree], exp: Tree) = Block(stats, exp) setType exp.tpe
+  def mkBlock(stats: List[Tree], exp: Tree) =
+    Block(stats, exp) setType (
+     // set type to Nothing if any stat has type nothing.
+     if (stats exists (t => isNothing(t))) definitions.AllClass.tpe else exp.tpe)
   def mkReturn(exp: Tree) = Return(exp) setType AllClass.tpe
   
   val unitLiteral = Literal(Constant()) setType UnitClass.tpe

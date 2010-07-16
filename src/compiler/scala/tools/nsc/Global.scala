@@ -466,25 +466,25 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
   } with GenJVM
 
   // phaseNAme = "nothingexps"
-  object removeNothingExpressions extends RemoveNothingExpressions {
+  object removeNothingExpressions extends {
     val global: Global.this.type = Global.this
     val runsAfter = List[String]("cleanup")
     val runsRightAfter = None
-  }
+  } with RemoveNothingExpressions
 
   // phaseName = "normjvmsrc"
-  object normalizeForJavaSource extends NormalizeForJavaSource {
+  object normalizeForJavaSource extends {
     val global: Global.this.type = Global.this
     val runsAfter = List[String]("cleanup")
     val runsRightAfter = None
-  }
+  } with NormalizeForJavaSource
 
   // phaseName = "genjavasrc"
-  object genJava extends GenJava {
+  object genJava extends {
     val global: Global.this.type = Global.this
     val runsAfter = List[String]("normjvmsrc")
     val runsRightAfter = None
-  }
+  } with GenJava
 
   object dependencyAnalysis extends {
     val global: Global.this.type = Global.this

@@ -6,7 +6,7 @@
 **                          |/                                          **
 \*                                                                      */
 package scala.tools.nsc
-package backend.javasrc
+package backend.jribble
 
 import scala.collection.mutable.ListBuffer
 import scala.tools.nsc.transform.Transform
@@ -18,7 +18,7 @@ import scala.tools.nsc.util.Position
  */
 trait RemoveNothingExpressions
 extends Transform
-with JavaSourceAnalysis
+with JribbleAnalysis
 {
   val global: Global
   import global._
@@ -75,7 +75,7 @@ with JavaSourceAnalysis
           if (isNothing(cond)) {
             cond
           } else {
-            // NormalizeForJavaSource takes care of the case where
+            // NormalizeForJribble takes care of the case where
             // a conditional expression has a type-Nothing branch
             tree
           }

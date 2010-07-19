@@ -8,14 +8,14 @@
 
 // $Id$
 package scala.tools.nsc
-package backend.javasrc
+package backend.jribble
 import symtab.SymbolTable
 import scala.collection.mutable
 
 /**
- * Analyses that are used by {@link GenJava}.
+ * Analyses that are used by {@link GenJribble}.
  */
-trait JavaSourceAnalysis {
+trait JribbleAnalysis {
   val global: SymbolTable
   import global._
 
@@ -24,7 +24,7 @@ trait JavaSourceAnalysis {
 
   /**
    * Return whether the argument, which must be a valid Scala expression, can
-   * be used as a Java statement.
+   * be used as a Jribble statement.
    */
   def canBeStatement(exp: Tree): Boolean =
     exp match {
@@ -49,7 +49,7 @@ trait JavaSourceAnalysis {
    *
    * TODO(spoon): this is currently very sloppy.  It needs to deal with
    * catch expressions, and it needs to combine expressions that overlap,
-   * and it needs to deal with declared Java exceptions.
+   * and it needs to deal with declared Jribble exceptions.
    */
   def exceptionsThrown(exp: Tree): List[Symbol] = {
     val exceptions = mutable.Set.empty[Symbol]

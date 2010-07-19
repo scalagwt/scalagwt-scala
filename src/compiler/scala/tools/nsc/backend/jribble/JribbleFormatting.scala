@@ -9,27 +9,27 @@
 // $Id$
 package scala.tools.nsc
 package backend
-package javasrc
+package jribble
 import symtab.SymbolTable
 import backend.icode.TypeKinds
 
 /**
- * Utilities for formatting Scala constructs in Java syntax.
- *
+ * Utilities for formatting Scala constructs in Jribble syntax.
+ * 
  *  @author  Lex Spoon
  */
-trait JavaSourceFormatting {
+trait JribbleFormatting {
   val global: SymbolTable { def abort(msg: String): Nothing }
   import global._
   protected val typeKinds: TypeKinds {
-    val global: JavaSourceFormatting.this.global.type
+    val global: JribbleFormatting.this.global.type
   }
   import typeKinds._
   protected val scalaPrimitives: ScalaPrimitives {
-    val global: JavaSourceFormatting.this.global.type
+    val global: JribbleFormatting.this.global.type
   }
 
-  protected def javaName(sym: Symbol, fullyQualify: Boolean): String = {
+  protected def jribbleName(sym: Symbol, fullyQualify: Boolean): String = {
     import symtab.Flags._
     def suffix = if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
 
@@ -42,14 +42,14 @@ trait JavaSourceFormatting {
     val name = if (fullyQualify) sym.fullName('.') else sym.simpleName
     name + suffix
   }
-
-  protected def javaShortName(sym: Symbol): String =
-    javaName(sym, false)
-
-  protected def javaName(sym: Symbol): String =
-    javaName(sym, true)
-
-  protected def javaName(tpe: Type): String = {
+  
+  protected def jribbleShortName(sym: Symbol): String =
+    jribbleName(sym, false)
+  
+  protected def jribbleName(sym: Symbol): String =
+    jribbleName(sym, true)
+  
+  protected def jribbleName(tpe: Type): String = {
     def tpstr(typ: TypeKind): String =
       typ match {
         case UNIT => "void" // TODO(spoon): depends on context?  a Scala variable can be of type unit!
@@ -61,13 +61,13 @@ trait JavaSourceFormatting {
         case LONG            => "long"
         case FLOAT           => "float"
         case DOUBLE          => "double"
-        case REFERENCE(cls)  => javaName(cls)
+        case REFERENCE(cls)  => jribbleName(cls)
         case ARRAY(elem)     => tpstr(elem) + "[]"
       }
     return tpstr(toTypeKind(tpe))
   }
-
-  protected def javaPrimName(prim: Int): String = {
+  
+  protected def jribblePrimName(prim: Int): String = {
     import scalaPrimitives._
 
     (prim : @unchecked) match {
@@ -75,24 +75,24 @@ trait JavaSourceFormatting {
 	  case POS => "+"                            // +x
 	  case NEG => "-"                           // -x
 	  case NOT => "~"                           // ~x
-
+	
 	  // Arithmetic binary operations
 	  case ADD => "+"                          // x + y
 	  case SUB => "-"                           // x - y
 	  case MUL => "*"                           // x * y
 	  case DIV => "/"                           // x / y
 	  case MOD => "%"                           // x % y
-
+	
 	  // Bitwise operations
 	  case OR  => "|"                           // x | y
 	  case XOR => "^"                           // x ^ y
 	  case AND => "&"                           // x & y
-
+	
 	  // Shift operations
 	  case LSL => "<<"                           // x << y
 	  case LSR => ">>"                           // x >>> y
 	  case ASR => ">>>"                           // x >> y
-
+	
 	  // Comparison operations
 	  case ID => "=="                            // x eq y
 	  case NI => "!="                            // x ne y
@@ -102,19 +102,19 @@ trait JavaSourceFormatting {
 	  case LE => "<="                            // x <= y
 	  case GE => ">="                            // x > y
 	  case GT => ">"                            // x >= y
-
+	
 	  // Boolean unary operations
 	  case ZNOT => "!"                          // !x
-
+	
 	  // Boolean binary operations
 	  case ZOR => "||"                           // x || y
 	  case ZAND => "&&"                          // x && y
-
+	
 	  // Array operations
 	  case LENGTH => ""                        // x.length
 	  case APPLY  => ""                        // x(y)
 	  case UPDATE => ""                        // x(y) => ""z
-
+	
 	  // String operations
 	  case CONCAT => "+"                       // String.valueOf(x)+String.valueOf(y)
     }

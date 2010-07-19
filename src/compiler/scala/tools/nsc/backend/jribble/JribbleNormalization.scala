@@ -9,7 +9,7 @@
 // $Id$
 
 package scala.tools.nsc
-package backend.javasrc
+package backend.jribble
 import ast.TreeGen
 import symtab.SymbolTable
 import typechecker.Typers
@@ -20,16 +20,16 @@ import util.Position
  *
  * @author Lex Spoon
  */
-trait JavaSourceNormalization
+trait JribbleNormalization
 extends JavaDefinitions
-with JavaSourceAnalysis
+with JribbleAnalysis
 {
   import global._
   import definitions._
   import javaDefinitions._
 
   object treeGen extends TreeGen {
-    val global: JavaSourceNormalization.this.global.type = JavaSourceNormalization.this.global
+    val global: JribbleNormalization.this.global.type = JribbleNormalization.this.global
   }
   import treeGen._
 

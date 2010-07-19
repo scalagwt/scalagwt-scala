@@ -5,7 +5,7 @@
 // $Id$
 
 package scala.tools.nsc
-package backend.javasrc
+package backend.jribble
 
 import scala.collection.{mutable=>mut}
 import java.io.{File, FileOutputStream, PrintWriter, IOException}
@@ -15,33 +15,33 @@ import symtab.Flags._
 import scala.collection.mutable.ListBuffer
 
 
-/** Generates code in the form of Java source.
+/** Generates code in the form of Jribble source.
  *
  *  @author  Nikolay Mihaylov, Lex Spoon
  */
-abstract class GenJava
-extends SubComponent
-with JavaSourceAnalysis
+abstract class GenJribble 
+extends SubComponent 
+with JribbleAnalysis 
 with JavaDefinitions
-with JavaSourceFormatting
-with JavaSourceNormalization
+with JribbleFormatting 
+with JribbleNormalization
 {
   val global: Global // TODO(spoon): file a bug report about this.  The declarations
-                     // in JavaSourceFormatting and JavaSourceAnalysis seem to
+                     // in JribbleFormatting and JribbleAnalysis seem to
                      // be widening this inherited declaration.
   import global._
   import global.scalaPrimitives._
   protected lazy val typeKinds: global.icodes.type = global.icodes
   protected lazy val scalaPrimitives: global.scalaPrimitives.type = global.scalaPrimitives
-
-  val phaseName = "genjavasrc"
+  
+  val phaseName = "genjribble"
 
   /** Create a new phase */
-  override def newPhase(p: Phase) = new JavaPhase(p)
+  override def newPhase(p: Phase) = new JribblePhase(p)
 
-  /** JVM code generation phase
+  /** Jribble code generation phase
    */
-  final class JavaPhase(prev: Phase) extends StdPhase(prev) {
+  final class JribblePhase(prev: Phase) extends StdPhase(prev) {
 
     override def run: Unit = {
       scalaPrimitives.init
@@ -53,15 +53,15 @@ with JavaSourceNormalization
 
     var pkgName: String = null
 
-    private def getJavaPrinter(clazz: Symbol): JavaPrinter = {
+    private def getJribblePrinter(clazz: Symbol): JribblePrinter = {
       val file = {
-        val suffix = if (clazz.isModuleClass) "$.java" else ".java"
+        val suffix = if (clazz.isModuleClass) "$.jribble" else ".jribble"
         getFile(clazz, suffix)
       }
       val out = new PrintWriter(new FileOutputStream(file))
-      new JavaPrinter(out)
+      new JribblePrinter(out)
     }
-
+      
     private def gen(tree: Tree): Unit = tree match {
       case EmptyTree => ()
       case PackageDef(packaged, stats) =>
@@ -78,7 +78,7 @@ with JavaSourceNormalization
         try {
           {
             // print the main class
-            val printer = getJavaPrinter(clazz)
+            val printer = getJribblePrinter(clazz)
             if (pkgName != null) {
               printer.print("package ")
               printer.print(pkgName)
@@ -92,7 +92,7 @@ with JavaSourceNormalization
           if (!clazz.isNestedClass && clazz.isModuleClass) {
             // print the mirror class
             // TODO(spoon): only dump a mirror if the same-named class does not already exist
-            val printer = getJavaPrinter(clazz.companionSymbol)
+            val printer = getJribblePrinter(clazz.companionSymbol)
             dumpMirrorClass(printer)(clazz)
             printer.close()
           }
@@ -107,37 +107,37 @@ with JavaSourceNormalization
     }
 
     // TODO(spoon): change this to make a tree and then print the tree with the
-    // Java Printer.  using raw print's gives bad output and risks giving
+    // Jribble Printer.  using raw print's gives bad output and risks giving
     // incorrect output.
-    def dumpMirrorClass(printer: JavaPrinter)(clazz: Symbol): Unit = {
+    def dumpMirrorClass(printer: JribblePrinter)(clazz: Symbol): Unit = {
       import printer.{print, println, indent, undent}
-
+      
       if (pkgName != null) {
         print("package "); print(pkgName); print(";"); println
       }
-      print("public final class "); print(javaShortName(clazz.companionSymbol))
+      print("public final class "); print(jribbleShortName(clazz.companionSymbol)) 
       print("{"); indent; println
       for (val m <- clazz.tpe.nonPrivateMembers; // TODO(spoon) -- non-private, or public?
            m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
            m.isMethod && !m.hasFlag(CASE) && !m.isConstructor && !m.isStaticMember)
       {
-        print("public final static "); print(m.tpe.resultType); print(" ")
+        print("public final static "); print(m.tpe.resultType); print(" ") 
         print(m.name); print("(");
         val paramTypes = m.tpe.paramTypes
         for (val i <- 0 until paramTypes.length) {
-          if (i > 0) print(", ")
+          if (i > 0) print(", ") 
           print(paramTypes(i)); print(" x_" + i)
         }
         print(") { ")
         if (!isUnit(m.tpe.resultType))
-          print("return ")
-        print(javaName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
-        print("."); print(m.name); print("(")
+          print("return ") 
+        print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
+        print("."); print(m.name); print("(") 
         for (val i <- 0 until paramTypes.length) {
           if (i > 0) print(", ");
           print("x_" + i)
         }
-        print("); }")
+        print("); }") 
         println
       }
       undent; println; print("}"); println
@@ -145,7 +145,7 @@ with JavaSourceNormalization
 
   }
 
-  private final class JavaPrinter(out: PrintWriter) extends TreePrinter(out) {
+  private final class JribblePrinter(out: PrintWriter) extends TreePrinter(out) {
     /**
      * Symbols in scope that are for a while loop.  Apply's to
      * them should be printed as continue's.
@@ -153,19 +153,19 @@ with JavaSourceNormalization
     val labelSyms = mut.Set.empty[Symbol]
 
     override def printRaw(tree: Tree): Unit = printRaw(tree, false)
-
+    
     override def print(name: Name) = super.print(name.encode)
 
     def printStats(stats: List[Tree]) =
     	printSeq(stats) {s => print(s); if (needsSemi(s)) print(";")} {println}
 
-
+    
     override def symName(tree: Tree, name: Name): String =
       if (tree.symbol != null && tree.symbol != NoSymbol) {
         ((if (tree.symbol.isMixinConstructor) "/*"+tree.symbol.owner.name+"*/" else "") +
          tree.symbol.simpleName.encode.toString)
       } else name.encode.toString;
-
+    
     def logIfException[T](tree: Tree)(process: =>T): T =
       try {
         process
@@ -173,20 +173,20 @@ with JavaSourceNormalization
       case ex:Error =>
         Console.println("Exception while traversing: " + tree)
         throw ex
-      }
+      } 
 
     // TODO(spoon): read all cases carefully.
     // TODO(spoon): sort the cases in alphabetical order
     // TODO(spoon): remove the "ret" flag
-    def printRaw(tree: Tree, ret: Boolean): Unit =
+    def printRaw(tree: Tree, ret: Boolean): Unit = 
       logIfException(tree) { tree match {
-      case EmptyTree =>
-
+      case EmptyTree =>  
+        
       case ClassDef(mods, name, _, Template(superclass :: ifaces, _, body)) =>
         //printAttributes(tree)
         //printFlags(mods.flags)
         printFlags(tree.symbol)
-        print((if (mods hasFlag TRAIT) "interface " else "class ") + javaShortName(tree.symbol))
+        print((if (mods hasFlag TRAIT) "interface " else "class ") + jribbleShortName(tree.symbol))
         print(" extends ")
         print(superclass.tpe)
         if (!ifaces.isEmpty) {
@@ -201,8 +201,8 @@ with JavaSourceNormalization
         print(" {"); indent;
         if (tree.symbol.isModuleClass) {
           println
-          print("public static " + javaShortName(tree.symbol) + " " +
-                    nme.MODULE_INSTANCE_FIELD + " = new " + javaShortName(tree.symbol) + "();")
+          print("public static " + jribbleShortName(tree.symbol) + " " + 
+                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleShortName(tree.symbol) + "();")
         }
         for(member <- body) {
           println; println;
@@ -216,18 +216,18 @@ with JavaSourceNormalization
         printFlags(tree.symbol)
         print(tp.tpe)
         print(" ")
-        print(tree.symbol.simpleName)
+        print(tree.symbol.simpleName) 
         if (!rhs.isEmpty) { print(" = "); print(rhs) }
         print(";")
 
       case tree@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
         val resultType = tree.symbol.tpe.resultType
-
+        
         // TODO(spoon): decide about these two prints; put them in or delete the comments
         //printAttributes(tree)
         //printFlags(mods.flags)
         printFlags(tree.symbol)
-        if (isConstructor(tree)) print(javaShortName(tree.symbol.owner))
+        if (isConstructor(tree)) print(jribbleShortName(tree.symbol.owner))
         else {
           print(tp.tpe)
           print(" ")
@@ -261,7 +261,7 @@ with JavaSourceNormalization
 
       case tree:Apply if labelSyms.contains(tree.symbol) =>
         print("continue "); print(tree.symbol.name)
-
+        
       case Apply(t @ Select(New(tpt), nme.CONSTRUCTOR), args) if (tpt.tpe.typeSymbol == definitions.ArrayClass) =>
         tpt.tpe match {
           case TypeRef(_, _, List(elemType)) =>
@@ -270,25 +270,25 @@ with JavaSourceNormalization
         }
 
       case Apply(fun @ Select(receiver, name), args) if isPrimitive(fun.symbol) => {
-        val prim = getPrimitive(fun.symbol)
+        val prim = getPrimitive(fun.symbol) 
         prim match {
           case POS | NEG | NOT | ZNOT =>
-            print(javaPrimName(prim)); print("("); print(receiver); print(")")
+            print(jribblePrimName(prim)); print("("); print(receiver); print(")") 
           case ADD | SUB | MUL | DIV | MOD | OR | XOR | AND | ID |
                LSL | LSR | ASR |EQ | NE | LT | LE | GT | GE | ZOR | ZAND |
                CONCAT =>
             // TODO(spoon): this does not seem to parenthesize for precedence handling
-            print(receiver); print(" "); print(javaPrimName(prim)); print(" "); print(args.head)
+            print(receiver); print(" "); print(jribblePrimName(prim)); print(" "); print(args.head)
           case APPLY => print(receiver); print("["); print(args.head); print("]")
           case UPDATE =>
-            print(receiver); print("["); print(args.head); print("] = ")
+            print(receiver); print("["); print(args.head); print("] = ") 
             print(args.tail.head); print("")
-          case SYNCHRONIZED => print("synchronized ("); print(receiver); print(") {")
-            indent; println; print(args.head); undent; println; print("}")
+          case SYNCHRONIZED => print("synchronized ("); print(receiver); print(") {") 
+            indent; println; print(args.head); undent; println; print("}") 
           case prim => print("Unhandled primitive ("+prim+") for "+tree)
         }
       }
-
+    
       case Apply(TypeApply(fun@Select(rcvr, _), List(tpe)), Nil)
       if fun.symbol == definitions.Object_asInstanceOf =>
         print("(")
@@ -306,7 +306,7 @@ with JavaSourceNormalization
         print(")")
 
       case tree@Apply(fun, args) if tree.symbol != NoSymbol && tree.symbol.isStaticMember =>
-        print(javaName(tree.symbol.owner))
+        print(jribbleName(tree.symbol.owner))
         print(".")
         print(tree.symbol.name)
         print("(")
@@ -316,18 +316,18 @@ with JavaSourceNormalization
           print(arg)
         }
         print(")")
-
+        
       case tree@Select(qualifier, selector) if tree.symbol.isModule =>
         printLoadModule(tree.symbol) // TODO(spoon): handle other loadModule cases from GenIcodes
-
+        
       case This(_) => print("this")
 
       case Super(_, _) | Select(Super(_, _), nme.CONSTRUCTOR) => print("super")
-
+      
       case If(cond, exp1: Block, exp2) =>
         // If statement
         super.printRaw(tree)
-
+        
       case If(cond, exp1, exp2) =>
         // If expression
         print("(")
@@ -337,7 +337,7 @@ with JavaSourceNormalization
         print(") : (")
         print(exp2)
         print(")")
-
+      
       case Try(block, catches, finalizer) =>
         print("try ");
         printInBraces(block, ret)
@@ -349,7 +349,7 @@ with JavaSourceNormalization
               print(" catch("); print(exBinding.symbol.tpe); print(" ");
               print(exName); print(") ");
               printInBraces(catchBody, ret)
-
+              
             // TODO(spoon): handle any other patterns that are possible here
           }
         if (finalizer != EmptyTree) {
@@ -357,13 +357,13 @@ with JavaSourceNormalization
           indent; print(finalizer); undent; println
           print("}")
         }
-
-      case Throw(expr) =>
+      
+      case Throw(expr) => 
         print("throw "); print(expr)
-
+        
       case tree@TypeTree() =>
         print(tree.tpe)
-
+        
       case _ => super.printRaw(tree)
       } }
 
@@ -372,7 +372,7 @@ with JavaSourceNormalization
     def printInBraces(exp: Tree, ret: Boolean) {
       exp match {
         case _:Block => printRaw(exp, ret);
-        case _ =>
+        case _ => 
           assert(false, exp.toString)
           // TODO(spoon): try to eliminate this case through earlier normalization
           print("{")
@@ -386,19 +386,19 @@ with JavaSourceNormalization
           if (needsSemi(exp))
             print(";")
           undent; println
-          print("}");
+          print("}");   
       }
     }
 
     /** load a top-level module */
     def printLoadModule(sym: Symbol) {
-      print(javaName(sym)); print("$."); print(nme.MODULE_INSTANCE_FIELD)
+      print(jribbleName(sym)); print("$."); print(nme.MODULE_INSTANCE_FIELD)
     }
-
+    
     override def printParam(tree: Tree): Unit = tree match {
       case ValDef(mods, name, tp, rhs) =>
         //printAttributes(tree)
-        print(tp.tpe); print(" "); print(symName(tree, name))
+        print(tp.tpe); print(" "); print(symName(tree, name)) 
     }
 
     def printFlags(sym: Symbol): Unit = {
@@ -420,11 +420,11 @@ with JavaSourceNormalization
       val flagstr = fs.mkString("", " ", "")
       if (flagstr.length != 0) { print(flagstr); print(" ")  }
     }
-
+    
     def print(tpe: Type) {
-      print(javaName(tpe))
+      print(jribbleName(tpe))
     }
-
+    
     def needsSemi(exp: Tree): Boolean = exp match {
       case _:ValDef => false
       case _:DefDef=> false

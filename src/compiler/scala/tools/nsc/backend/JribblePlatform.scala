@@ -1,6 +1,6 @@
 /* NSC -- new Scala compiler
  * Copyright 2005-2010 LAMP/EPFL
- * @author  Paul Phillips
+ * @author  Grzegorz Kossakowski
  */
 
 package scala.tools.nsc
@@ -11,7 +11,7 @@ import util.JavaClassPath
 import util.ClassPath.{ JavaContext, DefaultJavaContext }
 import scala.tools.util.PathResolver
 
-trait JavaSrcPlatform extends Platform[AbstractFile] {
+trait JribblePlatform extends Platform[AbstractFile] {
   import global._
   import definitions.{ BoxesRunTimeClass, getMember }
 
@@ -20,7 +20,7 @@ trait JavaSrcPlatform extends Platform[AbstractFile] {
 
   def platformPhases = List(
     flatten,    // get rid of inner classes
-    genJava      // generate .class files
+    genJribble      // generate .jribble files
   )
 
   lazy val externalEquals = getMember(BoxesRunTimeClass, nme.equals_)

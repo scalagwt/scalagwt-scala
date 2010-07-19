@@ -26,7 +26,8 @@ import transform._
 
 import backend.icode.{ ICodes, GenICode, Checkers }
 import backend.{ ScalaPrimitives, Platform, MSILPlatform, JavaPlatform, JavaSrcPlatform }
-import backend.jvm.{GenJVM, GenJava, RemoveNothingExpressions, NormalizeForJavaSource}
+import backend.jvm.GenJVM
+import backend.javasrc.{GenJava, RemoveNothingExpressions, NormalizeForJavaSource}
 import backend.opt.{ Inliners, ClosureElimination, DeadCodeElimination }
 import backend.icode.analysis._
 

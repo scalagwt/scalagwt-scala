@@ -6,7 +6,7 @@
 **                          |/                                          **
 \*                                                                      */
 package scala.tools.nsc
-package backend.jvm
+package backend.javasrc
 
 import scala.collection.mutable.ListBuffer
 import scala.tools.nsc.transform.Transform

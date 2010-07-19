@@ -9,7 +9,7 @@
 // $Id: RemoveNonJavaExpressions.scala 15515 2008-07-09 15:30:59Z spoon $
 
 package scala.tools.nsc
-package backend.jvm
+package backend.javasrc
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.tools.nsc.transform.Transform

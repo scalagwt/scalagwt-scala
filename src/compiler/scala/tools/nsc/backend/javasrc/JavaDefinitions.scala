@@ -8,7 +8,7 @@
 
 // $Id$
 
-package scala.tools.nsc.backend.jvm
+package scala.tools.nsc.backend.javasrc
 import scala.tools.nsc.symtab.SymbolTable
 
 /**

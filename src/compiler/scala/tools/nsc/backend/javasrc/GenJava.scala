@@ -5,7 +5,7 @@
 // $Id$
 
 package scala.tools.nsc
-package backend.jvm
+package backend.javasrc
 
 import scala.collection.{mutable=>mut}
 import java.io.{File, FileOutputStream, PrintWriter, IOException}

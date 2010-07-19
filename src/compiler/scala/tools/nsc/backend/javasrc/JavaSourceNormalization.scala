@@ -9,7 +9,7 @@
 // $Id$
 
 package scala.tools.nsc
-package backend.jvm
+package backend.javasrc
 import ast.TreeGen
 import symtab.SymbolTable
 import typechecker.Typers

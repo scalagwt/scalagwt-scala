@@ -9,7 +9,7 @@
 // $Id$
 package scala.tools.nsc
 package backend
-package jvm
+package javasrc
 import symtab.SymbolTable
 import backend.icode.TypeKinds
 

@@ -32,6 +32,15 @@ trait JribbleFormatting {
   protected def jribbleName(sym: Symbol, fullyQualify: Boolean): String = {
     import symtab.Flags._
     def suffix = if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
+    //copy of AbsSymbol.fullName adapted to jribble syntax for fully qualified names which is
+    //(package com.foo).Bar
+    def fullName = {
+      val separator = '.'
+      def inParens(x: String) = "(" + x + ")"
+      if (sym.isRoot || sym.isRootPackage || sym == scala.reflect.NoSymbol) sym.toString
+      else if (sym.owner.isEffectiveRoot) sym.encodedName
+      else inParens("package " + sym.owner.enclClass.fullName(separator)) + separator + sym.encodedName
+    }
 
     // TODO(spoon): why the special cases?  double check that they are needed
     if (sym == definitions.NothingClass)
@@ -39,7 +48,7 @@ trait JribbleFormatting {
     else if (sym == definitions.NullClass)
       return "scala.runtime.Null$"
 
-    val name = if (fullyQualify) sym.fullName('.') else sym.simpleName
+    val name = if (fullyQualify) fullName else sym.simpleName
     name + suffix
   }
   

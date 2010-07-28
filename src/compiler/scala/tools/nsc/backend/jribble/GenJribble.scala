@@ -201,8 +201,8 @@ with JribbleNormalization
         print(" {"); indent;
         if (tree.symbol.isModuleClass) {
           println
-          print("public static " + jribbleShortName(tree.symbol) + " " + 
-                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleShortName(tree.symbol) + "();")
+          print("public static " + jribbleName(tree.symbol) + " " +
+                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleName(tree.symbol) + "();")
         }
         for(member <- body) {
           println; println;

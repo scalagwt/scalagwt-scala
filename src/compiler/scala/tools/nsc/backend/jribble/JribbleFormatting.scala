@@ -38,7 +38,7 @@ trait JribbleFormatting {
       val separator = '.'
       def inParens(x: String) = "(" + x + ")"
       if (sym.isRoot || sym.isRootPackage || sym == scala.reflect.NoSymbol) sym.toString
-      else if (sym.owner.isEffectiveRoot) sym.encodedName
+      else if (sym.owner.isEmptyPackageClass) "(package)" + separator + sym.encodedName
       else inParens("package " + sym.owner.enclClass.fullName(separator)) + separator + sym.encodedName
     }
 

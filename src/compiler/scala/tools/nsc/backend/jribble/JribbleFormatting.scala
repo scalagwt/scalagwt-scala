@@ -75,6 +75,11 @@ trait JribbleFormatting {
       }
     return tpstr(toTypeKind(tpe))
   }
+
+  protected def jribbleMethodSignature(tpe: Type): String = {
+    val paramsTypeSymbols = tpe.paramTypes.map(_.typeSymbol)
+    (tpe.resultType.typeSymbol :: paramsTypeSymbols).map(jribbleName).mkString("<", ", ", ">")
+  }
   
   protected def jribblePrimName(prim: Int): String = {
     import scalaPrimitives._

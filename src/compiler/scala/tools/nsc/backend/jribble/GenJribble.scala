@@ -132,7 +132,7 @@ with JribbleNormalization
         if (!isUnit(m.tpe.resultType))
           print("return ") 
         print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
-        print("."); print(m.name); print("(") 
+        print("."); print(m.name); print(jribbleMethodSignature(m.tpe)); print("(")
         for (val i <- 0 until paramTypes.length) {
           if (i > 0) print(", ");
           print("x_" + i)
@@ -305,24 +305,35 @@ with JribbleNormalization
         print(tpe)
         print(")")
 
-      case tree@Apply(fun, args) if tree.symbol != NoSymbol && tree.symbol.isStaticMember =>
+      case tree@Apply(_, args) if tree.symbol != NoSymbol && tree.symbol.isStaticMember =>
         print(jribbleName(tree.symbol.owner))
         print(".")
         print(tree.symbol.name)
-        print("(")
-        for	(arg <- args) {
-          if (arg != args.head)
-            print(", ")
-          print(arg)
-        }
-        print(")")
+        print(jribbleMethodSignature(tree.symbol.tpe))
+        printParams(args)
+
+      case tree@Apply(Select(receiver, _), args) if !tree.symbol.isConstructor =>
+        print(receiver)
+        print(".")
+        print(jribbleShortName(tree.symbol))
+        print(jribbleMethodSignature(tree.symbol.tpe))
+        printParams(args)
+
+      case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
+        print("super")
+        print(jribbleMethodSignature(tree.symbol.tpe))
+        printParams(args)
+
+      case tree@Apply(_, args) if tree.symbol.isConstructor =>
+        print("new ")
+        print(jribbleName(tree.symbol.owner))
+        print(jribbleMethodSignature(tree.symbol.tpe))
+        printParams(args)
         
       case tree@Select(qualifier, selector) if tree.symbol.isModule =>
         printLoadModule(tree.symbol) // TODO(spoon): handle other loadModule cases from GenIcodes
         
       case This(_) => print("this")
-
-      case Super(_, _) | Select(Super(_, _), nme.CONSTRUCTOR) => print("super")
       
       case If(cond, exp1: Block, exp2) =>
         // If statement
@@ -393,6 +404,16 @@ with JribbleNormalization
     /** load a top-level module */
     def printLoadModule(sym: Symbol) {
       print(jribbleName(sym)); print("$."); print(nme.MODULE_INSTANCE_FIELD)
+    }
+
+    def printParams(xs: List[Tree]): Unit = {
+      print("(")
+      for (x <- xs) {
+        if (x != xs.head)
+          print(", ")
+        print(x)
+      }
+      print(")")
     }
     
     override def printParam(tree: Tree): Unit = tree match {

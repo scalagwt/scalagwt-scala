@@ -116,7 +116,7 @@ with JribbleNormalization
         print("package "); print(pkgName); print(";"); println
       }
       print("public final class "); print(jribbleShortName(clazz.companionSymbol)) 
-      print("{"); indent; println
+      print(" {"); indent; println
       for (val m <- clazz.tpe.nonPrivateMembers; // TODO(spoon) -- non-private, or public?
            m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
            m.isMethod && !m.hasFlag(CASE) && !m.isConstructor && !m.isStaticMember)

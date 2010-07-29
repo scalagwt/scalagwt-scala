@@ -47,6 +47,8 @@ trait JribbleFormatting {
       return "scala.runtime.Nothing$"
     else if (sym == definitions.NullClass)
       return "scala.runtime.Null$"
+    else if (isJribblePrimitive(sym.tpe))
+      return jribbleName(sym.tpe)
 
     val name = if (fullyQualify) fullName else sym.simpleName
     name + suffix
@@ -80,6 +82,8 @@ trait JribbleFormatting {
     val paramsTypeSymbols = tpe.paramTypes.map(_.typeSymbol)
     (tpe.resultType.typeSymbol :: paramsTypeSymbols).map(jribbleName).mkString("<", ", ", ">")
   }
+
+  private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe) 
   
   protected def jribblePrimName(prim: Int): String = {
     import scalaPrimitives._

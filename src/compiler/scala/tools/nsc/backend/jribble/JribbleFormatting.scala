@@ -33,13 +33,12 @@ trait JribbleFormatting {
     import symtab.Flags._
     def suffix = if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
     //copy of AbsSymbol.fullName adapted to jribble syntax for fully qualified names which is
-    //(package com.foo).Bar
+    // com/foo/Bar
     def fullName = {
-      val separator = '.'
-      def inParens(x: String) = "(" + x + ")"
+      val separator = '/'
       if (sym.isRoot || sym.isRootPackage || sym == scala.reflect.NoSymbol) sym.toString
-      else if (sym.owner.isEmptyPackageClass) "(package)" + separator + sym.encodedName
-      else inParens("package " + sym.owner.enclClass.fullName(separator)) + separator + sym.encodedName
+      else if (sym.owner.isEmptyPackageClass) sym.encodedName
+      else sym.owner.enclClass.fullName(separator) + separator + sym.encodedName
     }
 
     // TODO(spoon): why the special cases?  double check that they are needed
@@ -50,8 +49,7 @@ trait JribbleFormatting {
     else if (isJribblePrimitive(sym.tpe))
       return jribbleName(sym.tpe)
 
-    val name = if (fullyQualify) fullName else sym.simpleName
-    name + suffix
+    if (fullyQualify) "L" + fullName + suffix + ";" else sym.simpleName.toString
   }
   
   protected def jribbleShortName(sym: Symbol): String =
@@ -63,24 +61,43 @@ trait JribbleFormatting {
   protected def jribbleName(tpe: Type): String = {
     def tpstr(typ: TypeKind): String =
       typ match {
-        case UNIT => "void" // TODO(spoon): depends on context?  a Scala variable can be of type unit!
-        case BOOL            => "boolean"
-        case BYTE            => "byte"
-        case SHORT           => "short"
-        case CHAR            => "char"
-        case INT             => "int"
-        case LONG            => "long"
-        case FLOAT           => "float"
-        case DOUBLE          => "double"
+        case UNIT => "V" // TODO(spoon): depends on context?  a Scala variable can be of type unit!
+        case BOOL            => "Z"
+        case BYTE            => "B"
+        case SHORT           => "S"
+        case CHAR            => "C"
+        case INT             => "I"
+        case LONG            => "L"
+        case FLOAT           => "F"
+        case DOUBLE          => "D"
         case REFERENCE(cls)  => jribbleName(cls)
-        case ARRAY(elem)     => tpstr(elem) + "[]"
+        case ARRAY(elem)     => tpstr(elem) + "["
       }
     return tpstr(toTypeKind(tpe))
   }
 
-  protected def jribbleMethodSignature(tpe: Type): String = {
-    val paramsTypeSymbols = tpe.paramTypes.map(_.typeSymbol)
-    (tpe.resultType.typeSymbol :: paramsTypeSymbols).map(jribbleName).mkString("<", ", ", ">")
+  protected def jribbleMethodSignature(s: Symbol): String = {
+    val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
+    val on = jribbleName(s.owner)
+    val name = s.name.toString
+    val returnType = jribbleName(s.tpe.resultType.typeSymbol)
+    "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
+  }
+
+  protected def jribbleSuperConstructorSignature(s: Symbol): String = {
+    val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
+    val on = jribbleName(s.owner)
+    val name = "super"
+    val returnType = "V"
+    "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
+  }
+
+  protected def jribbleConstructorSignature(s: Symbol): String = {
+    val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
+    val on = jribbleName(s.owner)
+    val name = jribbleShortName(s.owner)
+    val returnType = "V"
+    "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
   private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe) 

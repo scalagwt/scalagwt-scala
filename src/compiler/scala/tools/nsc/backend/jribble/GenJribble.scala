@@ -79,12 +79,6 @@ with JribbleNormalization
           {
             // print the main class
             val printer = getJribblePrinter(clazz)
-            if (pkgName != null) {
-              printer.print("package ")
-              printer.print(pkgName)
-              printer.print(";")
-              printer.println
-            }
             printer.print(tree)
             printer.close()
           }
@@ -112,10 +106,7 @@ with JribbleNormalization
     def dumpMirrorClass(printer: JribblePrinter)(clazz: Symbol): Unit = {
       import printer.{print, println, indent, undent}
       
-      if (pkgName != null) {
-        print("package "); print(pkgName); print(";"); println
-      }
-      print("public final class "); print(jribbleShortName(clazz.companionSymbol)) 
+      print("public final class "); print(jribbleName(clazz.companionSymbol))
       print(" {"); indent; println
       for (val m <- clazz.tpe.nonPrivateMembers; // TODO(spoon) -- non-private, or public?
            m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
@@ -132,7 +123,7 @@ with JribbleNormalization
         if (!isUnit(m.tpe.resultType))
           print("return ") 
         print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
-        print("."); print(m.name); print(jribbleMethodSignature(m.tpe)); print("(")
+        print("."); print(jribbleMethodSignature(m)); print("(")
         for (val i <- 0 until paramTypes.length) {
           if (i > 0) print(", ");
           print("x_" + i)
@@ -186,7 +177,7 @@ with JribbleNormalization
         //printAttributes(tree)
         //printFlags(mods.flags)
         printFlags(tree.symbol)
-        print((if (mods hasFlag TRAIT) "interface " else "class ") + jribbleShortName(tree.symbol))
+        print((if (mods hasFlag TRAIT) "interface " else "class ") + jribbleName(tree.symbol))
         print(" extends ")
         print(superclass.tpe)
         if (!ifaces.isEmpty) {
@@ -202,7 +193,7 @@ with JribbleNormalization
         if (tree.symbol.isModuleClass) {
           println
           print("public static " + jribbleName(tree.symbol) + " " +
-                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleName(tree.symbol) + "();")
+                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleMethodSignature(tree.symbol) + "();")
         }
         for(member <- body) {
           println; println;
@@ -308,26 +299,22 @@ with JribbleNormalization
       case tree@Apply(_, args) if tree.symbol != NoSymbol && tree.symbol.isStaticMember =>
         print(jribbleName(tree.symbol.owner))
         print(".")
-        print(tree.symbol.name)
-        print(jribbleMethodSignature(tree.symbol.tpe))
+        print(jribbleMethodSignature(tree.symbol))
         printParams(args)
 
       case tree@Apply(Select(receiver, _), args) if !tree.symbol.isConstructor =>
         print(receiver)
         print(".")
-        print(jribbleShortName(tree.symbol))
-        print(jribbleMethodSignature(tree.symbol.tpe))
+        print(jribbleMethodSignature(tree.symbol))
         printParams(args)
 
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
-        print("super")
-        print(jribbleMethodSignature(tree.symbol.tpe))
+        print(jribbleSuperConstructorSignature(tree.symbol))
         printParams(args)
 
       case tree@Apply(_, args) if tree.symbol.isConstructor =>
-        print("new ")
-        print(jribbleName(tree.symbol.owner))
-        print(jribbleMethodSignature(tree.symbol.tpe))
+        print("new ");
+        print(jribbleConstructorSignature(tree.symbol))
         printParams(args)
         
       case tree@Select(qualifier, selector) if tree.symbol.isModule =>

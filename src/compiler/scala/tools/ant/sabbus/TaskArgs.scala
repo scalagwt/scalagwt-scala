@@ -91,4 +91,5 @@ trait TaskArgs extends CompilationPathProperty {
   protected var destinationDir: Option[File] = None
 
   def isMSIL = compTarget exists (_ == "msil")
+  def isJribble = compTarget exists (_ == "jribble")
 }

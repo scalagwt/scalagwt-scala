@@ -50,7 +50,7 @@ class ScalacFork extends MatchingTask with ScalacShared with TaskArgs {
 
   private def createMapper() = {
     val mapper = new GlobPatternMapper()
-    val extension = if (isMSIL) "*.msil" else "*.class"
+    val extension = if (isMSIL) "*.msil" else if (isJribble) "*.jribble" else "*.class"
     mapper setTo extension
     mapper setFrom "*.scala"
 

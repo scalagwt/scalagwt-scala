@@ -9,10 +9,10 @@ SuperSabbus for Scala core, builds the scala library and compiler. It can also p
 <!-- ===========================================================================
 END-USER TARGETS
 ============================================================================ -->
-
+  
   <target name="build" depends="pack.done"
     description="Builds the Scala compiler and library. Executables are in 'build/pack/bin'."/>
-
+    
   <target name="build-opt"
     description="Builds the optimised Scala compiler and library. Executables are in 'build/pack/bin'.">
     <antcall target="build">
@@ -35,20 +35,20 @@ END-USER TARGETS
 
   <target name="docs" depends="docs.done"
     description="Builds documentation for the Scala library. Scaladoc is in 'build/scaladoc/library'."/>
-
+  
   <target name="docscomp" depends="docs.comp"
     description="Builds documentation for the Scala compiler and library. Scaladoc is in 'build/scaladoc'."/>
-
+  
   <target name="docsclean" depends="docs.clean"
     description="Removes generated documentation. Distributions are untouched."/>
-
+  
   <target name="dist"
     description="Makes a new distribution and tests it. Will remove existing binaries and documentation.">
     <antcall target="locker.clean"/>
     <antcall target="docs.clean"/>
     <antcall target="all.done"/>
   </target>
-
+  
   <target name="dist-opt"
     description="Makes a new optimised distribution and tests it. Will remove existing binaries and documentation.">
     <antcall target="dist">
@@ -68,7 +68,7 @@ END-USER TARGETS
 
   <target name="distclean" depends="dist.clean"
     description="Removes all distributions. Binaries and documentation are untouched."/>
-
+  
   <target name="replacestarr"
     description="Replaces the Starr compiler and library by fresh ones built from current sources and tests them.">
     <fail message="This target is not available on Windows. Use 'ant replacestarrwin' instead.">
@@ -82,7 +82,7 @@ END-USER TARGETS
     <antcall target="locker.clean"/>
     <antcall target="test.done"/>
   </target>
-
+  
   <target name="replacestarr-opt"
     description="Replaces the Starr compiler and library by fresh, optimised ones built from current sources and tests them.">
     <antcall target="replacestarr">
@@ -104,7 +104,7 @@ END-USER TARGETS
     <antcall target="locker.clean"/>
     <antcall target="test.done"/>
   </target>
-
+  
   <target name="replacelocker"
     description="Replaces the Locker compiler and library by fresh ones built from current sources.">
     <antcall target="palo.clean"/>
@@ -202,7 +202,7 @@ INITIALISATION
   <!-- scalac.args.quickonly are added to quick.* targets but not others (particularly, locker.)
        This is to facilitate testing new command line options which do not yet exist in starr. -->
 	<property name="scalac.args.quickonly" value=""/>
-
+	
     <property name="scalac.args.all" value="${scalac.args} ${scalac.args.optimise}"/>
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
   <!-- Setting-up Ant contrib tasks -->
@@ -282,7 +282,7 @@ LOCAL REFERENCE BUILD (LOCKER)
       <available file="${build-locker.dir}/all.complete"/>
     </condition>
   </target>
-
+  
   <target name="locker.pre-lib" depends="locker.start" unless="locker.available">
     <condition property="locker.lib.needed">
       <not><available file="${build-locker.dir}/library.complete"/></not>
@@ -331,7 +331,7 @@ LOCAL REFERENCE BUILD (LOCKER)
     <touch file="${build-locker.dir}/library.complete" verbose="no"/>
     <stopwatch name="locker.lib.timer" action="total"/>
   </target>
-
+  
   <target name="locker.pre-comp" depends="locker.lib" unless="locker.available">
     <condition property="locker.comp.needed">
       <not><available file="${build-locker.dir}/compiler.complete"/></not>
@@ -389,11 +389,11 @@ LOCAL REFERENCE BUILD (LOCKER)
       <pathelement location="${ant.jar}"/>
     </path>
   </target>
-
+  
   <target name="locker.clean" depends="palo.clean">
     <delete dir="${build-locker.dir}" includeemptydirs="yes" quiet="yes" failonerror="no"/>
   </target>
-
+  
   <target name="locker.unlock">
     <delete file="${build-locker.dir}/all.complete"/>
     <delete file="${build-locker.dir}/library.complete"/>
@@ -445,7 +445,7 @@ PACKED LOCKER BUILD (PALO)
 <!-- ===========================================================================
 QUICK BUILD (QUICK)
 ============================================================================ -->
-
+  
   <target name="quick.start" depends="locker.done"/>
 
   <target name="quick.pre-lib" depends="quick.start">
@@ -461,6 +461,14 @@ QUICK BUILD (QUICK)
     </uptodate>
   </target>
 
+  <target name="quick.pre-lib-jribble" depends="quick.start">
+    <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-jribble.complete">
+      <srcfiles dir="${src.dir}">
+        <include name="library/**"/>
+      </srcfiles>
+    </uptodate>
+  </target>
+
   <target name="quick.lib" depends="quick.pre-lib" unless="quick.lib.available">
     <stopwatch name="quick.lib.timer"/>
     <mkdir dir="${build-quick.dir}/classes/library"/>
@@ -470,7 +478,7 @@ QUICK BUILD (QUICK)
       classpath="${build-quick.dir}/classes/library"
       includes="**/*.java"
       target="1.5" source="1.5">
-      <compilerarg line="${javac.args}"/>
+      <compilerarg line="${javac.args}"/> 
     </javac>
     <javac
       srcdir="${src.dir}/actors"
@@ -544,13 +552,40 @@ QUICK BUILD (QUICK)
     <touch file="${build-quick.dir}/library.complete" verbose="no"/>
     <stopwatch name="quick.lib.timer" action="total"/>
   </target>
+  
+  <target name="quick.lib-jribble" depends="quick.pre-lib-jribble" unless="quick.lib-jribble.available">
+    <stopwatch name="quick.lib-jribble.timer"/>
+    <mkdir dir="${build-quick.dir}/jribble/library"/>
+    <scalacfork
+      destdir="${build-quick.dir}/jribble/library"
+      compilerpathref="locker.classpath"
+      srcpath="${src.dir}/library"
+      params="${scalac.args.quick}"
+      srcdir="${src.dir}/library"
+      target="jribble"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/ScalaObject.scala"/>
+      <compilationpath refid="quick.compilation.path"/>
+    </scalacfork>
+    <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
+      <entry key="version.number" value="${version.number}"/>
+      <entry key="copyright.string" value="${copyright.string}"/>
+    </propertyfile>
+    <copy todir="${build-quick.dir}/jribble/library">
+      <fileset dir="${src.dir}/library">
+        <include name="**/*.xml"/>
+      </fileset>
+    </copy>
+    <touch file="${build-quick.dir}/library-jribble.complete" verbose="no"/>
+    <stopwatch name="quick.lib-jribble.timer" action="total"/>
+  </target>
 
   <target name="quick.newlibs" depends="quick.lib" if="libs.outdated">
     <antcall target="libs.done" inheritRefs="true"/>
     <property name="fjbg.jar" value="${build-libs.dir}/fjbg.jar"/>
     <property name="msil.jar" value="${build-libs.dir}/msil.jar"/>
   </target>
-
+  
   <target name="quick.libs" depends="quick.newlibs" unless="libs.outdated">
     <property name="fjbg.jar" value="${lib.dir}/fjbg.jar"/>
     <property name="msil.jar" value="${lib.dir}/msil.jar"/>
@@ -689,7 +724,7 @@ QUICK BUILD (QUICK)
       <srcfiles dir="${src.dir}/partest"/>
     </uptodate>
   </target>
-
+    
   <target name="quick.partest" depends="quick.pre-partest" unless="quick.partest.available">
     <stopwatch name="quick.partest.timer"/>
     <mkdir dir="${build-quick.dir}/classes/partest"/>
@@ -787,7 +822,7 @@ QUICK BUILD (QUICK)
     <touch file="${build-quick.dir}/bin.complete" verbose="no"/>
   </target>
 
-  <target name="quick.done" depends="quick.bin">
+  <target name="quick.done" depends="quick.bin, quick.lib-jribble">
     <path id="quick.classpath">
       <pathelement location="${build-quick.dir}/classes/library"/>
       <pathelement location="${build-quick.dir}/classes/compiler"/>
@@ -805,9 +840,9 @@ QUICK BUILD (QUICK)
 <!-- ===========================================================================
 PACKED QUICK BUILD (PACK)
 ============================================================================ -->
-
+  
   <target name="pack.start" depends="quick.done"/>
-
+  
   <target name="pack.pre-lib" depends="pack.start">
     <uptodate
       property="pack.lib.available"
@@ -838,6 +873,20 @@ PACKED QUICK BUILD (PACK)
       </fileset>
     </jar>
   </target>
+  
+  <target name="pack.pre-lib-jribble" depends="pack.start">
+    <uptodate
+      property="pack.lib-jribble.available"
+      targetfile="${build-pack.dir}/lib/scala-library-jribble.jar"
+      srcfile="${build-quick.dir}/library-jribble.complete"/>
+  </target>
+
+  <target name="pack.lib-jribble" depends="pack.pre-lib-jribble" unless="pack.lib-jribble.available">
+    <mkdir dir="${build-pack.dir}/lib"/>
+    <jar destfile="${build-pack.dir}/lib/scala-library-jribble.jar">
+      <fileset dir="${build-quick.dir}/jribble/library"/>
+    </jar>
+  </target>
 
   <target name="pack.pre-comp" depends="pack.lib">
     <uptodate
@@ -861,7 +910,7 @@ PACKED QUICK BUILD (PACK)
     </jar>
     <copy file="${jline.jar}" toDir="${build-pack.dir}/lib"/>
   </target>
-
+  
   <target name="pack.pre-plugins" depends="pack.comp">
     <uptodate
       property="pack.plugins.available"
@@ -875,7 +924,7 @@ PACKED QUICK BUILD (PACK)
       <fileset dir="${build-quick.dir}/classes/continuations-plugin"/>
     </jar>
   </target>
-
+  
   <target name="pack.pre-partest" depends="pack.plugins">
     <uptodate
       property="pack.partest.available"
@@ -889,7 +938,7 @@ PACKED QUICK BUILD (PACK)
       <fileset dir="${build-quick.dir}/classes/partest"/>
     </jar>
   </target>
-
+  
   <target name="pack.pre-scalap" depends="pack.partest">
     <uptodate
       property="pack.scalap.available"
@@ -901,10 +950,10 @@ PACKED QUICK BUILD (PACK)
     <mkdir dir="${build-pack.dir}/lib"/>
     <jar destfile="${build-pack.dir}/lib/scalap.jar">
       <fileset dir="${build-quick.dir}/classes/scalap"/>
-      <fileset file="${src.dir}/scalap/decoder.properties"/>
+      <fileset file="${src.dir}/scalap/decoder.properties"/>  
     </jar>
   </target>
-
+  
   <target name="pack.pre-bin" depends="pack.scalap">
     <uptodate
       property="pack.bin.available"
@@ -948,8 +997,8 @@ PACKED QUICK BUILD (PACK)
     <chmod perm="ugo+rx" file="${build-pack.dir}/bin/scalap"/>
     <touch file="${build-pack.dir}/bin.complete" verbose="no"/>
   </target>
-
-  <target name="pack.done" depends="pack.bin">
+  
+  <target name="pack.done" depends="pack.bin, pack.lib-jribble">
     <path id="pack.classpath">
       <pathelement location="${build-pack.dir}/lib/scala-library.jar"/>
       <pathelement location="${build-pack.dir}/lib/scala-compiler.jar"/>
@@ -969,9 +1018,9 @@ PACKED QUICK BUILD (PACK)
 <!-- ===========================================================================
 BOOTSTRAPPING BUILD (STRAP)
 ============================================================================ -->
-
+  
   <target name="strap.start" depends="pack.done"/>
-
+  
   <target name="strap.pre-lib" depends="strap.start">
     <uptodate property="strap.lib.available" targetfile="${build-strap.dir}/library.complete">
       <srcfiles dir="${src.dir}">
@@ -1066,7 +1115,7 @@ BOOTSTRAPPING BUILD (STRAP)
     <touch file="${build-strap.dir}/library.complete" verbose="no"/>
     <stopwatch name="strap.lib.timer" action="total"/>
   </target>
-
+  
   <target name="strap.pre-comp" depends="strap.lib">
     <uptodate property="strap.comp.available" targetfile="${build-strap.dir}/compiler.complete">
       <srcfiles dir="${src.dir}/compiler"/>
@@ -1185,13 +1234,13 @@ BOOTSTRAPPING BUILD (STRAP)
     <touch file="${build-strap.dir}/scalap.complete" verbose="no"/>
     <stopwatch name="strap.scalap.timer" action="total"/>
   </target>
-
+  
   <target name="strap.pre-partest" depends="strap.scalap">
     <uptodate property="strap.partest.available" targetfile="${build-strap.dir}/partest.complete">
       <srcfiles dir="${src.dir}/partest"/>
     </uptodate>
   </target>
-
+    
   <target name="strap.partest" depends="strap.pre-partest" unless="strap.partest.available">
     <stopwatch name="strap.partest.timer"/>
     <mkdir dir="${build-strap.dir}/classes/partest"/>
@@ -1243,9 +1292,9 @@ BOOTSTRAPPING BUILD (STRAP)
 <!-- ===========================================================================
 LIBRARIES (MSIL, FJBG maybe later)
 ============================================================================ -->
-
+  
   <target name="libs.start"/>
-
+  
   <target name="libs.pre-forkjoin" depends="libs.start">
     <property name="java6.home" value="/home/linuxsoft/apps/java-1.6"/>
     <fail message="Compiling forkjoin.jar requires java 1.6. Please set the property `java6.home` in build.properties or using `-Djava6.home=/path/to/java6`">
@@ -1261,7 +1310,7 @@ LIBRARIES (MSIL, FJBG maybe later)
       </srcfiles>
     </uptodate>
   </target>
-
+  
   <target name="libs.forkjoin" depends="libs.pre-forkjoin" unless="libs.forkjoin.available">
     <mkdir dir="${build-libs.dir}/classes/forkjoin"/>
     <javac
@@ -1278,16 +1327,16 @@ LIBRARIES (MSIL, FJBG maybe later)
     </javac>
     <touch file="${build-libs.dir}/forkjoin.complete" verbose="no"/>
   </target>
-
+  
   <target name="libs.pre-forkjoinpack" depends="libs.forkjoin">
   </target>
-
+  
   <target name="libs.forkjoinpack" depends="libs.pre-forkjoinpack" unless="libs.forkjoinpack.available">
     <jar destfile="${build-libs.dir}/forkjoin.jar">
       <fileset dir="${build-libs.dir}/classes/forkjoin"/>
     </jar>
   </target>
-
+  
   <target name="libs.pre-msil" depends="libs.start">
     <uptodate property="libs.msil.available" targetfile="${build-libs.dir}/msil.complete">
       <srcfiles dir="${src.dir}/msil">
@@ -1296,7 +1345,7 @@ LIBRARIES (MSIL, FJBG maybe later)
       </srcfiles>
     </uptodate>
   </target>
-
+  
   <target name="libs.msil" depends="libs.pre-msil" unless="libs.msil.available">
     <mkdir dir="${build-libs.dir}/classes/msil"/>
     <javac
@@ -1323,16 +1372,16 @@ LIBRARIES (MSIL, FJBG maybe later)
     </scalacfork>
     <touch file="${build-libs.dir}/msil.complete" verbose="no"/>
   </target>
-
+  
   <target name="libs.pre-msilpack" depends="libs.msil">
   </target>
-
+  
   <target name="libs.msilpack" depends="libs.pre-msilpack" unless="libs.msilpack.available">
     <jar destfile="${build-libs.dir}/msil.jar">
       <fileset dir="${build-libs.dir}/classes/msil"/>
     </jar>
   </target>
-
+  
   <target name="libs.pre-fjbg" depends="libs.start">
     <uptodate property="libs.fjbg.available" targetfile="${build-libs.dir}/fjbg.complete">
       <srcfiles dir="${src.dir}/fjbg">
@@ -1341,7 +1390,7 @@ LIBRARIES (MSIL, FJBG maybe later)
       </srcfiles>
     </uptodate>
   </target>
-
+  
   <target name="libs.fjbg" depends="libs.pre-fjbg" unless="libs.fjbg.available">
     <mkdir dir="${build-libs.dir}/classes/fjbg"/>
     <javac
@@ -1355,10 +1404,10 @@ LIBRARIES (MSIL, FJBG maybe later)
     </javac>
     <touch file="${build-libs.dir}/fjbg.complete" verbose="no"/>
   </target>
-
+  
   <target name="libs.pre-fjbgpack" depends="libs.fjbg">
   </target>
-
+  
   <target name="libs.fjbgpack" depends="libs.pre-fjbgpack" unless="libs.fjbgpack.available">
     <jar destfile="${build-libs.dir}/fjbg.jar">
       <fileset dir="${build-libs.dir}/classes/fjbg"/>
@@ -1376,9 +1425,9 @@ LIBRARIES (MSIL, FJBG maybe later)
 <!-- ===========================================================================
 DOCUMENTATION
 ============================================================================ -->
-
+  
   <target name="docs.start" depends="pack.done"/>
-
+  
   <target name="docs.pre-lib" depends="docs.start">
     <uptodate property="docs.lib.available" targetfile="${build-docs.dir}/library.complete">
       <srcfiles dir="${src.dir}">
@@ -1515,7 +1564,7 @@ BOOTRAPING TEST AND TEST SUITE
       <exclude name="misc/scala-devel/plugins/*.jar"/>
     </same>
   </target>
-
+  
   <!-- this target will run only those tests found in test/debug -->
   <target name="test.debug">
     <antcall target="test.suite">
@@ -1586,11 +1635,11 @@ BOOTRAPING TEST AND TEST SUITE
 <!-- ===========================================================================
 DISTRIBUTION
 ============================================================================ -->
-
+  
   <target name="dist.start" depends="docs.done, pack.done">
     <property name="dist.dir" value="${dists.dir}/scala-${version.number}"/>
   </target>
-
+    
   <target name="dist.base" depends="dist.start">
     <mkdir dir="${dist.dir}/lib"/>
     <copy toDir="${dist.dir}/lib">
@@ -1753,7 +1802,7 @@ STABLE REFERENCE (STARR)
 <!-- ===========================================================================
 FORWARDED TARGETS FOR PACKAGING
 ============================================================================ -->
-
+  
   <target name="distpack" depends="dist.done">
     <ant antfile="${src.dir}/build/pack.xml" target="pack-all.done" inheritall="yes" inheritrefs="yes"/>
   </target>
@@ -1764,7 +1813,7 @@ FORWARDED TARGETS FOR PACKAGING
       <param name="scalac.args.optimise" value="-optimise"/>
     </antcall>
   </target>
-
+  
   <!-- Used by the scala-installer script -->
   <target name="allallclean" depends="all.clean"/>
 
@@ -1834,7 +1883,7 @@ POSITIONS
       <param name="test.tests.srcs" value="${partest.dir}/files/neg"/>
     </antcall>
   </target>
-
+  
   <target name="test.positions.sub">
     <echo message="Validating positions for: ${test.srcs}"/>
     <if>
@@ -1877,7 +1926,7 @@ POSITIONS
       </path>
     </foreach>
   </target>
-
+  
 <!-- ===========================================================================
 MISCELLANEOUS
 ============================================================================ -->

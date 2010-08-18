@@ -33,6 +33,32 @@ trait FileManager {
     if (res startsWith "No") "" else res
   }
 
+  /**
+   * Compares two directories using compareFiles method.
+   */
+  def compareDirectories(d1: Directory, d2: Directory): List[String] = {
+    def explainNoCorresponding(x: Path, in: Path) =
+      "'%s' has no corresponding file in '%s'".format(x, in)
+    //obtain relative sets of relative paths that can be compared
+    //so we can find files with missing corresponding file in another directory
+    val fs1 = d1.deepFiles.map(d1.relativize(_)).toSet
+    val fs2 = d2.deepFiles.map(d2.relativize(_)).toSet
+    val noCorresponding1 = (fs2 -- fs1).toList.map(explainNoCorresponding(_, d1))
+    val noCorresponding2 = (fs1 -- fs2).toList.map(explainNoCorresponding(_, d2))
+    val noCorresponding = noCorresponding1 ++ noCorresponding2
+    if (noCorresponding != Nil)
+      noCorresponding
+    else {
+      val compare = for (x <- fs1.toList) yield (d1 / x, d2 / x)
+      compare.flatMap {
+        case (f1, f2) => compareFiles(f1.jfile, f2.jfile) match {
+          case "" => Nil
+          case msg => "Files '%s' and '%s' are different:\n%s".format(f1, f2, msg) :: Nil
+        }
+      }
+    }
+  }
+
   def testRootDir: Directory
   def testRootPath: String
 

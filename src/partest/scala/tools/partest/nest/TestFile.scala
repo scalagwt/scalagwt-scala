@@ -47,3 +47,9 @@ case class ShootoutTestFile(file: JFile, fileManager: FileManager) extends TestF
 case class ScalapTestFile(file: JFile, fileManager: FileManager) extends TestFile("scalap") {
   override def setOutDirTo = file.parent
 }
+case class JribbleTestFile(file: JFile, fileManager: FileManager) extends TestFile("jribble") {
+  override def defineSettings(settings: Settings, setOutDir: Boolean) = {
+    super.defineSettings(settings, setOutDir)
+    settings.target.tryToSetColon("jribble" :: Nil)
+  }
+}

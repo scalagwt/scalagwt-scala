@@ -93,6 +93,7 @@ class DirectCompiler(val fileManager: FileManager) extends SimpleCompiler {
       case "shootout"   => ShootoutTestFile.apply
       case "scalap"     => ScalapTestFile.apply
       case "scalacheck" => ScalaCheckTestFile.apply
+      case "jribble"    => JribbleTestFile.apply
     }
     val test: TestFile = testFileFn(files.head, fileManager)
     test.defineSettings(command.settings, out.isEmpty)

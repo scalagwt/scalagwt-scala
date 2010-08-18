@@ -445,6 +445,27 @@ class Worker(val fileManager: FileManager) extends Actor {
         diffCheck(compareOutput(dir, fileBase, kind, logFile))
       })
 
+    /**
+     * Compiles given xxx.scala file into jribble and checks the
+     * result against corresponding files in xxx.check directory.
+     */
+    def runJribbleTest(file: File, kind: String): LogContext = {
+      println("File " + file.toString)
+      runTestCommon(file, kind, expectFailure = false)((logFile, outDir) => {
+        val fileBase = basename(file.getName)
+        val dir      = file.getParentFile
+        val checkDir = Directory(dir) / Directory(fileBase + ".check")
+
+        fileManager.compareDirectories(checkDir, Directory(outDir)) match {
+          case Nil => ()
+          case xs => {
+            succeeded = false
+            diff = xs mkString "\n"
+          }
+        }
+      })
+    }
+
     def processSingleFile(file: File): LogContext = kind match {
       case "scalacheck" =>
         runTestCommon(file, kind, expectFailure = false)((logFile, outDir) => {
@@ -863,6 +884,9 @@ class Worker(val fileManager: FileManager) extends Actor {
           }
         })
       }
+
+      case "jribble" =>
+        runJribbleTest(file, kind)
 
       case "script" => {
           // when option "--failed" is provided

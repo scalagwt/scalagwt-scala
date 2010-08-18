@@ -80,6 +80,7 @@ object NestUI {
     println("    --scalacheck    run ScalaCheck tests")
     println("    --script        run script runner tests")
     println("    --shootout      run shootout tests")
+    println("    --jribble       run jribble tests")
     println("    --grep <expr>    run all tests whose source file contains <expr>")
     println
     println("  Other options:")

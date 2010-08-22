@@ -264,7 +264,7 @@ with JribbleNormalization
 	    case If(cond, exp1, exp2) =>
 	      val condT = transform(cond)
           val (branchStats, List(condTT, exp1T, exp2T)) = removeNonJribbleExpressions(List(condT, exp1, exp2))
-          if (branchStats.isEmpty && !isNothing(exp1T) && !isNothing(exp2T)) {
+          if (branchStats.isEmpty && !isUnitOrNothing(exp1T) && !isUnitOrNothing(exp2T)) {
             If(condTT, exp1T, exp2T) setType tree.tpe setPos tree.pos
           } else {
             // If either branch needs statements, or if either branch is

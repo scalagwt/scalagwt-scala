@@ -1,0 +1,67 @@
+public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public Z cond() {
+    return true;
+  }
+  
+  public V ifWithUnboxedUnitType() {
+    if (this.(LIf;::cond()Z)())
+      {
+        Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("Hello, world!");
+      }
+    else
+      {
+        Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("Hello odd world!");
+      }
+  }
+  
+  public V ifWithNothingType() {
+    scala.runtime.Nothing$ $1$;
+    if (this.(LIf;::cond()Z)())
+      {
+        Lscala/Predef;$.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)scala.runtime.Nothing$)("Hello, world!");
+      }
+    else
+      {
+        Lscala/Predef;$.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)scala.runtime.Nothing$)("Hello odd world!");
+      }
+  }
+  
+  public Ljava/lang/String; ifShouldBeTransformerIntoCondtional() {
+    return (this.(LIf;::cond()Z)()) ? ("Truly") : ("Fully?");
+  }
+  
+  public I ifWithStatmentsButReturningValue() {
+    I $4$;
+    if (this.(LIf;::cond()Z)())
+      {
+        this.(LIf;::cond()Z)();
+        $4$ = 0;
+      }
+    else
+      {
+        this.(LIf;::cond()Z)();
+        $4$ = 1;
+      }
+    return $4$;
+  }
+  
+  public V ifWithoutElseAsExpr() {
+    Ljava/lang/Object; x = (this.(LIf;::cond()Z)()) ? (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I)Ljava/lang/Integer;)(0)) : (Lscala/runtime/BoxedUnit;$.MODULE$.UNIT);
+  }
+  
+  public V ifWithoutElseAsStmt() {
+    if (this.(LIf;::cond()Z)())
+      {
+        
+      }
+    else
+      {
+        
+      }
+  }
+  
+  public If() {
+    (Ljava/lang/Object;::super()V)();
+  }
+}

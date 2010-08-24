@@ -233,10 +233,9 @@ with JribbleNormalization
 	    case tree@DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           val savedMethodSym = currentMethodSym
           currentMethodSym = tree.symbol
-          val rhsHiddenExceptions = if (isConstructor(tree)) rhs else hideExceptions(rhs)
           // TODO(spoon): handle constructors
           val res = treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt,
-                                transformStatement(explicitBlockWithReturn(rhsHiddenExceptions)))
+                                transformStatement(explicitBlockWithReturn(rhs)))
           currentMethodSym = savedMethodSym
           res
         case tree@LabelDef(name, params, rhs) =>

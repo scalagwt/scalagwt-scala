@@ -60,10 +60,5 @@ trait JavaDefinitions {
       (Map.empty[Symbol, Symbol] /: unboxNames.keys) ((map,prim) =>
         map + (prim -> getMember(BoxesRuntimeModule, unboxNames(prim))))
     }
-
-
-    lazy val JavaSourceMiscModule: Symbol = getModule("scala.runtime.JavaSourceMisc")
-    lazy val JavaSourceMisc_hiddenThrow = getMember(JavaSourceMiscModule, "hiddenThrow")
-    lazy val RuntimeExceptionClass = definitions.getClass("java.lang.RuntimeException")
   }
 }

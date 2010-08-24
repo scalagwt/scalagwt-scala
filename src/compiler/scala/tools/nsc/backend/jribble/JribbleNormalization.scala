@@ -33,35 +33,6 @@ with JribbleAnalysis
   }
   import treeGen._
 
-  // TODO(spoon): don't hide exceptions that the method is declared as throwing
-  // TODO(spoon): don't rewrite throws of run-time exceptions
-  // TODO(spoon): don't use setType explicitly; use mkFoo methods
-  def hideExceptions(body: Tree): Tree = {
-    val exceptions = exceptionsThrown(body)
-    if (exceptions.isEmpty) {
-      body
-    } else {
-      val catches = for (exc <- exceptions) yield {
-        val excType = exc.tpe
-        val exSym = NoSymbol.newValue(body.pos, "ex")
-        exSym setInfo excType
-
-        val hiddenThrow =
-          Apply(mkAttributedSelect(mkAttributedRef(JavaSourceMiscModule), JavaSourceMisc_hiddenThrow),
-                List(mkAttributedRef(exSym))) setSymbol JavaSourceMisc_hiddenThrow
-        val notReachedThrow =
-          Throw(New(TypeTree(RuntimeExceptionClass.tpe), List(List(Literal("not reached") /* TODO(spoon): setType string*/)))) setType NothingClass.tpe
-
-        CaseDef(Bind(exSym, Typed(Ident(nme.WILDCARD), TypeTree(excType))),
-                EmptyTree,
-                Block(
-                  List(hiddenThrow, notReachedThrow),
-                  unitLiteral) setType NothingClass.tpe)
-      }
-      Try(body, catches, EmptyTree) setType body.tpe
-    }
-  }
-
   def box(boxFunction: Symbol, expr: Tree): Tree = {
     val boxedType = boxFunction.tpe.paramTypes(0).typeSymbol
     mkApply(mkAttributedRef(javaBoxMethod(boxedType)), List(expr))

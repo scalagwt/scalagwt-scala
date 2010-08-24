@@ -49,20 +49,20 @@ with JribbleNormalization
     }
 
     def apply(unit: CompilationUnit): Unit =
-      gen(unit.body)
+      gen(unit.body, unit)
 
     var pkgName: String = null
 
-    private def getJribblePrinter(clazz: Symbol): JribblePrinter = {
+    private def getJribblePrinter(clazz: Symbol, unit: CompilationUnit): JribblePrinter = {
       val file = {
         val suffix = if (clazz.isModuleClass) "$.jribble" else ".jribble"
         getFile(clazz, suffix)
       }
       val out = new PrintWriter(new FileOutputStream(file))
-      new JribblePrinter(out)
+      new JribblePrinter(out, unit)
     }
 
-    private def gen(tree: Tree): Unit = tree match {
+    private def gen(tree: Tree, unit: CompilationUnit): Unit = tree match {
       case EmptyTree => ()
       case PackageDef(packaged, stats) =>
         val oldPkg = pkgName
@@ -71,14 +71,14 @@ with JribbleNormalization
             null
           else
             tree.symbol.fullName
-        stats foreach gen
+        stats foreach { gen(_, unit) }
         pkgName = oldPkg
       case tree@ClassDef(mods, name, tparams, impl) => {
         val clazz = tree.symbol
         try {
           {
             // print the main class
-            val printer = getJribblePrinter(clazz)
+            val printer = getJribblePrinter(clazz, unit)
             printer.print(tree)
             printer.close()
           }
@@ -86,7 +86,7 @@ with JribbleNormalization
           if (!clazz.isNestedClass && clazz.isModuleClass) {
             // print the mirror class
             // TODO(spoon): only dump a mirror if the same-named class does not already exist
-            val printer = getJribblePrinter(clazz.companionSymbol)
+            val printer = getJribblePrinter(clazz.companionSymbol, unit)
             dumpMirrorClass(printer)(clazz)
             printer.close()
           }
@@ -136,7 +136,7 @@ with JribbleNormalization
 
   }
 
-  private final class JribblePrinter(out: PrintWriter) extends TreePrinter(out) {
+  private final class JribblePrinter(out: PrintWriter, unit: CompilationUnit) extends TreePrinter(out) {
     /**
      * Symbols in scope that are for a while loop.  Apply's to
      * them should be printed as continue's.
@@ -305,19 +305,19 @@ with JribbleNormalization
         print(jribbleMethodSignature(tree.symbol))
         printParams(args)
 
-      case tree@Apply(Select(receiver, _), args) if !tree.symbol.isConstructor =>
-        print(receiver)
-        print(".")
-        print(jribbleMethodSignature(tree.symbol))
+      case Apply(fun @ Select(_: New, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
+        print("new ");
+        print(jribbleConstructorSignature(fun.symbol))
         printParams(args)
 
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print(jribbleSuperConstructorSignature(tree.symbol))
         printParams(args)
 
-      case tree@Apply(_, args) if tree.symbol.isConstructor =>
-        print("new ");
-        print(jribbleConstructorSignature(tree.symbol))
+      case tree@Apply(Select(receiver, _), args) if !tree.symbol.isConstructor =>
+        print(receiver)
+        print(".")
+        print(jribbleMethodSignature(tree.symbol))
         printParams(args)
 
       case tree@Select(qualifier, selector) if tree.symbol.isModule =>
@@ -365,7 +365,13 @@ with JribbleNormalization
       case tree@TypeTree() =>
         print(tree.tpe)
 
-      case _ => super.printRaw(tree)
+      case tree: Literal => super.printRaw(tree)
+      case tree: Return => super.printRaw(tree)
+      case tree: Ident => super.printRaw(tree)
+      case tree: Assign => super.printRaw(tree)
+      case tree: Select => super.printRaw(tree)
+
+      case x => unit.error(x.pos, "Unhandled tree type " + x.getClass)
       } }
 
     // TODO(spoon): drop the explicit "ret" and "return" from this file;
@@ -460,26 +466,3 @@ with JribbleNormalization
     }
   }
 }
-
-
-// TODO(spoon): add in missing cases
-//         case ValDef(mods, name, tpt, rhs) => ;
-//         case DefDef(mods, name, tparams, vparamss, tpt, rhs) => ;
-//         case LabelDef(name, params, rhs) => ;
-//         case Template(parents, body) => ;
-//         case Block(stats, expr) => ;
-//         case ArrayValue(elemtpt, trees) => ; //                              (introduced by uncurry)
-//         case Assign(lhs, rhs) => ;
-//         case If(cond, thenp, elsep) => ;
-//         case Match(selector, cases) => ;
-//         case Return(expr) => ;
-//         case Try(block, catches, finalizer) => ;
-//         case Throw(expr) => ;
-//         case New(tpt) => ;
-//         //case TypeApply(fun, args) => ;
-//         case Apply(fun, args) => ;
-//         case Super(qual, mix) => ;
-//         case This(qual) => ;
-//         case Select(qualifier, selector) => ;
-//         case Ident(name) => ;
-//         case Literal(value) => ;

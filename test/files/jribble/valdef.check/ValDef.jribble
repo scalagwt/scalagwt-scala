@@ -1,0 +1,33 @@
+public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  private I x$u0020;
+  
+  public I x() {
+    return this.x$u0020;
+  }
+  
+  private I y$u0020;
+  
+  public I y() {
+    return this.y$u0020;
+  }
+  
+  public V y_$eq(I x$1) {
+    this.y$u0020 = x$1;
+  }
+  
+  public abstract I z();
+  
+  public abstract V z_$eq(I x$1);
+  
+  public V defsInMethod() {
+    I x = 0;
+    I y = 0;
+  }
+  
+  public ValDef() {
+    (Ljava/lang/Object;::super()V)();
+    this.x$u0020 = 0;
+    this.y$u0020 = 0;
+  }
+}

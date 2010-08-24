@@ -192,8 +192,9 @@ with JribbleNormalization
         print(" {"); indent;
         if (tree.symbol.isModuleClass) {
           println
+          val constructorSymbol = definitions.getMember(tree.symbol, nme.CONSTRUCTOR)
           print("public static " + jribbleName(tree.symbol) + " " +
-                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleMethodSignature(tree.symbol) + "();")
+                    nme.MODULE_INSTANCE_FIELD + " = new " + jribbleConstructorSignature(constructorSymbol) + "();")
         }
         for(member <- body) {
           println; println;
@@ -218,8 +219,10 @@ with JribbleNormalization
         //printAttributes(tree)
         //printFlags(mods.flags)
         printFlags(tree.symbol)
-        if (isConstructor(tree)) print(jribbleShortName(tree.symbol.owner))
-        else {
+        if (isConstructor(tree)) {
+          print(jribbleShortName(tree.symbol.owner))
+          if (tree.symbol.owner.isModuleClass) print("$")
+        } else {
           print(tp.tpe)
           print(" ")
           print(tree.symbol.simpleName)

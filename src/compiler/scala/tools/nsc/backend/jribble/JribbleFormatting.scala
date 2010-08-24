@@ -29,9 +29,12 @@ trait JribbleFormatting {
     val global: JribbleFormatting.this.global.type
   }
 
-  protected def jribbleName(sym: Symbol, fullyQualify: Boolean): String = {
+  private def nameSuffix(sym: Symbol) = {
     import symtab.Flags._
-    def suffix = if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
+    if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
+  }
+
+  protected def jribbleName(sym: Symbol, fullyQualify: Boolean): String = {
     //copy of AbsSymbol.fullName adapted to jribble syntax for fully qualified names which is
     // com/foo/Bar
     def fullName = {
@@ -49,7 +52,7 @@ trait JribbleFormatting {
     else if (isJribblePrimitive(sym.tpe))
       return jribbleName(sym.tpe)
 
-    if (fullyQualify) "L" + fullName + suffix + ";" else sym.simpleName.toString
+    if (fullyQualify) "L" + fullName + nameSuffix(sym) + ";" else sym.simpleName.toString
   }
 
   protected def jribbleShortName(sym: Symbol): String =
@@ -97,7 +100,7 @@ trait JribbleFormatting {
     val on = jribbleName(s.owner)
     val name = jribbleShortName(s.owner)
     val returnType = "V"
-    "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
+    "(" + on + "::" + name + nameSuffix(s.owner) + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
   private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe)

@@ -108,14 +108,14 @@ with JribbleNormalization
 
       print("public final class "); print(jribbleName(clazz.companionSymbol))
       print(" {"); indent; println
-      for (val m <- clazz.tpe.nonPrivateMembers; // TODO(spoon) -- non-private, or public?
-           m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
+      for (m <- clazz.tpe.nonPrivateMembers // TODO(spoon) -- non-private, or public?
+           if m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
            m.isMethod && !m.hasFlag(CASE) && !m.isConstructor && !m.isStaticMember)
       {
         print("public final static "); print(m.tpe.resultType); print(" ")
         print(m.name); print("(");
         val paramTypes = m.tpe.paramTypes
-        for (val i <- 0 until paramTypes.length) {
+        for (i <- 0 until paramTypes.length) {
           if (i > 0) print(", ")
           print(paramTypes(i)); print(" x_" + i)
         }
@@ -124,7 +124,7 @@ with JribbleNormalization
           print("return ")
         print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
         print("."); print(jribbleMethodSignature(m)); print("(")
-        for (val i <- 0 until paramTypes.length) {
+        for (i <- 0 until paramTypes.length) {
           if (i > 0) print(", ");
           print("x_" + i)
         }

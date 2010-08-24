@@ -282,17 +282,17 @@ with JribbleNormalization
 
       case Apply(TypeApply(fun@Select(rcvr, _), List(tpe)), Nil)
       if fun.symbol == definitions.Object_asInstanceOf =>
-        print("(")
-        print(tpe)
-        print(") (")
+        //the syntax for casting in jribble is like this: expr.<cast>(type)
         print(rcvr)
+        print(".<cast>(")
+        print(tpe)
         print(")")
 
       case Apply(TypeApply(fun@Select(rcvr, _), List(tpe)), Nil)
       if fun.symbol == definitions.Object_isInstanceOf =>
-        print("(")
+        //the syntax for isInstanceOf check in jribble is like this: expr.<instanceOf>(type)
         print(rcvr)
-        print(" instanceof ")
+        print(".<instanceof>(")
         print(tpe)
         print(")")
 

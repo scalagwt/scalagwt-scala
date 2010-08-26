@@ -58,10 +58,21 @@ with JribbleNormalization
   import global.gen.mkAttributedIdent
   import javaDefinitions._
 
+  protected lazy val scalaPrimitives: global.scalaPrimitives.type = global.scalaPrimitives
+
   override val phaseName = "normjribble"
 
   override protected def newTransformer(unit: CompilationUnit): Transformer =
     new Trans(unit)
+
+  override def newPhase(prev: scala.tools.nsc.Phase): StdPhase = new Phase(prev)
+
+  class Phase(prev: scala.tools.nsc.Phase) extends super.Phase(prev) {
+    override def run: Unit = {
+      scalaPrimitives.init
+      super.run
+    }
+  }
 
   /**
    * The main transformer of this phase.
@@ -312,10 +323,23 @@ with JribbleNormalization
 	    case Apply(fun, args) if (labelDefs contains fun.symbol) =>
           // the type of a continue should be Nothing
 	      mkApply(fun, args) setType definitions.NothingClass.tpe
+      case tree@Apply(fun @ Select(receiver, name), args) if isEqOnAnyRef(fun) => {
+        assert(args.size == 1)
+        assert(args.head.tpe <:< definitions.AnyRefClass.tpe)
+        mkApply(treeGen.mkAttributedRef(global.platform.externalEquals), receiver :: args)
+      }
 	    case Apply(fun, args) =>
           val funT :: argsT = transformTrees(fun :: args)
           treeCopy.Apply(tree, funT, argsT)
         case tree => super.transform(tree)
       }
+
+    def isEqOnAnyRef(fun: Select) = {
+      import scalaPrimitives._
+      val Select(receiver, _) = fun
+      if (isPrimitive(fun.symbol)) {
+        (getPrimitive(fun.symbol) == EQ) && (receiver.tpe <:< definitions.AnyRefClass.tpe)
+      } else false
+    }
   }
 }

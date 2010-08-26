@@ -352,6 +352,7 @@ with JribbleNormalization
               printInBraces(catchBody, ret)
 
             // TODO(spoon): handle any other patterns that are possible here
+            // TODO(grek): missing cases are CaseDef(Ident, _, ) and CaseDef(Typed(Ident), _, _)
           }
         if (finalizer != EmptyTree) {
           print(" finally ")
@@ -365,11 +366,13 @@ with JribbleNormalization
       case tree@TypeTree() =>
         print(tree.tpe)
 
+      case tree@Apply(_: Ident, _) => unit.error(tree.pos, "Jumping to labels not handled by jribble")
       case tree: Literal => super.printRaw(tree)
       case tree: Return => super.printRaw(tree)
       case tree: Ident => super.printRaw(tree)
       case tree: Assign => super.printRaw(tree)
       case tree: Select => super.printRaw(tree)
+      case tree: Apply => super.printRaw(tree)
 
       case x => unit.error(x.pos, "Unhandled tree type " + x.getClass)
       } }

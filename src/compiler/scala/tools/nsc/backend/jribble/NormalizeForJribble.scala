@@ -250,8 +250,9 @@ with JribbleNormalization
           currentMethodSym = savedMethodSym
           res
         case tree@LabelDef(name, params, rhs) =>
-          assert (params == Nil)
-          // TODO(spoon): investigate whether the params can be non-empty at this phase
+          if (!params.isEmpty)
+            //TODO(grek): this can be emited by pattern matching logic but we don't support it at the moment
+            cunit.error(tree.pos,"Found non-empty parameter list in LabelDef.")
 	      recordLabelDefDuring(tree.symbol) {
             if (isUnit(rhs.tpe)) {
               newStats += transformStatement(tree)

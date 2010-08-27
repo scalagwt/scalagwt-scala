@@ -42,11 +42,16 @@ class ScalacFork extends MatchingTask with ScalacShared with TaskArgs {
     argfile = Some(input)
   }
 
+  def setVerbose(input: Boolean) {
+    verbose = Some(input)
+  }
+
   private var sourceDir: Option[File] = None
   private var failOnError: Boolean = true
   private var timeout: Option[Long] = None
   private var jvmArgs: Option[String] = None
   private var argfile: Option[File] = None
+  private var verbose: Option[Boolean] = None
 
   private def createMapper() = {
     val mapper = new GlobPatternMapper()
@@ -72,6 +77,7 @@ class ScalacFork extends MatchingTask with ScalacShared with TaskArgs {
     compTarget foreach (settings.target = _)
     compilationPath foreach (settings.classpath = _)
     sourcePath foreach (settings.sourcepath = _)
+    verbose foreach { settings.verbose = _ }
     params foreach (settings.more = _)
 
     if (isMSIL)

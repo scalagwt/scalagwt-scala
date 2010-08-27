@@ -59,6 +59,10 @@ class Settings {
   def optimise = optimiseBf
   def optimise_=(b: Boolean): Unit = { optimiseBf = b }
 
+  private var verboseBf: Boolean = false
+  def verbose = verboseBf
+  def verbose_=(b: Boolean): Unit = { verboseBf = b }
+
   private var moreBf: Option[String] = None
   def more = moreBf.get
   def more_=(s: String): this.type = { moreBf = Some(s); this }
@@ -75,6 +79,7 @@ class Settings {
     (if (!encodingBf.isEmpty) "-encoding" :: encoding :: Nil else Nil) :::
     (if (!targetBf.isEmpty) "-target:"+target :: Nil else Nil) :::
     (if (optimiseBf) "-optimise" :: Nil else Nil) :::
+    (if (verboseBf) "-verbose" :: Nil else Nil) :::
     (if (!moreBf.isEmpty) (more split ' ').toList else Nil)
 
   override def equals(that: Any): Boolean = that match {

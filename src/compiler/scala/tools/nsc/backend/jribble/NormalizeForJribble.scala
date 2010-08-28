@@ -324,7 +324,9 @@ with JribbleNormalization
       case tree@Apply(fun @ Select(receiver, name), args) if isEqOnAnyRef(fun) => {
         assert(args.size == 1)
         assert(args.head.tpe <:< definitions.AnyRefClass.tpe)
-        mkApply(treeGen.mkAttributedRef(global.platform.externalEquals), receiver :: args)
+        atPos(tree.pos) {
+          mkApply(treeGen.mkAttributedRef(global.platform.externalEquals), receiver :: args)
+        }
       }
       case Apply(fun, args) =>
         val funT :: argsT = transformTrees(fun :: args)

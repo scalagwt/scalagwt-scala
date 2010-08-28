@@ -102,7 +102,7 @@ with JribbleNormalization
     def allocLocal(tpe: Type, pos: scala.tools.nsc.util.Position): Symbol = {
       assert (tpe != UnitClass.tpe) // don't create a unit variable
       assert (tpe != null)
-      val newLocal = currentMethodSym.newValue(pos, cunit.fresh.newName())
+      val newLocal = currentMethodSym.newValue(pos, cunit.fresh.newName(pos))
       newLocal.setInfo(tpe)
       newLocal
     }
@@ -148,7 +148,7 @@ with JribbleNormalization
       val transformedWithStats: List[(List[Tree], Tree)] =
         trees.map(removeNonJribbleExpressions(_, false))
 
-      val lastWithStats = transformedWithStats.findLastIndexOf{
+      val lastWithStats = transformedWithStats.lastIndexWhere {
         case (stats, exp) => !stats.isEmpty
       }
       if (lastWithStats < 0) {

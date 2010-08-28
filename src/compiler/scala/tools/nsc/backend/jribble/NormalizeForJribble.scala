@@ -189,45 +189,44 @@ with JribbleNormalization
     /**
      * Transform a tree that is known to be used in statement position.
      */
-    def transformStatement(tree: Tree): Tree =
-      tree match {
-        case If(cond, exp1, exp2) =>
-          val condT = transform(cond)
-          val exp1T = transformStatement(explicitBlock(exp1))
-          val exp2T = transformStatement(explicitBlock(exp2))
-          treeCopy.If(tree, condT, exp1T, exp2T)
-        case Block(stats, exp) =>
-          val newBlockStats = new ListBuffer[Tree]
-          for (stat <- stats) {
-            val (statNewStats, statT) = removeNonJribbleExpressions(stat, true)
-            newBlockStats ++= statNewStats
-            if (canBeStatement(statT)) {
-              // The only non-statement expressions also have no side
-              // effects, so they can safely be discarded
-              newBlockStats += statT
-            }
+    def transformStatement(tree: Tree): Tree = tree match {
+      case If(cond, exp1, exp2) =>
+        val condT = transform(cond)
+        val exp1T = transformStatement(explicitBlock(exp1))
+        val exp2T = transformStatement(explicitBlock(exp2))
+        treeCopy.If(tree, condT, exp1T, exp2T)
+      case Block(stats, exp) =>
+        val newBlockStats = new ListBuffer[Tree]
+        for (stat <- stats) {
+          val (statNewStats, statT) = removeNonJribbleExpressions(stat, true)
+          newBlockStats ++= statNewStats
+          if (canBeStatement(statT)) {
+            // The only non-statement expressions also have no side
+            // effects, so they can safely be discarded
+            newBlockStats += statT
           }
-          val (expNewStats, expT) = removeNonJribbleExpressions(exp, false)
-          newBlockStats ++= expNewStats
-          if (canBeStatement(expT))
-            newBlockStats += expT
+        }
+        val (expNewStats, expT) = removeNonJribbleExpressions(exp, false)
+        newBlockStats ++= expNewStats
+        if (canBeStatement(expT))
+          newBlockStats += expT
 
-          // TODO(spoon): reuse the original tree when possible
-          mkBlock(newBlockStats.toList, unitLiteral)
-        case ValDef(mods, name, tpt, rhs) =>
-          treeCopy.ValDef(tree, mods, name, tpt, transform(rhs))
-	    case tree@LabelDef(name, params, rhs) =>
-	      recordLabelDefDuring(tree.symbol) {
+        // TODO(spoon): reuse the original tree when possible
+        mkBlock(newBlockStats.toList, unitLiteral)
+      case ValDef(mods, name, tpt, rhs) =>
+        treeCopy.ValDef(tree, mods, name, tpt, transform(rhs))
+      case tree@LabelDef(name, params, rhs) =>
+        recordLabelDefDuring(tree.symbol) {
             treeCopy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
-	      }
-        case Try(block, catches, finalizer) =>
-          val blockT = transformStatement(explicitBlock(block))
-          val catchesT = catches map (transform(_).asInstanceOf[CaseDef])
-          val finalizerT = transformStatement(explicitBlock(finalizer))
-          treeCopy.Try(tree, blockT, catchesT, finalizerT)
-        case tree =>
-          transform(tree)
-      }
+        }
+      case Try(block, catches, finalizer) =>
+        val blockT = transformStatement(explicitBlock(block))
+        val catchesT = catches map (transform(_).asInstanceOf[CaseDef])
+        val finalizerT = transformStatement(explicitBlock(finalizer))
+        treeCopy.Try(tree, blockT, catchesT, finalizerT)
+      case tree =>
+        transform(tree)
+    }
 
     /**
      * Transform a tree to a new tree that does not use any non-Jribble expressions
@@ -237,103 +236,101 @@ with JribbleNormalization
      *
      * TODO(spoon): alphabetize the cases
      */
-    override def transform(tree: Tree): Tree =
-      tree match {
-        case tree@CaseDef(pat, guard, body) =>
-          CaseDef(pat, guard, transformStatement(explicitBlock(body)))
-	    case tree@DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          val savedMethodSym = currentMethodSym
-          currentMethodSym = tree.symbol
-          // TODO(spoon): handle constructors
-          val res = treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt,
+    override def transform(tree: Tree): Tree = tree match {
+      case tree@CaseDef(pat, guard, body) =>
+        CaseDef(pat, guard, transformStatement(explicitBlock(body)))
+      case tree@DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        val savedMethodSym = currentMethodSym
+        currentMethodSym = tree.symbol
+        // TODO(spoon): handle constructors
+        val res = treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt,
                                 transformStatement(explicitBlockWithReturn(rhs)))
-          currentMethodSym = savedMethodSym
-          res
-        case tree@LabelDef(name, params, rhs) =>
-          if (!params.isEmpty)
-            //TODO(grek): this can be emited by pattern matching logic but we don't support it at the moment
-            cunit.error(tree.pos,"Found non-empty parameter list in LabelDef.")
-	      recordLabelDefDuring(tree.symbol) {
-            if (isUnit(rhs.tpe)) {
-              newStats += transformStatement(tree)
-              unitLiteral
-            } else {
-              val resultLocal = allocLocal(rhs.tpe, tree.pos)
-              newStats += ValDef(resultLocal)
-              newStats += transformStatement(
+        currentMethodSym = savedMethodSym
+        res
+      case tree@LabelDef(name, params, rhs) =>
+        if (!params.isEmpty)
+          //TODO(grek): this can be emited by pattern matching logic but we don't support it at the moment
+          cunit.error(tree.pos,"Found non-empty parameter list in LabelDef.")
+        recordLabelDefDuring(tree.symbol) {
+          if (isUnit(rhs.tpe)) {
+            newStats += transformStatement(tree)
+            unitLiteral
+          } else {
+            val resultLocal = allocLocal(rhs.tpe, tree.pos)
+            newStats += ValDef(resultLocal)
+            newStats += transformStatement(
                 LabelDef(name, Nil,
                          Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe) copyAttrs tree)
               mkAttributedIdent(resultLocal) setPos tree.pos
-            }
           }
+        }
 
-	    case Block(stats, expr) =>
-           for (stat <- stats) {
-             newStats += transformStatement(stat)
-           }
-           transform(expr)
-	    case If(cond, exp1, exp2) =>
-	      val condT = transform(cond)
-          val (branchStats, List(condTT, exp1T, exp2T)) = removeNonJribbleExpressions(List(condT, exp1, exp2))
-          if (branchStats.isEmpty && !isUnitOrNothing(exp1T) && !isUnitOrNothing(exp2T)) {
-            If(condTT, exp1T, exp2T) setType tree.tpe setPos tree.pos
-          } else {
-            // If either branch needs statements, or if either branch is
-            // of type nothing, then it is necessary to
-            // make a top-level if
-            if (isUnit(tree.tpe)) {
-              newStats += transformStatement(
-                If(condT, exp1, exp2) setType tree.tpe)
-              unitLiteral
-            } else {
-              val resV = allocLocal(tree.tpe, tree.pos)
-              newStats += ValDef(resV)
-              def statForBranch(branch: Tree) =
-                if (isNothing(branch)) branch else {
-                  Assign(mkAttributedIdent(resV), branch) setType branch.tpe  // TODO(spoon): should be type unit?
-                }
-              newStats += transformStatement(
-                If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe)
-              mkAttributedIdent(resV)
-            }
-          }
-        case tree@Try(block, catches, finalizer) =>
+      case Block(stats, expr) =>
+        for (stat <- stats) {
+          newStats += transformStatement(stat)
+        }
+        transform(expr)
+      case If(cond, exp1, exp2) =>
+        val condT = transform(cond)
+        val (branchStats, List(condTT, exp1T, exp2T)) = removeNonJribbleExpressions(List(condT, exp1, exp2))
+        if (branchStats.isEmpty && !isUnitOrNothing(exp1T) && !isUnitOrNothing(exp2T)) {
+          If(condTT, exp1T, exp2T) setType tree.tpe setPos tree.pos
+        } else {
+          // If either branch needs statements, or if either branch is
+          // of type nothing, then it is necessary to
+          // make a top-level if
           if (isUnit(tree.tpe)) {
-            newStats += transformStatement(tree)
+            newStats += transformStatement(If(condT, exp1, exp2) setType tree.tpe)
             unitLiteral
           } else {
             val resV = allocLocal(tree.tpe, tree.pos)
             newStats += ValDef(resV)
-
-            val newBlock =
-              if (isUnitOrNothing(block)) block
-              else Assign(mkAttributedIdent(resV), block) setType definitions.UnitClass.tpe
-
-            val newCatches =
-              for (CaseDef(pat, guard, body) <- catches)
-              yield
-                if (isUnitOrNothing(body)) CaseDef(pat, guard, body)
-                else CaseDef(pat, guard, Assign(mkAttributedIdent(resV), body) setType definitions.UnitClass.tpe)
-            newStats += transformStatement(Try(newBlock, newCatches, finalizer) setType tree.tpe)
+            def statForBranch(branch: Tree) =
+              if (isNothing(branch)) branch else {
+                Assign(mkAttributedIdent(resV), branch) setType branch.tpe  // TODO(spoon): should be type unit?
+              }
+            newStats += transformStatement(
+                If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe)
             mkAttributedIdent(resV)
           }
-        case Apply(fun, List(expr)) if (definitions.isBox(fun.symbol)) =>
-          transform(box(fun.symbol, expr))
-        case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
-          transform(unbox(fun.symbol, expr))
-	    case Apply(fun, args) if (labelDefs contains fun.symbol) =>
-          // the type of a continue should be Nothing
-	      mkApply(fun, args) setType definitions.NothingClass.tpe
+        }
+      case tree@Try(block, catches, finalizer) =>
+        if (isUnit(tree.tpe)) {
+          newStats += transformStatement(tree)
+          unitLiteral
+        } else {
+          val resV = allocLocal(tree.tpe, tree.pos)
+          newStats += ValDef(resV)
+
+          val newBlock =
+            if (isUnitOrNothing(block)) block
+            else Assign(mkAttributedIdent(resV), block) setType definitions.UnitClass.tpe
+
+          val newCatches =
+            for (CaseDef(pat, guard, body) <- catches)
+            yield
+              if (isUnitOrNothing(body)) CaseDef(pat, guard, body)
+              else CaseDef(pat, guard, Assign(mkAttributedIdent(resV), body) setType definitions.UnitClass.tpe)
+          newStats += transformStatement(Try(newBlock, newCatches, finalizer) setType tree.tpe)
+          mkAttributedIdent(resV)
+        }
+      case Apply(fun, List(expr)) if (definitions.isBox(fun.symbol)) =>
+        transform(box(fun.symbol, expr))
+      case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
+        transform(unbox(fun.symbol, expr))
+      case Apply(fun, args) if (labelDefs contains fun.symbol) =>
+        // the type of a continue should be Nothing
+        mkApply(fun, args) setType definitions.NothingClass.tpe
       case tree@Apply(fun @ Select(receiver, name), args) if isEqOnAnyRef(fun) => {
         assert(args.size == 1)
         assert(args.head.tpe <:< definitions.AnyRefClass.tpe)
         mkApply(treeGen.mkAttributedRef(global.platform.externalEquals), receiver :: args)
       }
-	    case Apply(fun, args) =>
-          val funT :: argsT = transformTrees(fun :: args)
-          treeCopy.Apply(tree, funT, argsT)
-        case tree => super.transform(tree)
-      }
+      case Apply(fun, args) =>
+        val funT :: argsT = transformTrees(fun :: args)
+        treeCopy.Apply(tree, funT, argsT)
+      case tree => super.transform(tree)
+    }
 
     def isEqOnAnyRef(fun: Select) = {
       import scalaPrimitives._

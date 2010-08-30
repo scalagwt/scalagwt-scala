@@ -373,6 +373,9 @@ with JribbleNormalization
       case tree: Assign => super.printRaw(tree)
       case tree: Select => super.printRaw(tree)
       case tree: Apply => super.printRaw(tree)
+      //we can delegate printing of Array literals to super class because it prints it in jribble-friendly
+      //way: Array[Type]{x1, x2, ..., xn}
+      case tree: ArrayValue => super.printRaw(tree)
 
       case x => unit.error(x.pos, "Unhandled tree type " + x.getClass)
       } }

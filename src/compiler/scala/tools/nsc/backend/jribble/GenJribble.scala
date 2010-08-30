@@ -82,7 +82,6 @@ with JribbleNormalization
             printer.print(tree)
             printer.close()
           }
-          println()
           if (!clazz.isNestedClass && clazz.isModuleClass) {
             // print the mirror class
             // TODO(spoon): only dump a mirror if the same-named class does not already exist

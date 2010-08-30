@@ -82,7 +82,7 @@ trait JribbleFormatting {
   protected def jribbleMethodSignature(s: Symbol): String = {
     val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
     val on = jribbleName(s.owner)
-    val name = s.name.toString
+    val name = s.name.encode.toString
     val returnType = jribbleName(s.tpe.resultType.typeSymbol)
     "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }

@@ -5,6 +5,7 @@
 
 package scala.tools.nsc
 
+import backend.jribble.{RemoveForwardJumps, GenJribble, RemoveNothingExpressions, NormalizeForJribble}
 import java.io.{ File, FileOutputStream, PrintWriter, IOException, FileNotFoundException }
 import java.nio.charset.{ Charset, IllegalCharsetNameException, UnsupportedCharsetException }
 import compat.Platform.currentTime
@@ -27,7 +28,6 @@ import transform._
 import backend.icode.{ ICodes, GenICode, Checkers }
 import backend.{ ScalaPrimitives, Platform, MSILPlatform, JavaPlatform, JribblePlatform }
 import backend.jvm.GenJVM
-import backend.jribble.{GenJribble, RemoveNothingExpressions, NormalizeForJribble}
 import backend.opt.{ Inliners, ClosureElimination, DeadCodeElimination }
 import backend.icode.analysis._
 
@@ -473,10 +473,17 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
     val runsRightAfter = None
   } with RemoveNothingExpressions
 
+  // phaseName = "fjumpsjribble"
+  object removeForwardJumps extends {
+    val global: Global.this.type = Global.this
+    val runsAfter = List[String]("cleanup")
+    val runsRightAfter = None
+  } with RemoveForwardJumps
+
   // phaseName = "normjribble"
   object normalizeForJribble extends {
     val global: Global.this.type = Global.this
-    val runsAfter = List[String]("cleanup")
+    val runsAfter = List[String]("fjumpsjribble")
     val runsRightAfter = None
   } with NormalizeForJribble
 
@@ -540,6 +547,7 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
   private def jribblePhases =
     List(
       removeNothingExpressions,  // move Nothing-type expressions to top level
+      removeForwardJumps,        // translate forward jumps into method calls
       normalizeForJribble        // many normalizations needed for emitting Jribble
     )
 

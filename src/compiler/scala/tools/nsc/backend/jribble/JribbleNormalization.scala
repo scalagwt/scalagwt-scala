@@ -79,5 +79,8 @@ with JribbleAnalysis
      if (stats exists (t => isNothing(t))) definitions.NothingClass.tpe else exp.tpe)
   def mkReturn(exp: Tree) = Return(exp) setType NothingClass.tpe
 
+  def mkDefDef(sym: MethodSymbol, mods: Modifiers, params: List[ValDef], rhs: Tree) =
+    DefDef(sym, mods, List(params), rhs)
+
   val unitLiteral = Literal(Constant()) setType UnitClass.tpe
 }

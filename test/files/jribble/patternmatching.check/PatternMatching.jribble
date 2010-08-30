@@ -1,0 +1,39 @@
+public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public V simplePattern(Lscala/collection/immutable/List; xs) {
+    Lscala/collection/immutable/List; temp1 = xs;
+    if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z)(Lscala/collection/immutable/Nil;$.MODULE$, temp1))
+      {
+        Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("empty list");
+      }
+    else
+      {
+        if (temp1.<instanceof>(Lscala/collection/immutable/$colon$colon;))
+          {
+            Lscala/collection/immutable/$colon$colon; temp3 = temp1.<cast>(Lscala/collection/immutable/$colon$colon;);
+            Ljava/lang/String; temp4 = temp3.(Lscala/collection/immutable/$colon$colon;::hd$1()Ljava/lang/Object;)().<cast>(Ljava/lang/String;);
+            if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z)(Lscala/collection/immutable/Nil;$.MODULE$, temp3.(Lscala/collection/immutable/$colon$colon;::tl$1()Lscala/collection/immutable/List;)()))
+              {
+                Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("singleton list");
+              }
+            else
+              {
+                Lscala/collection/immutable/List; xs = temp3;
+                this.(LPatternMatching;::body$percent2$percent1(Lscala/collection/immutable/List;)V)(xs);
+              }
+          }
+        else
+          {
+            this.(LPatternMatching;::body$percent2$percent1(Lscala/collection/immutable/List;)V)(temp1);
+          }
+      }
+  }
+  
+  public PatternMatching() {
+    (Ljava/lang/Object;::super()V)();
+  }
+  
+  private final V body$percent2$percent1(Lscala/collection/immutable/List; xs) {
+    Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("more than one element list");
+  }
+}

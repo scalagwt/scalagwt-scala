@@ -1,0 +1,4 @@
+public interface LOuterTrait; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public LOuterTrait$Inner$; OuterTrait$$Inner();
+}

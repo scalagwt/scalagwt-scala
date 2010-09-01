@@ -1,0 +1,6 @@
+public abstract class LOuterTrait$class; {
+  
+  public static V $init$(LOuterTrait; $this) {
+    
+  }
+}

@@ -2,9 +2,9 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
   
   public V simplePattern(Lscala/collection/immutable/List; xs) {
     Lscala/collection/immutable/List; temp1 = xs;
-    if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z)(Lscala/collection/immutable/Nil;$.MODULE$, temp1))
+    if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z)(Lscala/collection/immutable/Nil$;.MODULE$, temp1))
       {
-        Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("empty list");
+        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("empty list");
       }
     else
       {
@@ -12,9 +12,9 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
           {
             Lscala/collection/immutable/$colon$colon; temp3 = temp1.<cast>(Lscala/collection/immutable/$colon$colon;);
             Ljava/lang/String; temp4 = temp3.(Lscala/collection/immutable/$colon$colon;::hd$1()Ljava/lang/Object;)().<cast>(Ljava/lang/String;);
-            if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z)(Lscala/collection/immutable/Nil;$.MODULE$, temp3.(Lscala/collection/immutable/$colon$colon;::tl$1()Lscala/collection/immutable/List;)()))
+            if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z)(Lscala/collection/immutable/Nil$;.MODULE$, temp3.(Lscala/collection/immutable/$colon$colon;::tl$1()Lscala/collection/immutable/List;)()))
               {
-                Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("singleton list");
+                Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("singleton list");
               }
             else
               {

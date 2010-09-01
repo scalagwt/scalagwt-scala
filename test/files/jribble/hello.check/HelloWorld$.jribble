@@ -2,7 +2,7 @@ public final class LHelloWorld$; extends Ljava/lang/Object; implements Lscala/Sc
   public static LHelloWorld$; MODULE$ = new (LHelloWorld$;::HelloWorld$()V)();
   
   public V main(Ljava/lang/String;[ args) {
-    Lscala/Predef;$.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("Hello, world!");
+    Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("Hello, world!");
   }
   
   public HelloWorld$() {

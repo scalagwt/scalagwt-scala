@@ -29,12 +29,16 @@ trait JribbleFormatting {
     val global: JribbleFormatting.this.global.type
   }
 
-  private def nameSuffix(sym: Symbol) = {
-    import symtab.Flags._
-    if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
+  /** Return the suffix of a class name */
+  //copied from GenJVM
+  protected def moduleSuffix(sym: Symbol) = {
+    import scala.reflect.generic.Flags
+    if (sym.hasFlag(Flags.MODULE) && !sym.isMethod &&
+       !sym.isImplClass && !sym.hasFlag(Flags.JAVA)) "$"
+    else "";
   }
 
-  protected def jribbleName(sym: Symbol, fullyQualify: Boolean): String = {
+  protected def jribbleName(sym: Symbol, fullyQualify: Boolean, suffix: Symbol => String): String = {
     //copy of AbsSymbol.fullName adapted to jribble syntax for fully qualified names which is
     // com/foo/Bar
     def fullName = {
@@ -52,14 +56,14 @@ trait JribbleFormatting {
     else if (isJribblePrimitive(sym.tpe))
       return jribbleName(sym.tpe)
 
-    if (fullyQualify) "L" + fullName + nameSuffix(sym) + ";" else sym.simpleName.toString
+    if (fullyQualify) "L" + fullName + suffix(sym) + ";" else sym.simpleName.toString
   }
 
   protected def jribbleShortName(sym: Symbol): String =
-    jribbleName(sym, false)
+    jribbleName(sym, false, moduleSuffix)
 
   protected def jribbleName(sym: Symbol): String =
-    jribbleName(sym, true)
+    jribbleName(sym, true, moduleSuffix)
 
   protected def jribbleName(tpe: Type): String = {
     def tpstr(typ: TypeKind): String =
@@ -78,6 +82,9 @@ trait JribbleFormatting {
       }
     return tpstr(toTypeKind(tpe))
   }
+
+  protected def jribbleModuleMirrorName(sym: Symbol): String =
+    jribbleName(sym, true, _ => "")
 
   protected def jribbleMethodSignature(s: Symbol): String = {
     val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
@@ -100,7 +107,7 @@ trait JribbleFormatting {
     val on = jribbleName(s.owner)
     val name = jribbleShortName(s.owner)
     val returnType = "V"
-    "(" + on + "::" + name + nameSuffix(s.owner) + (paramsTypes).mkString("(", "", ")") + returnType + ")"
+    "(" + on + "::" + name + moduleSuffix(s.owner) + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
   private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe)

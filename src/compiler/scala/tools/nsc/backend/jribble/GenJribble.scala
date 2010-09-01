@@ -53,10 +53,10 @@ with JribbleNormalization
 
     var pkgName: String = null
 
-    private def getJribblePrinter(clazz: Symbol, unit: CompilationUnit): JribblePrinter = {
+    private def getJribblePrinter(clazz: Symbol, unit: CompilationUnit, suffix: String): JribblePrinter = {
       val file = {
-        val suffix = if (clazz.isModuleClass) "$.jribble" else ".jribble"
-        getFile(clazz, suffix)
+        val fileSuffix = suffix + ".jribble"
+        getFile(clazz, fileSuffix)
       }
       val out = new PrintWriter(new FileOutputStream(file))
       new JribblePrinter(out, unit)
@@ -78,14 +78,14 @@ with JribbleNormalization
         try {
           {
             // print the main class
-            val printer = getJribblePrinter(clazz, unit)
+            val printer = getJribblePrinter(clazz, unit, moduleSuffix(clazz))
             printer.print(tree)
             printer.close()
           }
-          if (!clazz.isNestedClass && clazz.isModuleClass) {
+          if (isStaticModule(clazz) && isTopLevelModule(clazz) && clazz.companionClass == NoSymbol) {
             // print the mirror class
             // TODO(spoon): only dump a mirror if the same-named class does not already exist
-            val printer = getJribblePrinter(clazz.companionSymbol, unit)
+            val printer = getJribblePrinter(clazz, unit, "")
             dumpMirrorClass(printer)(clazz)
             printer.close()
           }
@@ -105,7 +105,7 @@ with JribbleNormalization
     def dumpMirrorClass(printer: JribblePrinter)(clazz: Symbol): Unit = {
       import printer.{print, println, indent, undent}
 
-      print("public final class "); print(jribbleName(clazz.companionSymbol))
+      print("public final class "); print(jribbleModuleMirrorName(clazz))
       print(" {"); indent; println
       for (m <- clazz.tpe.nonPrivateMembers // TODO(spoon) -- non-private, or public?
            if m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
@@ -172,13 +172,19 @@ with JribbleNormalization
       logIfException(tree) { tree match {
       case EmptyTree =>
 
-      case ClassDef(mods, name, _, Template(superclass :: ifaces, _, body)) =>
+      case ClassDef(mods, name, _, Template(parents, _, body)) =>
         //printAttributes(tree)
         //printFlags(mods.flags)
+        val (superclass, ifaces) = parents match {
+          case Nil => (None, Nil)
+          case x :: xs => (Some(x), xs)
+        }
         printFlags(tree.symbol)
-        print((if (mods hasFlag TRAIT) "interface " else "class ") + jribbleName(tree.symbol))
-        print(" extends ")
-        print(superclass.tpe)
+        print((if (isInterface(tree.symbol)) "interface " else "class ") + jribbleName(tree.symbol))
+        superclass foreach { x =>
+          print(" extends ")
+          print(x.tpe)
+        }
         if (!ifaces.isEmpty) {
           print(" implements ")
           var first = true
@@ -189,7 +195,8 @@ with JribbleNormalization
           }
         }
         print(" {"); indent;
-        if (tree.symbol.isModuleClass) {
+        //TODO(grek): Check if this works correctly
+        if (isStaticModule(tree.symbol)) {
           println
           val constructorSymbol = definitions.getMember(tree.symbol, nme.CONSTRUCTOR)
           print("public static " + jribbleName(tree.symbol) + " " +
@@ -408,7 +415,7 @@ with JribbleNormalization
 
     /** load a top-level module */
     def printLoadModule(sym: Symbol) {
-      print(jribbleName(sym)); print("$."); print(nme.MODULE_INSTANCE_FIELD)
+      print(jribbleName(sym)); print("."); print(nme.MODULE_INSTANCE_FIELD)
     }
 
     def printParams(xs: List[Tree]): Unit = {
@@ -427,6 +434,7 @@ with JribbleNormalization
         print(tp.tpe); print(" "); print(symName(tree, name))
     }
 
+    //TODO(grek): Revisit this method and check it against GenJVM.javaFlags method
     def printFlags(sym: Symbol): Unit = {
       val flags = sym.flags
       val fs = new ListBuffer[String]
@@ -437,11 +445,15 @@ with JribbleNormalization
         fs += "public"
       else {
         printFlag(PRIVATE, "private")
+        //TODO(grek): Check comment in GenJVM's javaFlags method which says that
+        //protected modifier shouldn't be emitted
         printFlag(PROTECTED, "protected")
       }
-      printFlag(STATIC, "static")
-      printFlag(FINAL, "final")
-      if ((flags & (DEFERRED | ABSTRACT)) != 0)
+      if (sym.isStaticMember)
+        fs += "static"
+      if (!sym.enclClass.hasFlag(INTERFACE) && !sym.isClassConstructor)
+        printFlag(FINAL, "final")
+      if ((flags & (DEFERRED | ABSTRACT)) != 0 && !sym.enclClass.hasFlag(INTERFACE))
         fs += "abstract"
       val flagstr = fs.mkString("", " ", "")
       if (flagstr.length != 0) { print(flagstr); print(" ")  }
@@ -474,4 +486,18 @@ with JribbleNormalization
       case _:Literal => true
     }
   }
+
+  //copied from GenJVM
+  def isStaticModule(sym: Symbol): Boolean = {
+    import scala.reflect.generic.Flags
+    sym.isModuleClass && !sym.isImplClass && !sym.hasFlag(Flags.LIFTED)
+  }
+
+  //copied from GenJVM
+  def isTopLevelModule(sym: Symbol): Boolean =
+    atPhase (currentRun.picklerPhase.next) {
+      sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass
+    }
+
+  def isInterface(sym: Symbol): Boolean = sym.hasFlag(INTERFACE)
 }

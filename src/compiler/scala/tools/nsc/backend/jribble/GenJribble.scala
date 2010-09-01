@@ -348,6 +348,8 @@ with JribbleNormalization
         print(")")
 
       case Try(block, catches, finalizer) =>
+        //TODO(grek): Make sure that such name won't cause any troubles (clashing, etc)
+        val WILDCARD_VAR_NAME = "$WILDCARD"
         print("try ");
         printInBraces(block, ret)
         for (caseClause <- catches)
@@ -358,9 +360,17 @@ with JribbleNormalization
               print(" catch("); print(exBinding.symbol.tpe); print(" ");
               print(exName); print(") ");
               printInBraces(catchBody, ret)
+            case CaseDef(Typed(Ident(nme.WILDCARD), tpt), _, catchBody) =>
+              print(" catch("); print(tpt.tpe); print(" ");
+              print(WILDCARD_VAR_NAME); print(") ");
+              printInBraces(catchBody, ret)
+            case CaseDef(Ident(nme.WILDCARD), _, catchBody) =>
+              print(" catch("); print(definitions.ThrowableClass.tpe); print(" ");
+              print(WILDCARD_VAR_NAME); print(") ");
+              printInBraces(catchBody, ret)
 
-            // TODO(spoon): handle any other patterns that are possible here
-            // TODO(grek): missing cases are CaseDef(Ident, _, ) and CaseDef(Typed(Ident), _, _)
+            //TODO(grek): figure out if we can translated cases in above way without messing up
+            //logic behind catching exceptions
           }
         if (finalizer != EmptyTree) {
           print(" finally ")

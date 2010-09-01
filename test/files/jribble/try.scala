@@ -8,4 +8,12 @@ class Try {
       case x: Exception => println("second case " + x)
     }
   }
+  
+  def typedWildcardTry {
+    try { true } catch { case _: ClassCastException => false }
+  }
+  
+  def wildcardTry {
+    try { true } catch { case _ => false }
+  }
 }

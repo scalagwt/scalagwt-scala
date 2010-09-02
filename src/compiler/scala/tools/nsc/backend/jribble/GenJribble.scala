@@ -375,6 +375,8 @@ with JribbleNormalization
       //we can delegate printing of Array literals to super class because it prints it in jribble-friendly
       //way: Array[Type]{x1, x2, ..., xn}
       case tree: ArrayValue => super.printRaw(tree)
+      //TODO(grek): It looks that it's safe to just drop Typed but this should be double checked
+      case Typed(expr, _) => print(expr)
 
       case x => unit.error(x.pos, "Unhandled tree type " + x.getClass)
       } }

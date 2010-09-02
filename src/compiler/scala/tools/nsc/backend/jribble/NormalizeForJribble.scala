@@ -195,6 +195,12 @@ with JribbleNormalization
         val exp1T = transformStatement(explicitBlock(exp1))
         val exp2T = transformStatement(explicitBlock(exp2))
         treeCopy.If(tree, condT, exp1T, exp2T)
+      case tree@Match(selector, cases) =>
+        val casesT = cases map {
+          case x@CaseDef(pat, guard, body) =>
+            treeCopy.CaseDef(x, pat, guard, transformStatement(explicitBlock(body)))
+        }
+        treeCopy.Match(tree, selector, casesT)
       case Block(stats, exp) =>
         val newBlockStats = new ListBuffer[Tree]
         for (stat <- stats) {
@@ -281,7 +287,7 @@ with JribbleNormalization
           // of type nothing, then it is necessary to
           // make a top-level if
           if (isUnit(tree.tpe)) {
-            newStats += transformStatement(If(condT, exp1, exp2) setType tree.tpe)
+            newStats += transformStatement(If(condT, exp1, exp2) setType tree.tpe setPos tree.pos)
             unitLiteral
           } else {
             val resV = allocLocal(tree.tpe, tree.pos)
@@ -291,10 +297,31 @@ with JribbleNormalization
                 Assign(mkAttributedIdent(resV), branch) setType branch.tpe  // TODO(spoon): should be type unit?
               }
             newStats += transformStatement(
-                If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe)
+                If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe setPos tree.pos)
             mkAttributedIdent(resV)
           }
         }
+      case tree@Match(selector, cases) =>
+        val (selectorStats, selectorExpr) = removeNonJribbleExpressions(selector, false)
+        newStats ++= selectorStats
+        val selVal = allocLocal(selectorExpr.tpe, tree.pos)
+        newStats += ValDef(selVal, selectorExpr)
+        val selValIdent = mkAttributedIdent(selVal)
+        if (isUnit(tree.tpe)) {
+          newStats += transformStatement(treeCopy.Match(tree, selValIdent, cases))
+          unitLiteral
+        } else {
+          val resV = allocLocal(tree.tpe, tree.pos)
+          newStats += ValDef(resV)
+          def statForBody(body: Tree) =
+            if (isNothing(body)) body else {
+              Assign(mkAttributedIdent(resV), body) setType body.tpe  // TODO(grek): should be type unit?
+            }
+          val casesT = cases map { case x: CaseDef => x.copy(body = statForBody(x.body)) setType x.tpe setPos x.pos }
+          newStats += transformStatement(Match(selValIdent, casesT) setType tree.tpe setPos tree.pos)
+          mkAttributedIdent(resV)
+        }
+
       case tree@Try(block, catches, finalizer) =>
         if (isUnit(tree.tpe)) {
           newStats += transformStatement(tree)

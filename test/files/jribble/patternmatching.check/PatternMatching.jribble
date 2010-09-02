@@ -29,6 +29,27 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
       }
   }
   
+  public V shouldBeTranslatedToSwitch(I x) {
+    I temp7 = x;
+    I $8$ = temp7;
+    Ljava/lang/String; $9$;
+    switch ($8$) {
+      0:
+        $9$ = "got zero";
+        break;
+      1:
+        $9$ = "got one or two";
+        break;
+      2:
+        $9$ = "got one or two";
+        break;
+      default:
+        $9$ = "got something else";
+        break;
+    }
+    Ljava/lang/String; msg = $9$;
+  }
+  
   public PatternMatching() {
     (Ljava/lang/Object;::super()V)();
   }

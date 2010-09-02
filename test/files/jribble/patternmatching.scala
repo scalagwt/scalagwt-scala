@@ -7,5 +7,13 @@ class PatternMatching {
       case xs => println("more than one element list")
     }
   }
+  
+  def shouldBeTranslatedToSwitch(x: Int) {
+    val msg = x match {
+      case 0 => "got zero"
+      case 1 | 2 => "got one or two"
+      case _ => "got something else"
+    }
+  }
 
 }

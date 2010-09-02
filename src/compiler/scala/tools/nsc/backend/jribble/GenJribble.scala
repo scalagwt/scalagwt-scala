@@ -378,6 +378,51 @@ with JribbleNormalization
           print("}")
         }
 
+      case tree@Match(selector, cases) => {
+        assert(cases forall { case CaseDef(_, guard, _) => guard == EmptyTree })
+        val ident: Ident = selector match {
+          //we can safely drop Typed wrapper here because we rely on coercion (for numerical types) in jribble
+          case Typed(expr: Ident, tpt) if (tpt.tpe =:= definitions.IntClass.tpe) => expr
+          case expr: Ident if (expr.tpe =:= definitions.IntClass.tpe) => expr
+          case x => Predef.error("Unrecognized selector in Match node " + x)
+        }
+        val switches: List[(List[Int], Tree)] = cases flatMap {
+          case CaseDef(Literal(Constant(x: Int)), _, body) => (x :: Nil, body) :: Nil
+          case tree@CaseDef(Alternative(xs), _, body) =>
+            //TODO(grek): debugging line as I failed to find a way to trigger Alternative from scala source code
+            unit.warning(tree.pos, "Got alternative for CaseDef! Report your source code to jribble maintainers.")
+            val constants = xs map { case Literal(Constant(x: Int)) => x }
+            (constants, body) :: Nil
+          case CaseDef(Ident(nme.WILDCARD), _, _) => Nil //this is handled separately
+        }
+        val default: Option[Tree] = {
+          val trees = cases collect { case CaseDef(Ident(nme.WILDCARD), _, body) => body }
+          assert(trees.size <= 1)
+          trees.headOption
+        }
+        def printBody(body: Tree) = body match {
+          case Block(stats, expr) if (expr equalsStructure Literal(())) =>
+            indent;
+            println;
+            printStats(stats)
+            println; print("break;");
+            undent;
+          case x => Predef.error("Unrecognized body in Match node " + x)
+        }
+        print("switch ("); print(ident); print(")");
+        print(" {"); indent;
+        switches foreach {
+          case (constants, body) =>
+            constants foreach { x => println; print(x.toString); print(":"); }
+            printBody(body)
+        }
+        default foreach { body =>
+          println; print("default:");
+          printBody(body)
+        }
+        undent; println; print("}");
+      }
+
       case Throw(expr) =>
         print("throw "); print(expr)
 

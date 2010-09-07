@@ -138,8 +138,6 @@ with JribbleNormalization
       (treeNewStats, result)
     }
 
-
-
     /**
      * Transform a list of trees, assuming none is in statement
      * position.  Preserve order of evaluation.
@@ -277,29 +275,22 @@ with JribbleNormalization
           newStats += transformStatement(stat)
         }
         transform(expr)
-      case If(cond, exp1, exp2) =>
+      //TODO(grek): Handle translation of if expression into jribble's conditional expression
+      case tree@If(cond, exp1, exp2) =>
         val condT = transform(cond)
-        val (branchStats, List(condTT, exp1T, exp2T)) = removeNonJribbleExpressions(List(condT, exp1, exp2))
-        if (branchStats.isEmpty && !isUnitOrNothing(exp1T) && !isUnitOrNothing(exp2T)) {
-          If(condTT, exp1T, exp2T) setType tree.tpe setPos tree.pos
+        if (isUnit(tree.tpe)) {
+          newStats += transformStatement(If(condT, exp1, exp2) setType tree.tpe setPos tree.pos)
+          unitLiteral
         } else {
-          // If either branch needs statements, or if either branch is
-          // of type nothing, then it is necessary to
-          // make a top-level if
-          if (isUnit(tree.tpe)) {
-            newStats += transformStatement(If(condT, exp1, exp2) setType tree.tpe setPos tree.pos)
-            unitLiteral
-          } else {
-            val resV = allocLocal(tree.tpe, tree.pos)
-            newStats += ValDef(resV)
-            def statForBranch(branch: Tree) =
-              if (isNothing(branch)) branch else {
-                Assign(mkAttributedIdent(resV), branch) setType branch.tpe  // TODO(spoon): should be type unit?
-              }
-            newStats += transformStatement(
-                If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe setPos tree.pos)
-            mkAttributedIdent(resV)
-          }
+          val resV = allocLocal(tree.tpe, tree.pos)
+          newStats += ValDef(resV)
+          def statForBranch(branch: Tree) =
+            if (isNothing(branch)) branch else {
+              Assign(mkAttributedIdent(resV), branch) setType branch.tpe  // TODO(spoon): should be type unit?
+            }
+          newStats += transformStatement(
+              If(condT, statForBranch(exp1), statForBranch(exp2)) setType tree.tpe setPos tree.pos)
+          mkAttributedIdent(resV)
         }
       case tree@Match(selector, cases) =>
         val (selectorStats, selectorExpr) = removeNonJribbleExpressions(selector, false)

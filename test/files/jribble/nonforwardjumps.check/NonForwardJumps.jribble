@@ -11,10 +11,10 @@ public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/Scal
     I res;
     I $1$;
     _tailfact: while(true) {
-      I $4$;
+      I $2$;
       if (n == 0)
         {
-          $4$ = res;
+          $2$ = res;
         }
       else
         {
@@ -22,9 +22,9 @@ public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/Scal
           n = n - 1;
           res = res * n;
           continue _tailfact;
-          $4$ = ();
+          $2$ = ();
         }
-      $1$ = $4$;
+      $1$ = $2$;
       break;
     }
     return $1$;

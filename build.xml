@@ -564,7 +564,10 @@ QUICK BUILD (QUICK)
       srcdir="${src.dir}/library"
       target="jribble"
       jvmargs="${scalacfork.jvmargs}">
-      <include name="scala/ScalaObject.scala"/>
+      <include name="scala/**/*.scala"/>
+      <!-- TODO(grek): scala/text/Document.scala is the only scala file from scala library 
+           that crashes jribble backend so it's disabled for now -->
+      <exclude name="scala/text/Document.scala"/>
       <compilationpath refid="quick.compilation.path"/>
     </scalacfork>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">

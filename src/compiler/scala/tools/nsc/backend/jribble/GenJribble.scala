@@ -324,6 +324,8 @@ with JribbleNormalization
 
       case This(_) => print("this")
 
+      case Super(_, _) => print("super")
+
       case If(cond, exp1: Block, exp2) =>
         // If statement
         super.printRaw(tree)

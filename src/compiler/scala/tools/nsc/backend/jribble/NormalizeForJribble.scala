@@ -90,10 +90,10 @@ with JribbleNormalization
     /**
      * The symbols for LabelDef's that enclose the current scope.
      */
-    val labelDefs = mutable.Set.empty[Symbol]
+    val labelDefs = mutable.Map.empty[Symbol, List[Symbol]]
 
-    def recordLabelDefDuring[A](label: Symbol)(f: =>A) = {
-      labelDefs += label
+    def recordLabelDefDuring[A](label: Symbol, paramNames: List[Symbol])(f: =>A) = {
+      labelDefs += label -> paramNames
       val res = f
       labelDefs -= label
       res
@@ -215,10 +215,6 @@ with JribbleNormalization
         mkBlock(newBlockStats.toList, unitLiteral)
       case ValDef(mods, name, tpt, rhs) =>
         treeCopy.ValDef(tree, mods, name, tpt, transform(rhs))
-      case tree@LabelDef(name, params, rhs) =>
-        recordLabelDefDuring(tree.symbol) {
-            treeCopy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
-        }
       case Try(block, catches, finalizer) =>
         val blockT = transformStatement(explicitBlock(block))
         val catchesT = catches map (transform(_).asInstanceOf[CaseDef])
@@ -248,20 +244,25 @@ with JribbleNormalization
         currentMethodSym = savedMethodSym
         res
       case tree@LabelDef(name, params, rhs) =>
-        if (!params.isEmpty)
-          //TODO(grek): this can be emited by pattern matching logic but we don't support it at the moment
-          cunit.error(tree.pos,"Found non-empty parameter list in LabelDef.")
-        recordLabelDefDuring(tree.symbol) {
+        val paramLocals = params.map { x =>
+          val newLocal = currentMethodSym.newValue(x.pos, x.name)
+          newLocal.setInfo(x.tpe)
+          newLocal
+        }
+        newStats ++= paramLocals map (ValDef)
+        recordLabelDefDuring(tree.symbol, paramLocals) {
           if (isUnit(rhs.tpe)) {
-            newStats += transformStatement(tree)
+            newStats += treeCopy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
             unitLiteral
           } else {
             val resultLocal = allocLocal(rhs.tpe, tree.pos)
             newStats += ValDef(resultLocal)
-            newStats += transformStatement(
-                LabelDef(name, Nil,
-                         Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe) copyAttrs tree)
-              mkAttributedIdent(resultLocal) setPos tree.pos
+            val newRhs = transformStatement {
+              val assign = Assign(mkAttributedIdent(resultLocal), rhs) setType rhs.tpe
+              explicitBlock(assign)
+            }
+            newStats += treeCopy.LabelDef(tree, name, params, newRhs)
+            mkAttributedIdent(resultLocal) setPos tree.pos
           }
         }
 
@@ -318,9 +319,19 @@ with JribbleNormalization
         transform(box(fun.symbol, expr))
       case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
         transform(unbox(fun.symbol, expr))
-      case Apply(fun, args) if (labelDefs contains fun.symbol) =>
-        // the type of a continue should be Nothing
-        mkApply(fun, args) setType definitions.NothingClass.tpe
+      case tree@Apply(fun: Ident, args) =>
+        labelDefs.get(fun.symbol) match {
+          case Some(paramLocals) =>
+            (paramLocals zip args) foreach {
+              case (local, arg) => newStats += Assign(mkAttributedIdent(local), arg) setType arg.tpe
+            }
+            // the type of a continue should be Nothing
+            newStats += mkApply(fun, args) setType definitions.NothingClass.tpe
+            unitLiteral
+          case None =>
+            cunit.error(tree.pos, "Jump to LabelDef that is not enclosing jump instruction are not supported in jribble.")
+            tree
+        }
       case tree@Apply(fun @ Select(receiver, name), args) if isEqOnAnyRef(fun) => {
         assert(args.size == 1)
         assert(args.head.tpe <:< definitions.AnyRefClass.tpe)

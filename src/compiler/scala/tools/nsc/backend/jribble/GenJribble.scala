@@ -242,7 +242,7 @@ with JribbleNormalization
         printStats(stats)
         undent; println; print("}")
 
-      case tree@LabelDef(_, List(), body@Block(bodyStats, bodyExpr)) =>
+      case tree@LabelDef(_, _, body@Block(bodyStats, bodyExpr)) =>
         assert (bodyExpr equalsStructure Literal(()))
         labelSyms += tree.symbol
         print(tree.symbol.name); print(": while(true) {"); indent; println;

@@ -1,0 +1,36 @@
+public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public I fact(I n) {
+    return this.(LNonForwardJumps;::tailfact$1(II)I)(n, 1);
+  }
+  
+  private final I tailfact$1(I n, I res) {
+    LNonForwardJumps; _$this = this;
+    LNonForwardJumps; _$this;
+    I n;
+    I res;
+    I $1$;
+    _tailfact: while(true) {
+      I $4$;
+      if (n == 0)
+        {
+          $4$ = res;
+        }
+      else
+        {
+          _$this = this;
+          n = n - 1;
+          res = res * n;
+          continue _tailfact;
+          $4$ = ();
+        }
+      $1$ = $4$;
+      break;
+    }
+    return $1$;
+  }
+  
+  public NonForwardJumps() {
+    (Ljava/lang/Object;::super()V)();
+  }
+}

@@ -16,14 +16,14 @@ public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   }
   
   public V; ifWithNothingType() {
-    scala.runtime.Nothing$ $1$;
+    Lscala/runtime/Nothing$; $1$;
     if (this.(LIf;::cond()Z;)())
       {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)scala.runtime.Nothing$)("Hello, world!");
+        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("Hello, world!");
       }
     else
       {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)scala.runtime.Nothing$)("Hello odd world!");
+        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("Hello odd world!");
       }
   }
   

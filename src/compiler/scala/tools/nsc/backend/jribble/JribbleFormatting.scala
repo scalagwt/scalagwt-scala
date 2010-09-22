@@ -50,9 +50,9 @@ trait JribbleFormatting {
 
     // TODO(spoon): why the special cases?  double check that they are needed
     if (sym == definitions.NothingClass)
-      return "scala.runtime.Nothing$"
+      return "Lscala/runtime/Nothing$;"
     else if (sym == definitions.NullClass)
-      return "scala.runtime.Null$"
+      return "Lscala/runtime/Null$;"
     else if (isJribblePrimitive(sym.tpe))
       return jribbleName(sym.tpe)
 

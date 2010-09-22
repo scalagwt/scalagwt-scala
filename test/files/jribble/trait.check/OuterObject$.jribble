@@ -1,7 +1,7 @@
 public final class LOuterObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LOuterObject$; MODULE$ = new (LOuterObject$;::OuterObject$()V)();
+  public static LOuterObject$; MODULE$ = new (LOuterObject$;::OuterObject$()V;)();
   
   public OuterObject$() {
-    (Ljava/lang/Object;::super()V)();
+    (Ljava/lang/Object;::super()V;)();
   }
 }

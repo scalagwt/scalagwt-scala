@@ -68,15 +68,15 @@ trait JribbleFormatting {
   protected def jribbleName(tpe: Type): String = {
     def tpstr(typ: TypeKind): String =
       typ match {
-        case UNIT => "V" // TODO(spoon): depends on context?  a Scala variable can be of type unit!
-        case BOOL            => "Z"
-        case BYTE            => "B"
-        case SHORT           => "S"
-        case CHAR            => "C"
-        case INT             => "I"
-        case LONG            => "L"
-        case FLOAT           => "F"
-        case DOUBLE          => "D"
+        case UNIT => "V;" // TODO(spoon): depends on context?  a Scala variable can be of type unit!
+        case BOOL            => "Z;"
+        case BYTE            => "B;"
+        case SHORT           => "S;"
+        case CHAR            => "C;"
+        case INT             => "I;"
+        case LONG            => "L;"
+        case FLOAT           => "F;"
+        case DOUBLE          => "D;"
         case REFERENCE(cls)  => jribbleName(cls)
         case ARRAY(elem)     => tpstr(elem) + "["
       }
@@ -98,7 +98,7 @@ trait JribbleFormatting {
     val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
     val on = jribbleName(s.owner)
     val name = "super"
-    val returnType = "V"
+    val returnType = "V;"
     "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
@@ -106,7 +106,7 @@ trait JribbleFormatting {
     val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
     val on = jribbleName(s.owner)
     val name = jribbleShortName(s.owner)
-    val returnType = "V"
+    val returnType = "V;"
     "(" + on + "::" + name + moduleSuffix(s.owner) + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 

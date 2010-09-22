@@ -1,6 +1,6 @@
 public final class LOuterTrait$Inner$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public OuterTrait$Inner$(LOuterTrait; $outer) {
-    (Ljava/lang/Object;::super()V)();
+    (Ljava/lang/Object;::super()V;)();
   }
 }

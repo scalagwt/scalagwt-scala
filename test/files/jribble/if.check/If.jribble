@@ -1,23 +1,23 @@
 public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
-  public Z cond() {
+  public Z; cond() {
     return true;
   }
   
-  public V ifWithUnboxedUnitType() {
-    if (this.(LIf;::cond()Z)())
+  public V; ifWithUnboxedUnitType() {
+    if (this.(LIf;::cond()Z;)())
       {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("Hello, world!");
+        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("Hello, world!");
       }
     else
       {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V)("Hello odd world!");
+        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("Hello odd world!");
       }
   }
   
-  public V ifWithNothingType() {
+  public V; ifWithNothingType() {
     scala.runtime.Nothing$ $1$;
-    if (this.(LIf;::cond()Z)())
+    if (this.(LIf;::cond()Z;)())
       {
         Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)scala.runtime.Nothing$)("Hello, world!");
       }
@@ -27,23 +27,23 @@ public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
       }
   }
   
-  public I ifWithStatmentsButReturningValue() {
-    I $2$;
-    if (this.(LIf;::cond()Z)())
+  public I; ifWithStatmentsButReturningValue() {
+    I; $2$;
+    if (this.(LIf;::cond()Z;)())
       {
-        this.(LIf;::cond()Z)();
+        this.(LIf;::cond()Z;)();
         $2$ = 0;
       }
     else
       {
-        this.(LIf;::cond()Z)();
+        this.(LIf;::cond()Z;)();
         $2$ = 1;
       }
     return $2$;
   }
   
-  public V ifWithoutElseAsStmt() {
-    if (this.(LIf;::cond()Z)())
+  public V; ifWithoutElseAsStmt() {
+    if (this.(LIf;::cond()Z;)())
       {
         
       }
@@ -53,93 +53,93 @@ public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
       }
   }
   
-  public V sideeffect() {
+  public V; sideeffect() {
     
   }
   
-  public V deeplyNestedIf() {
-    I x = 0;
+  public V; deeplyNestedIf() {
+    I; x = 0;
     if (x == 0)
       {
-        this.(LIf;::sideeffect()V)();
+        this.(LIf;::sideeffect()V;)();
       }
     else
       {
         if (x == 1)
           {
-            this.(LIf;::sideeffect()V)();
+            this.(LIf;::sideeffect()V;)();
           }
         else
           {
             if (x == 2)
               {
-                this.(LIf;::sideeffect()V)();
+                this.(LIf;::sideeffect()V;)();
               }
             else
               {
                 if (x == 3)
                   {
-                    this.(LIf;::sideeffect()V)();
+                    this.(LIf;::sideeffect()V;)();
                   }
                 else
                   {
                     if (x == 4)
                       {
-                        this.(LIf;::sideeffect()V)();
+                        this.(LIf;::sideeffect()V;)();
                       }
                     else
                       {
                         if (x == 5)
                           {
-                            this.(LIf;::sideeffect()V)();
+                            this.(LIf;::sideeffect()V;)();
                           }
                         else
                           {
                             if (x == 6)
                               {
-                                this.(LIf;::sideeffect()V)();
+                                this.(LIf;::sideeffect()V;)();
                               }
                             else
                               {
                                 if (x == 7)
                                   {
-                                    this.(LIf;::sideeffect()V)();
+                                    this.(LIf;::sideeffect()V;)();
                                   }
                                 else
                                   {
                                     if (x == 8)
                                       {
-                                        this.(LIf;::sideeffect()V)();
+                                        this.(LIf;::sideeffect()V;)();
                                       }
                                     else
                                       {
                                         if (x == 9)
                                           {
-                                            this.(LIf;::sideeffect()V)();
+                                            this.(LIf;::sideeffect()V;)();
                                           }
                                         else
                                           {
                                             if (x == 10)
                                               {
-                                                this.(LIf;::sideeffect()V)();
+                                                this.(LIf;::sideeffect()V;)();
                                               }
                                             else
                                               {
                                                 if (x == 11)
                                                   {
-                                                    this.(LIf;::sideeffect()V)();
+                                                    this.(LIf;::sideeffect()V;)();
                                                   }
                                                 else
                                                   {
                                                     if (x == 12)
                                                       {
-                                                        this.(LIf;::sideeffect()V)();
+                                                        this.(LIf;::sideeffect()V;)();
                                                       }
                                                     else
                                                       {
                                                         if (x == 13)
                                                           {
-                                                            this.(LIf;::sideeffect()V)();
+                                                            this.(LIf;::sideeffect()V;)();
                                                           }
                                                         else
                                                           {
@@ -161,6 +161,6 @@ public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   }
   
   public If() {
-    (Ljava/lang/Object;::super()V)();
+    (Ljava/lang/Object;::super()V;)();
   }
 }

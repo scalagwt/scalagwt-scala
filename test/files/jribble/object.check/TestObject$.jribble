@@ -1,7 +1,7 @@
 public final class LTestObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LTestObject$; MODULE$ = new (LTestObject$;::TestObject$()V)();
+  public static LTestObject$; MODULE$ = new (LTestObject$;::TestObject$()V;)();
   
   public TestObject$() {
-    (Ljava/lang/Object;::super()V)();
+    (Ljava/lang/Object;::super()V;)();
   }
 }

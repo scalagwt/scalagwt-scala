@@ -1,16 +1,16 @@
 public class LCast; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
-  public V isInstanceOfCheck() {
-    Ljava/lang/Object; x = new (Ljava/lang/Object;::Object()V)();
-    Z isString = x.<instanceof>(Ljava/lang/String;);
+  public V; isInstanceOfCheck() {
+    Ljava/lang/Object; x = new (Ljava/lang/Object;::Object()V;)();
+    Z; isString = x.<instanceof>(Ljava/lang/String;);
   }
   
-  public V asInstanceOfCast() {
-    Ljava/lang/Object; x = new (Ljava/lang/Object;::Object()V)();
+  public V; asInstanceOfCast() {
+    Ljava/lang/Object; x = new (Ljava/lang/Object;::Object()V;)();
     Ljava/lang/String; y = x.<cast>(Ljava/lang/String;);
   }
   
   public Cast() {
-    (Ljava/lang/Object;::super()V)();
+    (Ljava/lang/Object;::super()V;)();
   }
 }

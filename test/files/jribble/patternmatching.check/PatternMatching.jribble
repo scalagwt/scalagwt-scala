@@ -50,7 +50,7 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     Ljava/lang/String; msg = $2$;
   }
   
-  public PatternMatching() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
   }
   

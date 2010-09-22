@@ -25,7 +25,7 @@ public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/Scal
     I; y = 0;
   }
   
-  public ValDef() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
     this.x$u0020 = 0;
     this.y$u0020 = 0;

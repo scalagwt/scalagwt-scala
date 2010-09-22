@@ -1,10 +1,10 @@
 public class LThrow; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public V; simpleThrow() {
-    throw new (Ljava/lang/RuntimeException;::RuntimeException()V;)();
+    throw new (Ljava/lang/RuntimeException;::this()V;)();
   }
   
-  public Throw() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
   }
 }

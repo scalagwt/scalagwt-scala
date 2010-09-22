@@ -30,7 +30,7 @@ public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/Scal
     return $1$;
   }
   
-  public NonForwardJumps() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
   }
 }

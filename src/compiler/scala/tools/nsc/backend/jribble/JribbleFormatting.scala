@@ -105,9 +105,9 @@ trait JribbleFormatting {
   protected def jribbleConstructorSignature(s: Symbol): String = {
     val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
     val on = jribbleName(s.owner)
-    val name = jribbleShortName(s.owner)
+    val name = "this"
     val returnType = "V;"
-    "(" + on + "::" + name + moduleSuffix(s.owner) + (paramsTypes).mkString("(", "", ")") + returnType + ")"
+    "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
   private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe)

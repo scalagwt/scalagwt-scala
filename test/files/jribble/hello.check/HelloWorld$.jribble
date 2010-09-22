@@ -1,11 +1,11 @@
 public final class LHelloWorld$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LHelloWorld$; MODULE$ = new (LHelloWorld$;::HelloWorld$()V;)();
+  public static LHelloWorld$; MODULE$ = new (LHelloWorld$;::this()V;)();
   
   public V; main(Ljava/lang/String;[ args) {
     Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("Hello, world!");
   }
   
-  public HelloWorld$() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
   }
 }

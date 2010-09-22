@@ -160,7 +160,7 @@ public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
       }
   }
   
-  public If() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
   }
 }

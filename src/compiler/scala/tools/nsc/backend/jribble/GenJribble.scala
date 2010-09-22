@@ -226,8 +226,7 @@ with JribbleNormalization
         //printFlags(mods.flags)
         printFlags(tree.symbol)
         if (isConstructor(tree)) {
-          print(jribbleShortName(tree.symbol.owner))
-          if (tree.symbol.owner.isModuleClass) print("$")
+          print("this")
         } else {
           print(tp.tpe)
           print(" ")
@@ -318,6 +317,11 @@ with JribbleNormalization
 
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print(jribbleSuperConstructorSignature(tree.symbol))
+        printParams(args)
+
+      //trigerred by call to auxiliary constructor
+      case tree@Apply(Select(receiver, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
+        print(jribbleConstructorSignature(tree.symbol))
         printParams(args)
 
       case tree@Apply(Select(receiver, _), args) if !tree.symbol.isConstructor =>

@@ -45,7 +45,7 @@ public class LTry; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
     return Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(x$1.(Ljava/lang/Throwable;::getMessage()Ljava/lang/String;)(), "test");
   }
   
-  public Try() {
+  public this() {
     (Ljava/lang/Object;::super()V;)();
   }
 }

@@ -446,9 +446,8 @@ with JribbleNormalization
       case tree: Assign => super.printRaw(tree)
       case tree: Select => super.printRaw(tree)
       case tree: Apply => super.printRaw(tree)
-      //we can delegate printing of Array literals to super class because it prints it in jribble-friendly
-      //way: Array[Type]{x1, x2, ..., xn}
-      case tree: ArrayValue => super.printRaw(tree)
+      case ArrayValue(elemtpt, trees) =>
+        print("<"); print(elemtpt); printRow(trees, ">{", ", ", "}")
       //TODO(grek): It looks that it's safe to just drop Typed but this should be double checked
       case Typed(expr, _) => print(expr)
 

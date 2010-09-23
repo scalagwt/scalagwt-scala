@@ -34,18 +34,26 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     I; $1$ = temp7;
     Ljava/lang/String; $2$;
     switch ($1$) {
-      0:
+      0: {
         $2$ = "got zero";
         break;
-      1:
+      }
+      
+      1: {
         $2$ = "got one or two";
         break;
-      2:
+      }
+      
+      2: {
         $2$ = "got one or two";
         break;
-      default:
+      }
+      
+      default: {
         $2$ = "got something else";
         break;
+      }
+      
     }
     Ljava/lang/String; msg = $2$;
   }

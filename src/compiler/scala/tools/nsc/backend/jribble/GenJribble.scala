@@ -319,7 +319,7 @@ with JribbleNormalization
       case Apply(fun @ Select(_: New, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print("new ");
         print(jribbleConstructorSignature(fun.symbol))
-        printParams(args)
+        printParams(args) 
 
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print(jribbleSuperConstructorSignature(tree.symbol))
@@ -412,11 +412,13 @@ with JribbleNormalization
         }
         def printBody(body: Tree) = body match {
           case Block(stats, expr) if (expr equalsStructure Literal(())) =>
+            print(" {");
             indent;
             println;
             printStats(stats)
             println; print("break;");
-            undent;
+            undent; println;
+            print("}"); println;
           case x => Predef.error("Unrecognized body in Match node " + x)
         }
         print("switch ("); print(ident); print(")");

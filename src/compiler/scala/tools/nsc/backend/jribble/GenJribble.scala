@@ -498,6 +498,12 @@ with JribbleNormalization
         print(tp.tpe); print(" "); print(symName(tree, name))
     }
 
+    override def printValueParams(ts: List[ValDef]) {
+      print("(")
+      printSeq(ts){printParam}{print(", ")}
+      print(")")
+    }
+
     //TODO(grek): Revisit this method and check it against GenJVM.javaFlags method
     def printFlags(sym: Symbol): Unit = {
       val flags = sym.flags

@@ -181,17 +181,23 @@ with JribbleNormalization
         }
         printFlags(tree.symbol)
         print((if (isInterface(tree.symbol)) "interface " else "class ") + jribbleName(tree.symbol))
-        superclass foreach { x =>
-          print(" extends ")
-          print(x.tpe)
+
+        def printSep(types: List[Type], sep: String = ", "): Unit = types match {
+          case Nil => ()
+          case x :: Nil => print(x)
+          case x :: xs => print(x); print(sep); printSep(xs, sep)
         }
-        if (!ifaces.isEmpty) {
-          print(" implements ")
-          var first = true
-          for (iface <- ifaces) {
-            if (!(iface eq ifaces.head))
-                print(", ")
-            print(iface.tpe)
+        if (isInterface(tree.symbol)) {
+          print(" extends ")
+          printSep(parents.map(_.tpe))
+        } else {
+          superclass foreach { x =>
+            print(" extends ")
+            print(x.tpe)
+          }
+          if (!ifaces.isEmpty) {
+            print(" implements ")
+            printSep(ifaces.map(_.tpe))
           }
         }
         print(" {"); indent;

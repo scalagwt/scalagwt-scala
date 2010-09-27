@@ -288,6 +288,7 @@ with JribbleNormalization
           case UPDATE =>
             print(receiver); print("["); print(args.head); print("] = ")
             print(args.tail.head); print("")
+          case LENGTH => print(receiver); print(jribblePrimName(prim));
           case prim => print("Unhandled primitive ("+prim+") for "+tree)
         }
       }

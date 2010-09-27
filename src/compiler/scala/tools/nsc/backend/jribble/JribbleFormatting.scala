@@ -156,7 +156,7 @@ trait JribbleFormatting {
 	  case ZAND => "&&"                          // x && y
 
 	  // Array operations
-	  case LENGTH => ""                        // x.length
+	  case LENGTH => ".<length>"               // x.length
 	  case APPLY  => ""                        // x(y)
 	  case UPDATE => ""                        // x(y) => ""z
 

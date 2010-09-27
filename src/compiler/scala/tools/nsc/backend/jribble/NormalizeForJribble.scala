@@ -217,6 +217,11 @@ with JribbleNormalization
 
         // TODO(spoon): reuse the original tree when possible
         mkBlock(newBlockStats.toList, unitLiteral)
+      case tree@ValDef(mods, name, tpt, rhs) if isLocalValDef(tree) && mods.isPrivate =>
+        import scala.reflect.generic.Flags._
+        val newTree = treeCopy.ValDef(tree, mods &~ PRIVATE, name, tpt, transform(rhs))
+        newTree.symbol.flags = newTree.symbol.flags & ~ PRIVATE
+        newTree
       case ValDef(mods, name, tpt, rhs) =>
         treeCopy.ValDef(tree, mods, name, tpt, transform(rhs))
       case Try(block, catches, finalizer) =>
@@ -379,5 +384,7 @@ with JribbleNormalization
       import scalaPrimitives._
       isPrimitive(fun.symbol) && (getPrimitive(fun.symbol) == SYNCHRONIZED)
     }
+
+    def isLocalValDef(tree: ValDef) = !tree.symbol.owner.isClass
   }
 }

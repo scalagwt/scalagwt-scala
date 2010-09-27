@@ -15,5 +15,9 @@ class PatternMatching {
       case _ => "got something else"
     }
   }
+  
+  def unpackTuple(t: (Int, Int)) = {
+    val (x, y) = t
+  }
 
 }

@@ -1,0 +1,26 @@
+public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  protected I; bitmap$0 = 0;
+  
+  private I; x$u0020;
+  
+  public I; x() {
+    if (this.bitmap$0 & 1 == 0)
+      {
+        if (this.bitmap$0 & 1 == 0)
+          {
+            this.x$u0020 = this.(LTest;::foo()I;)();
+            this.bitmap$0 = this.bitmap$0 | 1;
+          }
+      }
+    return this.x$u0020;
+  }
+  
+  public I; foo() {
+    return 0;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

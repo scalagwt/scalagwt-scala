@@ -288,8 +288,6 @@ with JribbleNormalization
           case UPDATE =>
             print(receiver); print("["); print(args.head); print("] = ")
             print(args.tail.head); print("")
-          case SYNCHRONIZED => print("synchronized ("); print(receiver); print(") {")
-            indent; println; print(args.head); undent; println; print("}")
           case prim => print("Unhandled primitive ("+prim+") for "+tree)
         }
       }
@@ -319,7 +317,7 @@ with JribbleNormalization
       case Apply(fun @ Select(_: New, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print("new ");
         print(jribbleConstructorSignature(fun.symbol))
-        printParams(args) 
+        printParams(args)
 
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print(jribbleSuperConstructorSignature(tree.symbol))

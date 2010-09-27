@@ -357,6 +357,10 @@ with JribbleNormalization
           mkApply(treeGen.mkAttributedRef(global.platform.externalEquals), receiver :: args)
         }
       }
+      //jribble doesn't support synchronized construct so we just get rid of it
+      case Apply(fun @ Select(receiver, name), args) if isSynchronized(fun) =>
+        assert(args.tail.isEmpty)
+        transform(args.head)
       case Apply(fun, args) =>
         val funT :: argsT = transformTrees(fun :: args)
         treeCopy.Apply(tree, funT, argsT)
@@ -369,6 +373,11 @@ with JribbleNormalization
       if (isPrimitive(fun.symbol)) {
         (getPrimitive(fun.symbol) == EQ) && (receiver.tpe <:< definitions.AnyRefClass.tpe)
       } else false
+    }
+
+    def isSynchronized(fun: Select) = {
+      import scalaPrimitives._
+      isPrimitive(fun.symbol) && (getPrimitive(fun.symbol) == SYNCHRONIZED)
     }
   }
 }

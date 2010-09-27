@@ -366,6 +366,10 @@ with JribbleNormalization
       case Apply(fun @ Select(receiver, name), args) if isSynchronized(fun) =>
         assert(args.tail.isEmpty)
         transform(args.head)
+      //type coercion in jribble is achieved through casting like in Java
+      case tree@Apply(fun @ Select(receiver, name), args) if isCoercion(fun.symbol) =>
+        assert(args.isEmpty)
+        treeGen.mkCast(transform(receiver), tree.tpe)
       case Apply(fun, args) =>
         val funT :: argsT = transformTrees(fun :: args)
         treeCopy.Apply(tree, funT, argsT)
@@ -386,5 +390,10 @@ with JribbleNormalization
     }
 
     def isLocalValDef(tree: ValDef) = !tree.symbol.owner.isClass
+
+    def isCoercion(sym: Symbol): Boolean = {
+      import scalaPrimitives._
+      isPrimitive(sym) && scalaPrimitives.isCoercion(getPrimitive(sym))
+    }
   }
 }

@@ -1,0 +1,13 @@
+public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  private I; x$u0020;
+  
+  public I; x() {
+    return this.x$u0020;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+    this.x$u0020 = 0.<cast>(I;);
+  }
+}

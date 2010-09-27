@@ -442,6 +442,12 @@ with JribbleNormalization
         print(tree.tpe)
 
       case tree@Apply(_: Ident, _) => unit.error(tree.pos, "Jumping to labels not handled by jribble")
+      case Literal(Constant(x: Long)) =>
+        print(x.toString); print("L")
+      case Literal(Constant(x: Double)) =>
+        print(x.toString); print("D")
+      case Literal(Constant(x: Float)) =>
+        print(x.toString); print("F")
       case tree: Literal => super.printRaw(tree)
       case tree: Return => super.printRaw(tree)
       case tree: Ident => super.printRaw(tree)

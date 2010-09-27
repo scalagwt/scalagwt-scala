@@ -144,17 +144,18 @@ with JribbleNormalization
 
     override def printRaw(tree: Tree): Unit = printRaw(tree, false)
 
-    override def print(name: Name) = super.print(name.encode)
+    override def print(name: Name) = print(escapeKeyword(name.encode.toString))
 
     def printStats(stats: List[Tree]) =
     	printSeq(stats) {s => print(s); if (needsSemi(s)) print(";")} {println}
 
 
-    override def symName(tree: Tree, name: Name): String =
+    override def symName(tree: Tree, name: Name): String = escapeKeyword {
       if (tree.symbol != null && tree.symbol != NoSymbol) {
         ((if (tree.symbol.isMixinConstructor) "/*"+tree.symbol.owner.name+"*/" else "") +
          tree.symbol.simpleName.encode.toString)
       } else name.encode.toString;
+    }
 
     def logIfException[T](tree: Tree)(process: =>T): T =
       try {

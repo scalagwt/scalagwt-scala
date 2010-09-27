@@ -1,0 +1,18 @@
+public class L`switch`; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  private I; cast$u0020;
+  
+  public I; `cast`() {
+    return this.cast$u0020;
+  }
+  
+  public I; `break`(I; `default`) {
+    I; `continue` = `default`;
+    return `default`;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+    this.cast$u0020 = 0;
+  }
+}

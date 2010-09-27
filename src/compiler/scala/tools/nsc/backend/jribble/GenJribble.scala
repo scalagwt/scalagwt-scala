@@ -279,7 +279,7 @@ with JribbleNormalization
         prim match {
           case POS | NEG | NOT | ZNOT =>
             print(jribblePrimName(prim)); print("("); print(receiver); print(")")
-          case ADD | SUB | MUL | DIV | MOD | OR | XOR | AND | ID |
+          case ADD | SUB | MUL | DIV | MOD | OR | XOR | AND | ID | NI |
                LSL | LSR | ASR |EQ | NE | LT | LE | GT | GE | ZOR | ZAND |
                CONCAT =>
             // TODO(spoon): this does not seem to parenthesize for precedence handling

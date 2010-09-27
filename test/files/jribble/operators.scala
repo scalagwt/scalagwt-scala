@@ -17,5 +17,12 @@ class Operators {
     val x9 = s1 == null
     val x10 = null == s1
   }
+  
+  def eqOp {
+    val s1 = "test"
+    val s2 = "test2"
+    val x1 = s1 eq s2
+    val x2 = s1 ne s2
+  }
 
 }

@@ -23,6 +23,13 @@ public class LOperators; extends Ljava/lang/Object; implements Lscala/ScalaObjec
     Z; x10 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(null, s1);
   }
   
+  public V; eqOp() {
+    Ljava/lang/String; s1 = "test";
+    Ljava/lang/String; s2 = "test2";
+    Z; x1 = s1 == s2;
+    Z; x2 = s1 != s2;
+  }
+  
   public this() {
     (Ljava/lang/Object;::super()V;)();
   }

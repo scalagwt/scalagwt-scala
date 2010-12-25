@@ -207,19 +207,21 @@ trait Constants { self: Universe =>
 
     def escapedStringValue: String = {
       def escape(text: String): String = {
+        val escapes = Map('\b' -> "\\b", '\t' -> "\\t", '\n' -> "\\n", '\f' -> "\\f",
+          '\r' -> "\\r", '\"' -> "\\\"", '\'' -> "\\\'", '\\' -> "\\\\")
         val buf = new StringBuilder
         for (c <- text.iterator)
           if (c.isControl)
             buf.append("\\0" + toOctalString(c.asInstanceOf[Int]))
           else
-            buf.append(c)
+            buf.append(escapes.getOrElse(c, c))
         buf.toString
       }
       tag match {
         case NullTag   => "null"
         case StringTag => "\"" + escape(stringValue) + "\""
         case ClassTag  => "classOf[" + signature(typeValue) + "]"
-        case CharTag   => escape("\'" + charValue + "\'")
+        case CharTag   => "\'" + escape(charValue.toString) + "\'"
         case LongTag   => longValue.toString() + "L"
         case _         => value.toString()
       }

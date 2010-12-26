@@ -1,4 +1,4 @@
-class ArrayValue {
+class Arrays {
 
   def values {
     //it would be probably more obvious to use Array instead of List here
@@ -7,6 +7,12 @@ class ArrayValue {
     //on the other hand, here we'll get List.apply(/**array literal for 0 and 1**/)
     //which is exactly what we are looking for
     val x = List(0,1)
+  }
+  
+  def newArray {
+    //this tests a case where we have two dimensional array but we give the constructor one
+    //dimension only
+    val x = new Array[Array[Object]](1)
   }
 
 }

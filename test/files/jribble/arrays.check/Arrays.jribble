@@ -1,7 +1,11 @@
-public class LArrayValue; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+public class LArrays; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public V; values() {
     Lscala/collection/immutable/List; x = Lscala/collection/immutable/List$;.MODULE$.(Lscala/collection/immutable/List$;::apply(Lscala/collection/Seq;)Lscala/collection/immutable/List;)(Lscala/Predef$;.MODULE$.(Lscala/LowPriorityImplicits;::wrapIntArray(Lscala/Array;)Lscala/collection/mutable/WrappedArray;)(<I;>{0, 1}));
+  }
+  
+  public V; newArray() {
+    Ljava/lang/Object;[[ x = new Ljava/lang/Object;[1][];
   }
   
   public this() {

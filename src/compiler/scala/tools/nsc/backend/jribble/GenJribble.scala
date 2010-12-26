@@ -268,12 +268,23 @@ with JribbleNormalization
       case tree:Apply if labelSyms.contains(tree.symbol) =>
         print("continue "); print(tree.symbol.name)
 
-      case Apply(t @ Select(New(tpt), nme.CONSTRUCTOR), args) if (tpt.tpe.typeSymbol == definitions.ArrayClass) =>
-        tpt.tpe match {
-          case TypeRef(_, _, List(elemType)) =>
-            print("new "); print(elemType)
-            print("["); print(args.head); print("]")
+      case Apply(t @ Select(New(tpt), nme.CONSTRUCTOR), args) if (tpt.tpe.typeSymbol == definitions.ArrayClass) => {
+        def extractDims(tpe: Type): (Int, Type) = if (tpe.typeSymbol == definitions.ArrayClass) {
+          tpe match {
+            case TypeRef(_, _, List(elemType)) => {
+              val (dims, tpe) = extractDims(elemType)
+              (dims+1, tpe)
+            }
+          }
+        } else (0, tpe)
+        val (dims, elemType) = extractDims(tpt.tpe)
+        assert(args.size <= dims)
+        print("new "); print(elemType);
+        (args.map(Some(_)) ::: List.fill(dims-args.size)(None)) foreach {
+          case Some(arg) => print("["); print(arg); print("]")
+          case None => print("[]")
         }
+      }
 
       case Apply(fun @ Select(receiver, name), args) if isPrimitive(fun.symbol) => {
         val prim = getPrimitive(fun.symbol)

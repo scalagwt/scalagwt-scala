@@ -83,7 +83,7 @@ trait JribbleFormatting {
         case SHORT           => "S;"
         case CHAR            => "C;"
         case INT             => "I;"
-        case LONG            => "L;"
+        case LONG            => "J;"
         case FLOAT           => "F;"
         case DOUBLE          => "D;"
         case REFERENCE(cls)  => jribbleName(cls)

@@ -460,6 +460,8 @@ with JribbleNormalization
       case Literal(Constant(x: Float)) =>
         print(x.toString); print("F")
       case tree: Literal => super.printRaw(tree)
+      case tree: Ident if !tree.symbol.isPackage && tree.symbol.isModule =>
+        printLoadModule(tree.symbol)
       case tree: Return => super.printRaw(tree)
       case tree: Ident => super.printRaw(tree)
       case tree: Assign => super.printRaw(tree)

@@ -1,0 +1,18 @@
+public final class LFoo$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  public static LFoo$; MODULE$ = new (LFoo$;::this()V;)();
+  
+  private I; x$u0020;
+  
+  public I; x() {
+    return this.x$u0020;
+  }
+  
+  public I; y() {
+    return 2;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+    this.x$u0020 = 1;
+  }
+}

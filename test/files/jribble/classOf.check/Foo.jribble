@@ -1,0 +1,10 @@
+public class LFoo; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public Ljava/lang/Class; x() {
+    return LFoo;.class;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

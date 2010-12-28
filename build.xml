@@ -560,7 +560,7 @@ QUICK BUILD (QUICK)
       destdir="${build-quick.dir}/jribble/library"
       compilerpathref="locker.classpath"
       srcpath="${src.dir}/library"
-      params="${scalac.args.quick}"
+      params="${scalac.args.quick} -g:notailcalls -no-specialization"
       srcdir="${src.dir}/library"
       target="jribble"
       jvmargs="${scalacfork.jvmargs}">

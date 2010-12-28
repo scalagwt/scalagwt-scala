@@ -395,8 +395,7 @@ with JribbleNormalization
           }
         if (finalizer != EmptyTree) {
           print(" finally ")
-          indent; print(finalizer); undent; println
-          print("}")
+          printInBraces(finalizer, ret);
         }
 
       case tree@Match(selector, cases) => {

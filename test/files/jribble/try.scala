@@ -16,4 +16,8 @@ class Try {
   def wildcardTry {
     try { true } catch { case _ => false }
   }
+  
+  def tryPlusFinally {
+    try { true } finally { println("finally") }
+  }
 }

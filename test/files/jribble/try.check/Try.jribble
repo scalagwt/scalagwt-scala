@@ -41,6 +41,14 @@ public class LTry; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
     }
   }
   
+  public V; tryPlusFinally() {
+    try {
+      
+    } finally {
+      Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("finally");
+    }
+  }
+  
   private final Z; gd1$1(Ljava/lang/Exception; x$1) {
     return Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(x$1.(Ljava/lang/Throwable;::getMessage()Ljava/lang/String;)(), "test");
   }

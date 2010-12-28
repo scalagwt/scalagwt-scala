@@ -3,7 +3,7 @@ public class L`switch`; extends Ljava/lang/Object; implements Lscala/ScalaObject
   private I; cast$u0020;
   
   public I; `cast`() {
-    return this.cast$u0020;
+    return this.(I;)cast$u0020;
   }
   
   public I; `break`(I; `default`) {
@@ -13,6 +13,6 @@ public class L`switch`; extends Ljava/lang/Object; implements Lscala/ScalaObject
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.cast$u0020 = 0;
+    this.(I;)cast$u0020 = 0;
   }
 }

@@ -3,31 +3,43 @@ public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/Scal
   private I; x$u0020;
   
   public I; x() {
-    return this.x$u0020;
+    return this.(I;)x$u0020;
   }
   
   private I; y$u0020;
   
   public I; y() {
-    return this.y$u0020;
+    return this.(I;)y$u0020;
   }
   
   public V; y_$eq(I; x$1) {
-    this.y$u0020 = x$1;
+    this.(I;)y$u0020 = x$1;
   }
   
   public abstract I; z();
   
   public abstract V; z_$eq(I; x$1);
   
+  private I; a$u0020;
+  
+  public I; a() {
+    return this.(I;)a$u0020;
+  }
+  
   public V; defsInMethod() {
     I; x = 0;
     I; y = 0;
   }
   
+  public V; valRefs() {
+    I; a1 = this.(LValDef;::a()I;)();
+    I; b1 = LValDef$;.MODULE$.(LValDef$;::b()I;)();
+  }
+  
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.x$u0020 = 0;
-    this.y$u0020 = 0;
+    this.(I;)x$u0020 = 0;
+    this.(I;)y$u0020 = 0;
+    this.(I;)a$u0020 = 1;
   }
 }

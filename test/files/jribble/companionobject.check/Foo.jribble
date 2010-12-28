@@ -3,7 +3,7 @@ public class LFoo; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   private I; referCompanionVal1$u0020;
   
   public I; referCompanionVal1() {
-    return this.referCompanionVal1$u0020;
+    return this.(I;)referCompanionVal1$u0020;
   }
   
   public I; referCompanionVal2() {
@@ -13,7 +13,7 @@ public class LFoo; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   private I; referCompanionDef1$u0020;
   
   public I; referCompanionDef1() {
-    return this.referCompanionDef1$u0020;
+    return this.(I;)referCompanionDef1$u0020;
   }
   
   public I; referCompanionDef2() {
@@ -22,7 +22,7 @@ public class LFoo; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.referCompanionVal1$u0020 = LFoo$;.MODULE$.(LFoo$;::x()I;)();
-    this.referCompanionDef1$u0020 = LFoo$;.MODULE$.(LFoo$;::y()I;)();
+    this.(I;)referCompanionVal1$u0020 = LFoo$;.MODULE$.(LFoo$;::x()I;)();
+    this.(I;)referCompanionDef1$u0020 = LFoo$;.MODULE$.(LFoo$;::y()I;)();
   }
 }

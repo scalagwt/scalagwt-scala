@@ -3,32 +3,32 @@ public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   private I; x1$u0020;
   
   public I; x1() {
-    return this.x1$u0020;
+    return this.(I;)x1$u0020;
   }
   
-  private L; x2$u0020;
+  private J; x2$u0020;
   
-  public L; x2() {
-    return this.x2$u0020;
+  public J; x2() {
+    return this.(J;)x2$u0020;
   }
   
   private F; x3$u0020;
   
   public F; x3() {
-    return this.x3$u0020;
+    return this.(F;)x3$u0020;
   }
   
   private D; x4$u0020;
   
   public D; x4() {
-    return this.x4$u0020;
+    return this.(D;)x4$u0020;
   }
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.x1$u0020 = 0;
-    this.x2$u0020 = 0L;
-    this.x3$u0020 = 0.0F;
-    this.x4$u0020 = 0.0D;
+    this.(I;)x1$u0020 = 0;
+    this.(J;)x2$u0020 = 0L;
+    this.(F;)x3$u0020 = 0.0F;
+    this.(D;)x4$u0020 = 0.0D;
   }
 }

@@ -465,7 +465,10 @@ with JribbleNormalization
       case tree: Return => super.printRaw(tree)
       case tree: Ident => super.printRaw(tree)
       case tree: Assign => super.printRaw(tree)
-      case tree: Select => super.printRaw(tree)
+      case tree@Select(qualifier, name) =>
+        print(qualifier);
+        print(".("); print(jribbleName(tree.tpe)); print(")");
+        print(symName(tree, name));
       case tree: Apply => super.printRaw(tree)
       case ArrayValue(elemtpt, trees) =>
         print("<"); print(elemtpt); printRow(trees, ">{", ", ", "}")

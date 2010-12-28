@@ -564,10 +564,43 @@ QUICK BUILD (QUICK)
       srcdir="${src.dir}/library"
       target="jribble"
       jvmargs="${scalacfork.jvmargs}">
-      <include name="scala/**/*.scala"/>
       <!-- TODO(grek): scala/text/Document.scala is the only scala file from scala library 
            that crashes jribble backend so it's disabled for now -->
-      <exclude name="scala/text/Document.scala"/>
+      <include name="scala/annotation/**/*.scala"/>
+      <!-- Collections, excluding parallel stuff, WeakHashMap and things referring to reflection -->
+      <include name="scala/collection/generic/**/*.scala"/>
+      <exclude name="scala/collection/generic/Signalling.scala"/>
+      <exclude name="scala/collection/generic/CanCombineFrom.scala"/>
+      <exclude name="scala/collection/generic/*Parallel*.scala"/>
+      <exclude name="scala/collection/generic/HasNewCombiner.scala"/>
+      <include name="scala/collection/immutable/**/*.scala"/>
+      <exclude name="scala/collection/immutable/PagedSeq.scala"/>
+      <include name="scala/collection/interfaces/**/*.scala"/>
+      <include name="scala/collection/mutable/**/*.scala"/>
+      <exclude name="scala/collection/mutable/WeakHashMap.scala"/>
+      <include name="scala/collection/script/**/*.scala"/>
+      <include name="scala/collection/*.scala"/>
+      <exclude name="scala/collection/Parallel*.scala"/>
+      <exclude name="scala/collection/JavaConversions.scala"/>
+      <include name="scala/math/**/*.scala"/>
+      <include name="scala/reflect/*Manifest*.scala"/>
+      <include name="scala/runtime/**/*.scala"/>
+      <exclude name="scala/runtime/MethodCache.scala"/>
+      <include name="scala/util/Random.scala"/>
+      <include name="scala/util/automata/**/*.scala"/>
+      <include name="scala/util/control/**/*.scala"/>
+      <include name="scala/util/regexp/**/*.scala"/>
+      <include name="scala/xml/*.scala"/>
+      <exclude name="scala/xml/Xhtml.scala"/>
+      <include name="scala/xml/dtd/*.scala"/>
+      <exclude name="scala/xml/dtd/ContentModelParser.scala"/>
+      <include name="scala/xml/parsing/TokenTests.scala"/>
+      <include name="scala/xml/parsing/XhtmlEntities.scala"/>
+      <include name="scala/xml/transform/**/*.scala"/>
+      <include name="scala/*.scala"/>
+      <exclude name="scala/specialized.scala"/>
+      <exclude name="scala/Symbol.scala"/>
+      <exclude name="scala/Application.scala"/>
       <compilationpath refid="quick.compilation.path"/>
     </scalacfork>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
@@ -577,6 +610,8 @@ QUICK BUILD (QUICK)
     <copy todir="${build-quick.dir}/jribble/library">
       <fileset dir="${src.dir}/library">
         <include name="**/*.xml"/>
+        <include name="scala/runtime/*.java"/>
+        <include name="scala/math/ScalaNumber.java"/>
       </fileset>
     </copy>
     <touch file="${build-quick.dir}/library-jribble.complete" verbose="no"/>

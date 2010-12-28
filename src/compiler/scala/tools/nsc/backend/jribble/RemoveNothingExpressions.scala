@@ -45,12 +45,6 @@ with JribbleAnalysis
           } else {
             tree
           }
-        case LabelDef(name, params, rhs) =>
-          if (isNothing(rhs)) {
-            rhs
-          } else {
-            tree
-          }
 
         case Block(stats, expr) =>
           val nothingIndex = stats findIndexOf isNothing

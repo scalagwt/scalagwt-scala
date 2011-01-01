@@ -189,8 +189,11 @@ with JribbleNormalization
           case x :: xs => print(x); print(sep); printSep(xs, sep)
         }
         if (isInterface(tree.symbol)) {
-          print(" extends ")
-          printSep(parents.map(_.tpe))
+          val interfaceParents = parents.map(_.tpe).filterNot(_ == definitions.ObjectClass.tpe)
+          if (!interfaceParents.isEmpty) {
+            print(" extends ")
+            printSep(interfaceParents)
+          }
         } else {
           superclass foreach { x =>
             print(" extends ")

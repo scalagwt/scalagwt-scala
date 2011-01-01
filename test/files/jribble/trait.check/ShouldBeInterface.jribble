@@ -1,4 +1,4 @@
-public interface LShouldBeInterface; extends Ljava/lang/Object; {
+public interface LShouldBeInterface; {
   
   public I; test(I; x);
 }

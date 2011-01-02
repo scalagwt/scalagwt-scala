@@ -14,5 +14,13 @@ class Arrays {
     //dimension only
     val x = new Array[Array[Object]](1)
   }
+  
+  def returnOneArray[T: ClassManifest]: Array[T] = Array.ofDim(1)
+  
+  def getOneArray[T: ClassManifest] = returnOneArray
+  
+  def returnTwoArray[T: ClassManifest]: Array[Array[T]] = Array.ofDim(1, 1)
+  
+  def getTwoArray[T: ClassManifest] = returnTwoArray
 
 }

@@ -1,4 +1,4 @@
 public final class LHelloWorld; {
-  public final static V; main(Ljava/lang/String;[ x_0) { LHelloWorld$;.MODULE$.(LHelloWorld$;::main(Lscala/Array;)V;)(x_0); }
+  public final static V; main(Ljava/lang/String;[ x_0) { LHelloWorld$;.MODULE$.(LHelloWorld$;::main(Ljava/lang/String;[)V;)(x_0); }
   
 }

@@ -96,15 +96,15 @@ trait JribbleFormatting {
     jribbleName(sym, true, _ => "")
 
   protected def jribbleMethodSignature(s: Symbol): String = {
-    val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
+    val paramsTypes = s.tpe.paramTypes.map(jribbleName)
     val on = jribbleName(s.owner)
     val name = escapeKeyword(s.name.encode.toString)
-    val returnType = jribbleName(s.tpe.resultType.typeSymbol)
+    val returnType = jribbleName(s.tpe.resultType)
     "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
   protected def jribbleSuperConstructorSignature(s: Symbol): String = {
-    val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
+    val paramsTypes = s.tpe.paramTypes.map(jribbleName)
     val on = jribbleName(s.owner)
     val name = "super"
     val returnType = "V;"
@@ -112,7 +112,7 @@ trait JribbleFormatting {
   }
 
   protected def jribbleConstructorSignature(s: Symbol): String = {
-    val paramsTypes = s.tpe.paramTypes.map(_.typeSymbol).map(jribbleName)
+    val paramsTypes = s.tpe.paramTypes.map(jribbleName)
     val on = jribbleName(s.owner)
     val name = "this"
     val returnType = "V;"

@@ -466,7 +466,7 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
     val runsRightAfter = None
   } with GenJVM
 
-  // phaseNAme = "nothingexps"
+  // phaseName = "nothingexps"
   object removeNothingExpressions extends {
     val global: Global.this.type = Global.this
     val runsAfter = List[String]("cleanup")
@@ -476,7 +476,7 @@ class Global(var settings: Settings, var reporter: Reporter) extends SymbolTable
   // phaseName = "fjumpsjribble"
   object removeForwardJumps extends {
     val global: Global.this.type = Global.this
-    val runsAfter = List[String]("cleanup")
+    val runsAfter = List[String]("nothingexps")
     val runsRightAfter = None
   } with RemoveForwardJumps
 

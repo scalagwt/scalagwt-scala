@@ -3,11 +3,11 @@ public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   private I; x$u0020;
   
   public I; x() {
-    return this.(I;)x$u0020;
+    return this.(LTest;)x$u0020;
   }
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.(I;)x$u0020 = 0.<cast>(I;);
+    this.(LTest;)x$u0020 = 0.<cast>(I;);
   }
 }

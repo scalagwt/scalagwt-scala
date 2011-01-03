@@ -4,11 +4,11 @@ public final class LValDef$; extends Ljava/lang/Object; implements Lscala/ScalaO
   private I; b$u0020;
   
   public I; b() {
-    return this.(I;)b$u0020;
+    return this.(LValDef$;)b$u0020;
   }
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.(I;)b$u0020 = 1;
+    this.(LValDef$;)b$u0020 = 1;
   }
 }

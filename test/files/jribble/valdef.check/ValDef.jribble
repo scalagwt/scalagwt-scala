@@ -3,17 +3,17 @@ public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/Scal
   private I; x$u0020;
   
   public I; x() {
-    return this.(I;)x$u0020;
+    return this.(LValDef;)x$u0020;
   }
   
   private I; y$u0020;
   
   public I; y() {
-    return this.(I;)y$u0020;
+    return this.(LValDef;)y$u0020;
   }
   
   public V; y_$eq(I; x$1) {
-    this.(I;)y$u0020 = x$1;
+    this.(LValDef;)y$u0020 = x$1;
   }
   
   public abstract I; z();
@@ -23,7 +23,7 @@ public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/Scal
   private I; a$u0020;
   
   public I; a() {
-    return this.(I;)a$u0020;
+    return this.(LValDef;)a$u0020;
   }
   
   public V; defsInMethod() {
@@ -38,8 +38,8 @@ public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/Scal
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.(I;)x$u0020 = 0;
-    this.(I;)y$u0020 = 0;
-    this.(I;)a$u0020 = 1;
+    this.(LValDef;)x$u0020 = 0;
+    this.(LValDef;)y$u0020 = 0;
+    this.(LValDef;)a$u0020 = 1;
   }
 }

@@ -4,7 +4,7 @@ public final class LFoo$; extends Ljava/lang/Object; implements Lscala/ScalaObje
   private I; x$u0020;
   
   public I; x() {
-    return this.(I;)x$u0020;
+    return this.(LFoo$;)x$u0020;
   }
   
   public I; y() {
@@ -13,6 +13,6 @@ public final class LFoo$; extends Ljava/lang/Object; implements Lscala/ScalaObje
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-    this.(I;)x$u0020 = 1;
+    this.(LFoo$;)x$u0020 = 1;
   }
 }

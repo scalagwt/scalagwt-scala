@@ -12,11 +12,11 @@ public class LOperators; extends Ljava/lang/Object; implements Lscala/ScalaObjec
     Ljava/lang/String; s1 = "test";
     Ljava/lang/String; s2 = "test2";
     Z; x1 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(s1, s2);
-    Z; x2 = this.(LOperators;::zero()I;)() == this.(LOperators;::one()I;)();
+    Z; x2 = (this.(LOperators;::zero()I;)() == this.(LOperators;::one()I;)());
     Z; x3 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Lscala/Int$;.MODULE$.(Lscala/Int$;::box(I;)Ljava/lang/Integer;)(0), s1);
     Z; x4 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(s1, Lscala/Int$;.MODULE$.(Lscala/Int$;::box(I;)Ljava/lang/Integer;)(0));
-    Z; x5 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(new (Ljava/lang/Object;::this()V;)(), new (Ljava/lang/Object;::this()V;)());
-    Z; x6 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(s1, new (Ljava/lang/Object;::this()V;)());
+    Z; x5 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)((new (Ljava/lang/Object;::this()V;)()), (new (Ljava/lang/Object;::this()V;)()));
+    Z; x6 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(s1, (new (Ljava/lang/Object;::this()V;)()));
     Z; x7 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Lscala/Int$;.MODULE$.(Lscala/Int$;::box(I;)Ljava/lang/Integer;)(0), null);
     Z; x8 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(null, Lscala/Int$;.MODULE$.(Lscala/Int$;::box(I;)Ljava/lang/Integer;)(0));
     Z; x9 = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(s1, null);
@@ -26,8 +26,8 @@ public class LOperators; extends Ljava/lang/Object; implements Lscala/ScalaObjec
   public V; eqOp() {
     Ljava/lang/String; s1 = "test";
     Ljava/lang/String; s2 = "test2";
-    Z; x1 = s1 == s2;
-    Z; x2 = s1 != s2;
+    Z; x1 = (s1 == s2);
+    Z; x2 = (s1 != s2);
   }
   
   public this() {

@@ -298,7 +298,10 @@ with JribbleNormalization
                LSL | LSR | ASR |EQ | NE | LT | LE | GT | GE | ZOR | ZAND |
                CONCAT =>
             // TODO(spoon): this does not seem to parenthesize for precedence handling
-            print(receiver); print(" "); print(jribblePrimName(prim)); print(" "); print(args.head)
+            //TODO(grek): printing parenthesis in every case not matter if needed or not
+            print("(");
+            print(receiver); print(" "); print(jribblePrimName(prim)); print(" "); print(args.head);
+            print(")");
           case APPLY => print(receiver); print("["); print(args.head); print("]")
           case UPDATE =>
             print(receiver); print("["); print(args.head); print("] = ")
@@ -331,9 +334,12 @@ with JribbleNormalization
         printParams(args)
 
       case Apply(fun @ Select(_: New, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
+        //TODO(grek): printing parenthesis in every case not matter if needed or not
+        print("(")
         print("new ");
         print(jribbleConstructorSignature(fun.symbol))
         printParams(args)
+        print(")")
 
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print(jribbleSuperConstructorSignature(tree.symbol))

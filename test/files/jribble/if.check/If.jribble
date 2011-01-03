@@ -59,85 +59,85 @@ public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public V; deeplyNestedIf() {
     I; x = 0;
-    if (x == 0)
+    if ((x == 0))
       {
         this.(LIf;::sideeffect()V;)();
       }
     else
       {
-        if (x == 1)
+        if ((x == 1))
           {
             this.(LIf;::sideeffect()V;)();
           }
         else
           {
-            if (x == 2)
+            if ((x == 2))
               {
                 this.(LIf;::sideeffect()V;)();
               }
             else
               {
-                if (x == 3)
+                if ((x == 3))
                   {
                     this.(LIf;::sideeffect()V;)();
                   }
                 else
                   {
-                    if (x == 4)
+                    if ((x == 4))
                       {
                         this.(LIf;::sideeffect()V;)();
                       }
                     else
                       {
-                        if (x == 5)
+                        if ((x == 5))
                           {
                             this.(LIf;::sideeffect()V;)();
                           }
                         else
                           {
-                            if (x == 6)
+                            if ((x == 6))
                               {
                                 this.(LIf;::sideeffect()V;)();
                               }
                             else
                               {
-                                if (x == 7)
+                                if ((x == 7))
                                   {
                                     this.(LIf;::sideeffect()V;)();
                                   }
                                 else
                                   {
-                                    if (x == 8)
+                                    if ((x == 8))
                                       {
                                         this.(LIf;::sideeffect()V;)();
                                       }
                                     else
                                       {
-                                        if (x == 9)
+                                        if ((x == 9))
                                           {
                                             this.(LIf;::sideeffect()V;)();
                                           }
                                         else
                                           {
-                                            if (x == 10)
+                                            if ((x == 10))
                                               {
                                                 this.(LIf;::sideeffect()V;)();
                                               }
                                             else
                                               {
-                                                if (x == 11)
+                                                if ((x == 11))
                                                   {
                                                     this.(LIf;::sideeffect()V;)();
                                                   }
                                                 else
                                                   {
-                                                    if (x == 12)
+                                                    if ((x == 12))
                                                       {
                                                         this.(LIf;::sideeffect()V;)();
                                                       }
                                                     else
                                                       {
-                                                        if (x == 13)
+                                                        if ((x == 13))
                                                           {
                                                             this.(LIf;::sideeffect()V;)();
                                                           }

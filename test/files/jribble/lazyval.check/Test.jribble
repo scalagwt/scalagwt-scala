@@ -5,12 +5,12 @@ public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   private I; x$u0020;
   
   public I; x() {
-    if (this.(I;)bitmap$0 & 1 == 0)
+    if (((this.(I;)bitmap$0 & 1) == 0))
       {
-        if (this.(I;)bitmap$0 & 1 == 0)
+        if (((this.(I;)bitmap$0 & 1) == 0))
           {
             this.(I;)x$u0020 = this.(LTest;::foo()I;)();
-            this.(I;)bitmap$0 = this.(I;)bitmap$0 | 1;
+            this.(I;)bitmap$0 = (this.(I;)bitmap$0 | 1);
           }
       }
     return this.(I;)x$u0020;

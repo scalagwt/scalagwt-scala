@@ -12,15 +12,15 @@ public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/Scal
     I; $1$;
     _tailfact: while(true) {
       I; $2$;
-      if (n == 0)
+      if ((n == 0))
         {
           $2$ = res;
         }
       else
         {
           _$this = this;
-          n = n - 1;
-          res = res * n;
+          n = (n - 1);
+          res = (res * n);
           continue _tailfact;
           $2$ = ();
         }

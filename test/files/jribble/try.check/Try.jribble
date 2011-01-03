@@ -11,11 +11,11 @@ public class LTry; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
           Ljava/lang/Exception; x = temp2;
           if (this.(LTry;::gd1$1(Ljava/lang/Exception;)Z;)(x))
             {
-              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("first case " + temp2);
+              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)(("first case " + temp2));
             }
           else
             {
-              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("second case " + temp2);
+              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)(("second case " + temp2));
             }
         }
       else

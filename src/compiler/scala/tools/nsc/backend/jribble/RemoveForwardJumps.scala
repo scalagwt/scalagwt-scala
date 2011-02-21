@@ -56,7 +56,9 @@ trait RemoveForwardJumps extends Transform with JribbleNormalization {
       traverser.traverse(tree)
       forwardJumps = traverser.forwardJumps
       val newTree@Template(parents, self, body) = super.transformTemplate(tree)
-      treeCopy.Template(newTree, parents, self, body ++ methodsForLabels.values)
+      val newTemplate = treeCopy.Template(newTree, parents, self, body ++ methodsForLabels.values)
+      methodsForLabels.clear()
+      newTemplate
     }
 
     override def transform(tree: Tree): Tree = tree match {

@@ -1,0 +1,10 @@
+public class LReturn; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public V; a() {
+    return;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

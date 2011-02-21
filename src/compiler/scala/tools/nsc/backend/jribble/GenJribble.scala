@@ -473,7 +473,11 @@ with JribbleNormalization
       case tree: Literal => super.printRaw(tree)
       case tree: Ident if !tree.symbol.isPackage && tree.symbol.isModule =>
         printLoadModule(tree.symbol)
-      case tree: Return => super.printRaw(tree)
+      case Return(expr) =>
+        print("return");
+        val unitLiteral = Literal(Constant())
+        //in jribble unboxed unit is being returned by omitting return value altogether
+        if (!(expr equalsStructure unitLiteral)) { print(" "); print(expr) }
       case tree: Ident => super.printRaw(tree)
       case tree: Assign => super.printRaw(tree)
       case tree@Select(qualifier, name) =>

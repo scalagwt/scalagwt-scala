@@ -461,12 +461,20 @@ QUICK BUILD (QUICK)
     </uptodate>
   </target>
 
-  <target name="quick.pre-lib-jribble" depends="quick.start">
+  <target name="quick.pre-lib-jribble" depends="quick.comp, quick.lib">
     <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-jribble.complete">
       <srcfiles dir="${src.dir}">
         <include name="library/**"/>
       </srcfiles>
     </uptodate>
+    <path id="quick.classpath">
+      <pathelement location="${build-quick.dir}/classes/library"/>
+      <pathelement location="${build-quick.dir}/classes/compiler"/>
+      <pathelement location="${fjbg.jar}"/>
+      <pathelement location="${msil.jar}"/>
+      <pathelement location="${forkjoin.jar}"/>
+      <pathelement location="${ant.jar}"/>
+    </path>
   </target>
 
   <target name="quick.lib" depends="quick.pre-lib" unless="quick.lib.available">
@@ -558,7 +566,7 @@ QUICK BUILD (QUICK)
     <mkdir dir="${build-quick.dir}/jribble/library"/>
     <scalacfork
       destdir="${build-quick.dir}/jribble/library"
-      compilerpathref="locker.classpath"
+      compilerpathref="quick.classpath"
       srcpath="${src.dir}/library"
       params="${scalac.args.quick} -g:notailcalls -no-specialization"
       srcdir="${src.dir}/library"

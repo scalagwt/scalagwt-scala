@@ -1,0 +1,47 @@
+public class LWhile; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public I; a() {
+    I; x = 0;
+    I; $1$;
+    if ((x < 0))
+      {
+        while$1: while(true) {
+          if ((x < 0))
+            {
+              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("inside while");
+              continue while$1;
+            }
+          else
+            {
+              
+            }
+          break;
+        }
+        $1$ = 0;
+      }
+    else
+      {
+        $1$ = 1;
+      }
+    return $1$;
+  }
+  
+  public V; b(I; x) {
+    while$2: while(true) {
+      if ((x < 0))
+        {
+          Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("inside while");
+          continue while$2;
+        }
+      else
+        {
+          
+        }
+      break;
+    }
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

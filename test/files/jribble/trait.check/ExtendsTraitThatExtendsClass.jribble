@@ -1,0 +1,10 @@
+public class LExtendsTraitThatExtendsClass; extends LParentForTrait; implements LExtendsClassTrait;, Lscala/ScalaObject; {
+  
+  public I; z() {
+    return 0;
+  }
+  
+  public this() {
+    (LParentForTrait;::super()V;)();
+  }
+}

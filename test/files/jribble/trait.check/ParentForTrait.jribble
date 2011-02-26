@@ -1,0 +1,17 @@
+public class LParentForTrait; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  private I; x$u0020;
+  
+  public I; x() {
+    return this.(LParentForTrait;)x$u0020;
+  }
+  
+  public I; y() {
+    return 0;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+    this.(LParentForTrait;)x$u0020 = 0;
+  }
+}

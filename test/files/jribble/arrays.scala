@@ -22,5 +22,7 @@ class Arrays {
   def returnTwoArray[T: ClassManifest]: Array[Array[T]] = Array.ofDim(1, 1)
   
   def getTwoArray[T: ClassManifest] = returnTwoArray
+  
+  def arrayLength(x: Array[Int]) = x.length
 
 }

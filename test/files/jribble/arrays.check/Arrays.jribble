@@ -24,6 +24,10 @@ public class LArrays; extends Ljava/lang/Object; implements Lscala/ScalaObject; 
     return this.(LArrays;::returnTwoArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;[)(Lscala/reflect/Manifest$;.MODULE$.(Lscala/reflect/Manifest$;::Nothing()Lscala/reflect/Manifest;)()).<cast>(Ljava/lang/Object;[[);
   }
   
+  public I; arrayLength(I;[ x) {
+    return x.<length>;
+  }
+  
   public this() {
     (Ljava/lang/Object;::super()V;)();
   }

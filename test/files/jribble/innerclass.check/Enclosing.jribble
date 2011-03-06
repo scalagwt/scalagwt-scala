@@ -1,0 +1,6 @@
+public abstract class LEnclosing; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

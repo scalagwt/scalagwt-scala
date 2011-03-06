@@ -1,0 +1,10 @@
+public class LEnclosing$Inner2; extends LEnclosing$Inner1; implements Lscala/ScalaObject; {
+  
+  public LEnclosing; Enclosing$Inner2$$$outer() {
+    return this.(LEnclosing$Inner1;)$outer$u0020;
+  }
+  
+  public this(LEnclosing; $outer) {
+    (LEnclosing$Inner1;::super(LEnclosing;)V;)($outer);
+  }
+}

@@ -1,0 +1,20 @@
+public abstract class LEnclosing$Inner1; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  protected LEnclosing; $outer$u0020;
+  
+  public LEnclosing; Enclosing$Inner1$$$outer() {
+    return this.(LEnclosing$Inner1;)$outer$u0020;
+  }
+  
+  public this(LEnclosing; $outer) {
+    if (($outer == null))
+      {
+        throw (new (Ljava/lang/NullPointerException;::this()V;)());
+      }
+    else
+      {
+        this.(LEnclosing$Inner1;)$outer$u0020 = $outer;
+      }
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

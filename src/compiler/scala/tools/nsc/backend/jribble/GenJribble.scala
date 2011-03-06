@@ -59,7 +59,7 @@ with JribbleNormalization
         getFile(clazz, fileSuffix)
       }
       val out = new PrintWriter(new FileOutputStream(file))
-      new JribblePrinter(out, unit)
+      new JribblePrinter(clazz, out, unit)
     }
 
     private def gen(tree: Tree, unit: CompilationUnit): Unit = tree match {
@@ -135,7 +135,10 @@ with JribbleNormalization
 
   }
 
-  private final class JribblePrinter(out: PrintWriter, unit: CompilationUnit) extends TreePrinter(out) {
+  /**
+   * clazz stores symbol of a class this printer is printing
+   */
+  private final class JribblePrinter(clazz: Symbol, out: PrintWriter, unit: CompilationUnit) extends TreePrinter(out) {
     /**
      * Symbols in scope that are for a while loop.  Apply's to
      * them should be printed as continue's.
@@ -357,7 +360,14 @@ with JribbleNormalization
         printParams(args)
 
       case tree@Select(qualifier, selector) if tree.symbol.isModule =>
-        printLoadModule(tree.symbol) // TODO(spoon): handle other loadModule cases from GenIcodes
+        printLoadModule(tree.symbol)
+
+      //copied from GenICode, this might refer to ModuleClass (including java class if static field
+      //is being accessed) so we have to check if symbol is ModuleClass and if it's not equal to
+      //enclosing class. If so we just treat it as a qualifier for static reference so we just
+      //print symbol's name
+      case tree@This(_) if tree.symbol.isModuleClass && tree.symbol != clazz =>
+        printLoadModule(tree.symbol)
 
       case This(_) => print("this")
 
@@ -480,6 +490,11 @@ with JribbleNormalization
         if (!(expr equalsStructure unitLiteral)) { print(" "); print(expr) }
       case tree: Ident => super.printRaw(tree)
       case tree: Assign => super.printRaw(tree)
+      //access static field defined in java class
+      case tree@Select(qualifier, name) if tree.symbol.isStaticMember =>
+        print(jribbleName(tree.symbol.owner));
+        print(".");
+        print(symName(tree, name));
       case tree@Select(qualifier, name) =>
         print(qualifier);
         print(".("); print(jribbleName(qualifier.tpe)); print(")");
@@ -518,7 +533,10 @@ with JribbleNormalization
 
     /** load a top-level module */
     def printLoadModule(sym: Symbol) {
-      print(jribbleName(sym)); print("."); print(nme.MODULE_INSTANCE_FIELD)
+      print(jribbleName(sym));
+      if (!sym.isJavaDefined) {
+        print("."); print(nme.MODULE_INSTANCE_FIELD)
+      }
     }
 
     def printParams(xs: List[Tree]): Unit = {

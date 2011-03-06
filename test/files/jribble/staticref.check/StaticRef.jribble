@@ -1,0 +1,28 @@
+public class LStaticRef; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public Lscala/runtime/BoxedUnit; staticField() {
+    return Lscala/runtime/BoxedUnit;.UNIT;
+  }
+  
+  public Ljava/lang/Boolean; staticMethod() {
+    return Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToBoolean(Z;)Ljava/lang/Boolean;)(false);
+  }
+  
+  public I; patternMatchOnStatic(Ljava/lang/Class; clazz) {
+    Ljava/lang/Class; temp1 = clazz;
+    I; $1$;
+    if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Ljava/lang/Byte;.TYPE, temp1))
+      {
+        $1$ = 0;
+      }
+    else
+      {
+        $1$ = 1;
+      }
+    return $1$;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

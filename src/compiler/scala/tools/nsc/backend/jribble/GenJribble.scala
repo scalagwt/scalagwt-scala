@@ -478,8 +478,8 @@ with JribbleNormalization
       case Literal(Constant(x: Float)) =>
         print(x.toString); print("F")
       //handles classOf[Foo] expressions
-      case Literal(c@Constant(x: AbsType)) if c.tag == ClassTag =>
-        print(jribbleName(x.typeSymbol)); print(".class")
+      case Literal(c@Constant(x: Type)) if c.tag == ClassTag =>
+        print(jribbleName(x)); print(".class")
       case tree: Literal => super.printRaw(tree)
       case tree: Ident if !tree.symbol.isPackage && tree.symbol.isModule =>
         printLoadModule(tree.symbol)

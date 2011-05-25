@@ -1,4 +1,6 @@
 public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  public final static I; b() { return LValDef$;.MODULE$.(LValDef$;::b()I;)(); }
+  
   
   private I; x$u0020;
   

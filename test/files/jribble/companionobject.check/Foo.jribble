@@ -1,4 +1,7 @@
 public class LFoo; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  public final static I; y() { return LFoo$;.MODULE$.(LFoo$;::y()I;)(); }
+  public final static I; x() { return LFoo$;.MODULE$.(LFoo$;::x()I;)(); }
+  
   
   private I; referCompanionVal1$u0020;
   

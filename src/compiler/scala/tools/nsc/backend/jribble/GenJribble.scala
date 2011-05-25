@@ -107,32 +107,86 @@ with JribbleNormalization
 
       print("public final class "); print(jribbleModuleMirrorName(clazz))
       print(" {"); indent; println
-      for (m <- clazz.tpe.nonPrivateMembers // TODO(spoon) -- non-private, or public?
-           if m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
-           m.isMethod && !m.hasFlag(CASE) && !m.isConstructor && !m.isStaticMember)
-      {
-        print("public final static "); print(m.tpe.resultType); print(" ")
-        print(m.name); print("(");
-        val paramTypes = m.tpe.paramTypes
-        for (i <- 0 until paramTypes.length) {
-          if (i > 0) print(", ")
-          print(paramTypes(i)); print(" x_" + i)
-        }
-        print(") { ")
-        if (!isUnit(m.tpe.resultType))
-          print("return ")
-        print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
-        print("."); print(jribbleMethodSignature(m)); print("(")
-        for (i <- 0 until paramTypes.length) {
-          if (i > 0) print(", ");
-          print("x_" + i)
-        }
-        print("); }")
-        println
-      }
+      addForwarders(printer)(clazz)
       undent; println; print("}"); println
     }
 
+  }
+
+  /**
+   * Adds static forwarders for methods defined in modules (objects).
+   *
+   * Copied from GenJVM.
+   */
+  def addForwarders(printer: JribblePrinter)(module: Symbol): Unit = {
+    def conflictsIn(cls: Symbol, name: Name) =
+        cls.info.members exists (_.name == name)
+
+    /** List of parents shared by both class and module, so we don't add forwarders
+     *  for methods defined there - bug #1804 */
+    lazy val commonParents = {
+      val cps = module.info.baseClasses
+      val mps = module.companionClass.info.baseClasses
+      cps.filter(mps contains)
+    }
+    /* The setter doesn't show up in members so we inspect the name
+    * ... and clearly it helps to know how the name is encoded, see ticket #3004.
+    * This logic is grossly inadequate! Name mangling needs a devotee.
+    */
+    def conflictsInCommonParent(name: Name) =
+      commonParents exists { cp =>
+        (name startsWith (cp.name + "$")) || (name containsName ("$" + cp.name + "$"))
+      }
+
+    /** Should method `m' get a forwarder in the mirror class? */
+    def shouldForward(m: Symbol): Boolean =
+      atPhase(currentRun.picklerPhase) (
+        m.owner != definitions.ObjectClass
+          && m.isMethod
+          && !m.hasFlag(CASE | PRIVATE | PROTECTED | DEFERRED | SPECIALIZED)
+          && !m.isConstructor
+          && !m.isStaticMember
+          && !(m.owner == definitions.AnyClass)
+          && !module.isSubClass(module.companionClass)
+          && !conflictsIn(definitions.ObjectClass, m.name)
+          && !conflictsInCommonParent(m.name)
+          && !conflictsIn(module.companionClass, m.name)
+      )
+
+    assert(module.isModuleClass)
+    if (settings.debug.value)
+      log("Dumping mirror class for object: " + module);
+
+    for (m <- module.info.nonPrivateMembers; if shouldForward(m)) {
+      log("Adding static forwarder '%s' to '%s'".format(m, module))
+      addForwarder(printer)(module, m)
+    }
+  }
+
+  //TODO(grek): Using raw output can lead to bad output. It would be probably
+  //a better idea to generate a Tree and use JribblePrinter to print it.
+  //Another idea would be generating jribble ast once we switch to it from
+  //printing text representation of jribble.
+  def addForwarder(printer: JribblePrinter)(module: Symbol, m: Symbol): Unit = {
+    import printer.{print, println}
+    print("public final static "); print(m.tpe.resultType); print(" ")
+    print(m.name); print("(");
+    val paramTypes = m.tpe.paramTypes
+    for (i <- 0 until paramTypes.length) {
+      if (i > 0) print(", ")
+      print(paramTypes(i)); print(" x_" + i)
+    }
+    print(") { ")
+    if (!isUnit(m.tpe.resultType))
+      print("return ")
+    print(jribbleName(module)); print("."); print(nme.MODULE_INSTANCE_FIELD)
+    print("."); print(jribbleMethodSignature(m)); print("(")
+    for (i <- 0 until paramTypes.length) {
+      if (i > 0) print(", ");
+      print("x_" + i)
+    }
+    print("); }")
+    println
   }
 
   /**
@@ -214,6 +268,23 @@ with JribbleNormalization
           val constructorSymbol = definitions.getMember(tree.symbol, nme.CONSTRUCTOR)
           print("public static " + jribbleName(tree.symbol) + " " +
                     nme.MODULE_INSTANCE_FIELD + " = new " + jribbleConstructorSignature(constructorSymbol) + "();")
+        } else {
+          //logic that adds static forwarders. Copied from GenJVM (see genClass method)
+          val lmoc = tree.symbol.companionModule
+          // it must be a top level class (name contains no $s)
+          def isCandidateForForwarders(sym: Symbol): Boolean =
+            atPhase (currentRun.picklerPhase.next) {
+              !(sym.name.toString contains '$') && (sym hasFlag MODULE) && !sym.isImplClass && !sym.isNestedClass
+            }
+
+          // add static forwarders if there are no name conflicts; see bugs #363 and #1735
+          if (lmoc != NoSymbol && !tree.symbol.hasFlag(INTERFACE)) {
+            if (isCandidateForForwarders(lmoc) && !settings.noForwarders.value) {
+              println
+              log("Adding forwarders to existing class '%s' found in module '%s'".format(tree.symbol, lmoc))
+              addForwarders(this)(lmoc.moduleClass)
+            }
+          }
         }
         for(member <- body) {
           println; println;

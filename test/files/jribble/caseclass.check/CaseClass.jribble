@@ -1,4 +1,7 @@
 public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObject;, Lscala/Product; {
+  public final static Lscala/Function1; andThen(Lscala/Function1; x_0) { return LCaseClass$;.MODULE$.(Lscala/runtime/AbstractFunction1;::andThen(Lscala/Function1;)Lscala/Function1;)(x_0); }
+  public final static Lscala/Function1; compose(Lscala/Function1; x_0) { return LCaseClass$;.MODULE$.(Lscala/runtime/AbstractFunction1;::compose(Lscala/Function1;)Lscala/Function1;)(x_0); }
+  
   
   public Lscala/collection/Iterator; productIterator() {
     return Lscala/Product$class;.(Lscala/Product$class;::productIterator(Lscala/Product;)Lscala/collection/Iterator;)(this);

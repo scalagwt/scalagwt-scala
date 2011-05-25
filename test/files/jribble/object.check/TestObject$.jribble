@@ -1,7 +1,29 @@
 public final class LTestObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   public static LTestObject$; MODULE$ = new (LTestObject$;::this()V;)();
   
+  private I; field$u0020;
+  
+  public I; field() {
+    return this.(LTestObject$;)field$u0020;
+  }
+  
+  private I; mutableField$u0020;
+  
+  public I; mutableField() {
+    return this.(LTestObject$;)mutableField$u0020;
+  }
+  
+  public V; mutableField_$eq(I; x$1) {
+    this.(LTestObject$;)mutableField$u0020 = x$1;
+  }
+  
+  public I; method(I; x) {
+    return x;
+  }
+  
   public this() {
     (Ljava/lang/Object;::super()V;)();
+    this.(LTestObject$;)field$u0020 = 0;
+    this.(LTestObject$;)mutableField$u0020 = 0;
   }
 }

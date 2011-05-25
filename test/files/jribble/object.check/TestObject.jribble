@@ -1,3 +1,7 @@
 public final class LTestObject; {
+  public final static I; method(I; x_0) { return LTestObject$;.MODULE$.(LTestObject$;::method(I;)I;)(x_0); }
+  public final static V; mutableField_$eq(I; x_0) { LTestObject$;.MODULE$.(LTestObject$;::mutableField_$eq(I;)V;)(x_0); }
+  public final static I; mutableField() { return LTestObject$;.MODULE$.(LTestObject$;::mutableField()I;)(); }
+  public final static I; field() { return LTestObject$;.MODULE$.(LTestObject$;::field()I;)(); }
   
 }

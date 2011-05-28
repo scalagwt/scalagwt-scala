@@ -201,10 +201,11 @@ INITIALISATION
     <property name="scalac.args.optimise" value=""/>
   <!-- scalac.args.quickonly are added to quick.* targets but not others (particularly, locker.)
        This is to facilitate testing new command line options which do not yet exist in starr. -->
-	<property name="scalac.args.quickonly" value=""/>
+	<property name="scalac.args.quickonly" value="-no-specialization"/>
 	
     <property name="scalac.args.all" value="${scalac.args} ${scalac.args.optimise}"/>
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
+	<property name="scalac.args.jribble" value="${scalac.args.quick} -g:notailcalls"/>
   <!-- Setting-up Ant contrib tasks -->
     <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${lib.dir}/ant/ant-contrib.jar"/>
   <!-- This is the start time for the distribution -->
@@ -500,7 +501,7 @@ QUICK BUILD (QUICK)
       destdir="${build-quick.dir}/classes/library"
       compilerpathref="locker.classpath"
       srcpath="${src.dir}/library"
-      params="${scalac.args.quick}"
+      params="${scalac.args.jribble}"
       srcdir="${src.dir}/library"
       jvmargs="${scalacfork.jvmargs}">
       <include name="**/*.scala"/>
@@ -568,7 +569,7 @@ QUICK BUILD (QUICK)
       destdir="${build-quick.dir}/jribble/library"
       compilerpathref="quick.classpath"
       srcpath="${src.dir}/library"
-      params="${scalac.args.quick} -g:notailcalls -no-specialization"
+      params="${scalac.args.jribble}"
       srcdir="${src.dir}/library"
       target="jribble"
       jvmargs="${scalacfork.jvmargs}">

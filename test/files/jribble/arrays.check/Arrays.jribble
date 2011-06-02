@@ -12,16 +12,16 @@ public class LArrays; extends Ljava/lang/Object; implements Lscala/ScalaObject; 
     return Lscala/Array$;.MODULE$.(Lscala/Array$;::ofDim(I;Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(1, evidence$1);
   }
   
-  public Ljava/lang/Object;[ getOneArray(Lscala/reflect/ClassManifest; evidence$2) {
-    return this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/Manifest$;.MODULE$.(Lscala/reflect/Manifest$;::Nothing()Lscala/reflect/Manifest;)()).<cast>(Ljava/lang/Object;[);
+  public Ljava/lang/Object; getOneArray(Lscala/reflect/ClassManifest; evidence$2) {
+    return this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(evidence$2);
   }
   
   public Ljava/lang/Object;[ returnTwoArray(Lscala/reflect/ClassManifest; evidence$3) {
     return Lscala/Array$;.MODULE$.(Lscala/Array$;::ofDim(I;I;Lscala/reflect/ClassManifest;)Ljava/lang/Object;[)(1, 1, evidence$3);
   }
   
-  public Ljava/lang/Object;[[ getTwoArray(Lscala/reflect/ClassManifest; evidence$4) {
-    return this.(LArrays;::returnTwoArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;[)(Lscala/reflect/Manifest$;.MODULE$.(Lscala/reflect/Manifest$;::Nothing()Lscala/reflect/Manifest;)()).<cast>(Ljava/lang/Object;[[);
+  public Ljava/lang/Object;[ getTwoArray(Lscala/reflect/ClassManifest; evidence$4) {
+    return this.(LArrays;::returnTwoArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;[)(evidence$4);
   }
   
   public I; arrayLength(I;[ x) {

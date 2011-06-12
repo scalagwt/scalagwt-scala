@@ -102,7 +102,7 @@ with JribbleNormalization
     def allocLocal(tpe: Type, pos: scala.tools.nsc.util.Position): Symbol = {
       assert (tpe != UnitClass.tpe) // don't create a unit variable
       assert (tpe != null)
-      val newLocal = currentMethodSym.newValue(pos, cunit.fresh.newName(pos))
+      val newLocal = currentMethodSym.newValue(pos, cunit.fresh.newName())
       newLocal.setInfo(tpe)
       newLocal
     }
@@ -253,11 +253,7 @@ with JribbleNormalization
         currentMethodSym = savedMethodSym
         res
       case tree@LabelDef(name, params, rhs) =>
-        val paramLocals = params.map { x =>
-          val newLocal = currentMethodSym.newValue(x.pos, x.name)
-          newLocal.setInfo(x.tpe)
-          newLocal
-        }
+        val paramLocals = params.map(x => allocLocal(x.tpe, x.pos))
         newStats ++= paramLocals map (ValDef)
         recordLabelDefDuring(tree.symbol, paramLocals) {
           if (isUnit(rhs.tpe)) {

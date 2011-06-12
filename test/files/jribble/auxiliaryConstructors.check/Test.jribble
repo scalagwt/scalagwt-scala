@@ -6,12 +6,12 @@ public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
     return this.(LTest;)x$u0020;
   }
   
-  public this(I; x) {
-    (LTest;::this(I;I;)V;)(x, 0);
-  }
-  
   public this(I; x, I; y) {
     this.(LTest;)x$u0020 = x;
     (Ljava/lang/Object;::super()V;)();
+  }
+  
+  public this(I; x) {
+    (LTest;::this(I;I;)V;)(x, 0);
   }
 }

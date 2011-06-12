@@ -10,21 +10,18 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
       {
         if (temp1.<instanceof>(Lscala/collection/immutable/$colon$colon;))
           {
-            Lscala/collection/immutable/$colon$colon; temp3 = temp1.<cast>(Lscala/collection/immutable/$colon$colon;);
-            Ljava/lang/String; temp4 = temp3.(Lscala/collection/immutable/$colon$colon;::hd$1()Ljava/lang/Object;)().<cast>(Ljava/lang/String;);
-            if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Lscala/collection/immutable/Nil$;.MODULE$, temp3.(Lscala/collection/immutable/$colon$colon;::tl$1()Lscala/collection/immutable/List;)()))
+            if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Lscala/collection/immutable/Nil$;.MODULE$, temp1.<cast>(Lscala/collection/immutable/$colon$colon;).(Lscala/collection/immutable/$colon$colon;::tl$1()Lscala/collection/immutable/List;)()))
               {
                 Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("singleton list");
               }
             else
               {
-                Lscala/collection/immutable/List; xs = temp3;
-                this.(LPatternMatching;::body$percent2$percent1(Lscala/collection/immutable/List;)V;)(xs);
+                this.(LPatternMatching;::body$percent21$percent1()V;)();
               }
           }
         else
           {
-            this.(LPatternMatching;::body$percent2$percent1(Lscala/collection/immutable/List;)V;)(temp1);
+            this.(LPatternMatching;::body$percent21$percent1()V;)();
           }
       }
   }
@@ -34,11 +31,6 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     I; $1$ = temp7;
     Ljava/lang/String; $2$;
     switch ($1$) {
-      0: {
-        $2$ = "got zero";
-        break;
-      }
-      
       1: {
         $2$ = "got one or two";
         break;
@@ -46,6 +38,11 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
       
       2: {
         $2$ = "got one or two";
+        break;
+      }
+      
+      0: {
+        $2$ = "got zero";
         break;
       }
       
@@ -78,7 +75,7 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     (Ljava/lang/Object;::super()V;)();
   }
   
-  private final V; body$percent2$percent1(Lscala/collection/immutable/List; xs) {
+  private final V; body$percent21$percent1() {
     Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("more than one element list");
   }
 }

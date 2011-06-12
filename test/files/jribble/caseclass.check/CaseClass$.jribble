@@ -1,4 +1,4 @@
-public final class LCaseClass$; extends Lscala/runtime/AbstractFunction1; implements Lscala/ScalaObject; {
+public final class LCaseClass$; extends Lscala/runtime/AbstractFunction1; implements Lscala/ScalaObject;, Lscala/Serializable; {
   public static LCaseClass$; MODULE$ = new (LCaseClass$;::this()V;)();
   
   public final Ljava/lang/String; toString() {
@@ -6,20 +6,24 @@ public final class LCaseClass$; extends Lscala/runtime/AbstractFunction1; implem
   }
   
   public Lscala/Option; unapply(LCaseClass; x$0) {
-    Lscala/Option; $4$;
+    Lscala/Option; $6$;
     if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(x$0, null))
       {
-        $4$ = Lscala/None$;.MODULE$;
+        $6$ = Lscala/None$;.MODULE$;
       }
     else
       {
-        $4$ = (new (Lscala/Some;::this(Ljava/lang/Object;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x$0.(LCaseClass;::x()I;)())));
+        $6$ = (new (Lscala/Some;::this(Ljava/lang/Object;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x$0.(LCaseClass;::x()I;)())));
       }
-    return $4$;
+    return $6$;
   }
   
   public LCaseClass; apply(I; x) {
     return (new (LCaseClass;::this(I;)V;)(x));
+  }
+  
+  protected Ljava/lang/Object; readResolve() {
+    return LCaseClass$;.MODULE$;
   }
   
   public Ljava/lang/Object; apply(Ljava/lang/Object; v1) {

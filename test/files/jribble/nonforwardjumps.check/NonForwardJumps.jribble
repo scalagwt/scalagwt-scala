@@ -6,28 +6,28 @@ public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/Scal
   
   private final I; tailfact$1(I; n, I; res) {
     LNonForwardJumps; _$this = this;
-    LNonForwardJumps; _$this;
-    I; n;
-    I; res;
-    I; $1$;
+    LNonForwardJumps; $1$;
+    I; $2$;
+    I; $3$;
+    I; $4$;
     _tailfact: while(true) {
-      I; $2$;
+      I; $5$;
       if ((n == 0))
         {
-          $2$ = res;
+          $5$ = res;
         }
       else
         {
-          _$this = this;
-          n = (n - 1);
-          res = (res * n);
+          $1$ = this;
+          $2$ = (n - 1);
+          $3$ = (res * n);
           continue _tailfact;
-          $2$ = ();
+          $5$ = ();
         }
-      $1$ = $2$;
+      $4$ = $5$;
       break;
     }
-    return $1$;
+    return $4$;
   }
   
   public this() {

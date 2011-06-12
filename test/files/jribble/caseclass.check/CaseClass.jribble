@@ -1,4 +1,4 @@
-public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObject;, Lscala/Product; {
+public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObject;, Lscala/Product;, Lscala/Serializable; {
   public final static Lscala/Function1; andThen(Lscala/Function1; x_0) { return LCaseClass$;.MODULE$.(Lscala/runtime/AbstractFunction1;::andThen(Lscala/Function1;)Lscala/Function1;)(x_0); }
   public final static Lscala/Function1; compose(Lscala/Function1; x_0) { return LCaseClass$;.MODULE$.(Lscala/runtime/AbstractFunction1;::compose(Lscala/Function1;)Lscala/Function1;)(x_0); }
   
@@ -11,10 +11,6 @@ public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObjec
     return Lscala/Product$class;.(Lscala/Product$class;::productElements(Lscala/Product;)Lscala/collection/Iterator;)(this);
   }
   
-  public I; copy$default$1() {
-    return this.(LCaseClass;::x()I;)();
-  }
-  
   private I; x$u0020;
   
   public I; x() {
@@ -23,6 +19,10 @@ public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObjec
   
   public LCaseClass; copy(I; x) {
     return (new (LCaseClass;::this(I;)V;)(x));
+  }
+  
+  public I; copy$default$1() {
+    return this.(LCaseClass;::x()I;)();
   }
   
   public I; hashCode() {
@@ -44,7 +44,13 @@ public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObjec
         Z; $2$;
         if (this.(LCaseClass;::gd1$1(I;)Z;)(x$1))
           {
-            $2$ = x$1.<cast>(LCaseClass;).(Lscala/Equals;::canEqual(Ljava/lang/Object;)Z;)(this);
+            I; $3$;
+            Z; $4$;
+            body$percent01: while(true) {
+              $4$ = x$1.<cast>(LCaseClass;).(Lscala/Equals;::canEqual(Ljava/lang/Object;)Z;)(this);
+              break;
+            }
+            $2$ = $4$;
           }
         else
           {
@@ -69,16 +75,16 @@ public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObjec
   
   public Ljava/lang/Object; productElement(I; x$1) {
     I; temp4 = x$1;
-    Ljava/lang/Object; $3$;
+    Ljava/lang/Object; $5$;
     if ((temp4 == 0))
       {
-        $3$ = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(this.(LCaseClass;::x()I;)());
+        $5$ = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(this.(LCaseClass;::x()I;)());
       }
     else
       {
         throw (new (Ljava/lang/IndexOutOfBoundsException;::this(Ljava/lang/String;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x$1).(Ljava/lang/Object;::toString()Ljava/lang/String;)()));
       }
-    return $3$;
+    return $5$;
   }
   
   public Z; canEqual(Ljava/lang/Object; x$1) {

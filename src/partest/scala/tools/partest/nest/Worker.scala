@@ -150,7 +150,8 @@ class Worker(val fileManager: FileManager, params: TestRunParams) extends Actor 
   private def updateStatus(key: String, num: Int) = status(key) = num
 
   private def cleanup() {
-    toDelete foreach (_.deleteRecursively())
+    if (!scala.tools.partest.isPartestDebug)
+      toDelete foreach (_.deleteRecursively())
     toDelete.clear()
   }
   sys addShutdownHook cleanup()

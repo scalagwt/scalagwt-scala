@@ -341,7 +341,8 @@ with JribbleNormalization
         labelDefs.get(fun.symbol) match {
           case Some(paramLocals) =>
             (paramLocals zip args) foreach {
-              case (local, arg) => newStats += Assign(mkAttributedIdent(local), arg) setType arg.tpe
+              case (local, arg) =>
+                newStats += transformStatement(Assign(mkAttributedIdent(local), arg) setType arg.tpe)
             }
             // the type of a continue should be Nothing
             newStats += mkApply(fun, args) setType definitions.NothingClass.tpe

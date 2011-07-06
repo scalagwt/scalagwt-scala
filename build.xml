@@ -206,7 +206,7 @@ INITIALISATION
     <property name="scalac.args.optimise" value=""/>
   <!-- scalac.args.quickonly are added to quick.* targets but not others (particularly, locker.)
        This is to facilitate testing new command line options which do not yet exist in starr. -->
-	<property name="scalac.args.quickonly" value="-no-specialization"/>
+	<property name="scalac.args.quickonly" value=""/>
 
     <property name="scalac.args.all" value="${scalac.args} ${scalac.args.optimise}"/>
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
@@ -497,6 +497,10 @@ QUICK BUILD (QUICK)
       target="1.5" source="1.5">
       <compilerarg line="${javac.args}"/>
     </javac>
+    <!-- TODO(grek): We are using scalac.args.jribble instead of scalac.args.quick compiler options
+         to stay consistent with jribble target for scala library. scalac.args.jribble will
+         be removed as soon as jribble backend supports standard compiler options and then
+         we'll switch back to scalac.args.quick here. -->
     <scalacfork
       destdir="${build-quick.dir}/classes/library"
       compilerpathref="locker.classpath"

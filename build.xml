@@ -591,6 +591,7 @@ QUICK BUILD (QUICK)
       <include name="scala/util/automata/**/*.scala"/>
       <include name="scala/util/control/**/*.scala"/>
       <include name="scala/util/regexp/**/*.scala"/>
+      <include name="scala/util/MurmurHash.scala"/>
       <include name="scala/xml/*.scala"/>
       <exclude name="scala/xml/Xhtml.scala"/>
       <include name="scala/xml/dtd/*.scala"/>
@@ -598,10 +599,12 @@ QUICK BUILD (QUICK)
       <include name="scala/xml/parsing/TokenTests.scala"/>
       <include name="scala/xml/parsing/XhtmlEntities.scala"/>
       <include name="scala/xml/transform/**/*.scala"/>
+      <include name="scala/compat/*.scala"/>
       <include name="scala/*.scala"/>
       <exclude name="scala/specialized.scala"/>
       <exclude name="scala/Symbol.scala"/>
       <exclude name="scala/Application.scala"/>
+      <exclude name="scala/App.scala"/>
       <compilationpath refid="quick.compilation.path"/>
     </scalacfork>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">

@@ -19,7 +19,7 @@ import scala.collection.{ mutable, immutable }
  *  - for every use of a def-parameter: x ==> x.apply()
  *  - for every argument to a def parameter `x: => T': 
  *      if argument is not a reference to a def parameter:
- *        convert argument `e' to (expansion of) `() => e'
+ *        convert argument `e` to (expansion of) `() => e'
  *  - for every repeated Scala parameter `x: T*' --> x: Seq[T].
  *  - for every repeated Java parameter `x: T...' --> x: Array[T], except:
  *    if T is an unbounded abstract type, replace --> x: Array[Object]
@@ -34,7 +34,11 @@ import scala.collection.{ mutable, immutable }
  *  - convert non-local returns to throws with enclosing try statements.
  */
 /*</export> */
-abstract class UnCurry extends InfoTransform with TypingTransformers with ast.TreeDSL {
+abstract class UnCurry extends InfoTransform 
+                          with reflect.internal.transform.UnCurry 
+                          with TypingTransformers with ast.TreeDSL {
+  val global: Global               // need to repeat here because otherwise last mixin defines global as
+                                   // SymbolTable. If we had DOT this would not be an issue
   import global._                  // the global environment
   import definitions._             // standard classes and methods
   import CODE._
@@ -47,66 +51,9 @@ abstract class UnCurry extends InfoTransform with TypingTransformers with ast.Tr
 // ------ Type transformation --------------------------------------------------------
 
 // uncurry and uncurryType expand type aliases
-  private def expandAlias(tp: Type): Type = if (!tp.isHigherKinded) tp.normalize else tp
-
-  private def isUnboundedGeneric(tp: Type) = tp match {
-    case t @ TypeRef(_, sym, _) => sym.isAbstractType && !(t <:< AnyRefClass.tpe) 
-    case _ => false
-  }
-  
-  private val uncurry: TypeMap = new TypeMap {
-    def apply(tp0: Type): Type = {
-      // tp0.typeSymbolDirect.initialize
-      val tp = expandAlias(tp0)
-      tp match {
-        case MethodType(params, MethodType(params1, restpe)) =>
-          apply(MethodType(params ::: params1, restpe))
-        case MethodType(params, ExistentialType(tparams, restpe @ MethodType(_, _))) =>
-          assert(false, "unexpected curried method types with intervening existential") 
-          tp0
-        case MethodType(h :: t, restpe) if h.isImplicit =>
-          apply(MethodType(h.cloneSymbol.resetFlag(IMPLICIT) :: t, restpe))
-        case NullaryMethodType(restpe) =>
-          apply(MethodType(List(), restpe))
-        case TypeRef(pre, ByNameParamClass, List(arg)) =>
-          apply(functionType(List(), arg))
-        case TypeRef(pre, RepeatedParamClass, args) =>
-          apply(appliedType(SeqClass.typeConstructor, args))
-        case TypeRef(pre, JavaRepeatedParamClass, args) =>
-          apply(arrayType(
-            if (isUnboundedGeneric(args.head)) ObjectClass.tpe else args.head))
-        case _ =>
-          expandAlias(mapOver(tp))
-      }
-    }
-  }
-
-  private val uncurryType = new TypeMap {
-    def apply(tp0: Type): Type = {
-      val tp = expandAlias(tp0)
-      tp match {
-        case ClassInfoType(parents, decls, clazz) =>
-          val parents1 = parents mapConserve uncurry
-          if (parents1 eq parents) tp
-          else ClassInfoType(parents1, decls, clazz) // @MAT normalize in decls??
-        case PolyType(_, _) =>
-          mapOver(tp)
-        case _ =>
-          tp
-      }
-    }
-  }
-
-  /** - return symbol's transformed type, 
-   *  - if symbol is a def parameter with transformed type T, return () => T
-   *
-   * @MAT: starting with this phase, the info of every symbol will be normalized
-   */
-  def transformInfo(sym: Symbol, tp: Type): Type = 
-    if (sym.isType) uncurryType(tp) else uncurry(tp)
 
   /** Traverse tree omitting local method definitions.
-   *  If a `return' is encountered, set `returnFound' to true.
+   *  If a `return` is encountered, set `returnFound` to true.
    *  Used for MSIL only.
    */
   private object lookForReturns extends Traverser {
@@ -155,8 +102,8 @@ abstract class UnCurry extends InfoTransform with TypingTransformers with ast.Tr
         throw ex
     }
 
-    /* Is tree a reference `x' to a call by name parameter that needs to be converted to 
-     * x.apply()? Note that this is not the case if `x' is used as an argument to another
+    /* Is tree a reference `x` to a call by name parameter that needs to be converted to
+     * x.apply()? Note that this is not the case if `x` is used as an argument to another
      * call by name parameter.
      */
     def isByNameRef(tree: Tree): Boolean =
@@ -468,8 +415,7 @@ abstract class UnCurry extends InfoTransform with TypingTransformers with ast.Tr
 // ------ The tree transformers --------------------------------------------------------
 
     def mainTransform(tree: Tree): Tree = {
-
-      def withNeedLift(needLift: Boolean)(f: => Tree): Tree = {
+      @inline def withNeedLift(needLift: Boolean)(f: => Tree): Tree = {
         val saved = needTryLift
         needTryLift = needLift
         try f
@@ -483,7 +429,7 @@ abstract class UnCurry extends InfoTransform with TypingTransformers with ast.Tr
       def shouldBeLiftedAnyway(tree: Tree) = false && // buggy, see #1981
         forMSIL && lookForReturns.found(tree)
 
-      /** Transform tree `t' to { def f = t; f } where `f' is a fresh name
+      /** Transform tree `t` to { def f = t; f } where `f` is a fresh name
        */
       def liftTree(tree: Tree) = {
         if (settings.debug.value)

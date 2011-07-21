@@ -1,2 +1,5 @@
 /build
 /src/intellij
+/sandbox/
+/test/files/jribble/*.log
+/test/files/jribble/*.obj

@@ -269,7 +269,7 @@ abstract class RedBlack[A] extends Serializable {
     def last  = if (right.isEmpty) key else right.last
     def count = 1 + left.count + right.count
   }
-  case object Empty extends Tree[Nothing] {
+  class Empty extends Tree[Nothing] {
     def isEmpty = true
     def isBlack = true
     def lookup(k: A): Tree[Nothing] = this
@@ -289,6 +289,7 @@ abstract class RedBlack[A] extends Serializable {
     def last = throw new NoSuchElementException("empty map")
     def count = 0
   }
+  lazy val Empty = new Empty
   case class RedTree[+B](override val key: A,
                          override val value: B,
                          override val left: Tree[B],

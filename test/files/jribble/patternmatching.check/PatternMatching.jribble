@@ -38,15 +38,15 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     Lscala/Tuple2; $3$;
     if ((temp8 != null))
       {
-        $3$ = (new (Lscala/Tuple2;::this(Ljava/lang/Object;Ljava/lang/Object;)V;)(temp8.(Lscala/Tuple2;::_1()Ljava/lang/Object;)(), temp8.(Lscala/Tuple2;::_2()Ljava/lang/Object;)()));
+        $3$ = (new (Lscala/Tuple2$mcII$sp;::this(I;I;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(temp8.(Lscala/Tuple2;::_1()Ljava/lang/Object;)()), Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(temp8.(Lscala/Tuple2;::_2()Ljava/lang/Object;)())));
       }
     else
       {
         throw (new (Lscala/MatchError;::this(Ljava/lang/Object;)V;)(temp8));
       }
     Lscala/Tuple2; x$1 = $3$;
-    I; x = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(x$1.(Lscala/Tuple2;::_1()Ljava/lang/Object;)());
-    I; y = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(x$1.(Lscala/Tuple2;::_2()Ljava/lang/Object;)());
+    I; x = x$1.(Lscala/Tuple2;::_1$mcI$sp()I;)();
+    I; y = x$1.(Lscala/Tuple2;::_2$mcI$sp()I;)();
   }
   
   public this() {

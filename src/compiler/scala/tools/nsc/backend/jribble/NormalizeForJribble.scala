@@ -337,6 +337,12 @@ with JribbleNormalization
         transform(box(fun.symbol, expr))
       case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
         transform(unbox(fun.symbol, expr))
+      //rewrite T <: AnyVal in isInstanceOf[T] checks into boxed ones
+      case Apply(TypeApply(fun, List(tpe)), Nil)
+      //unit is handled by earlier phases
+      if isNonUnitValueClass(tpe.symbol) && fun.symbol == definitions.Object_isInstanceOf =>
+        val boxedTpe = boxedClass(tpe.symbol).tpe
+        Apply(TypeApply(fun, List(TypeTree(boxedTpe))), Nil)
       case tree@Apply(fun: Ident, args) =>
         labelDefs.get(fun.symbol) match {
           case Some(paramLocals) =>

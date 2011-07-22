@@ -1,29 +1,7 @@
 public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public V; simplePattern(Lscala/collection/immutable/List; xs) {
-    Lscala/collection/immutable/List; temp1 = xs;
-    if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Lscala/collection/immutable/Nil$;.MODULE$, temp1))
-      {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("empty list");
-      }
-    else
-      {
-        if (temp1.<instanceof>(Lscala/collection/immutable/$colon$colon;))
-          {
-            if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(Lscala/collection/immutable/Nil$;.MODULE$, temp1.<cast>(Lscala/collection/immutable/$colon$colon;).(Lscala/collection/immutable/$colon$colon;::tl$1()Lscala/collection/immutable/List;)()))
-              {
-                Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("singleton list");
-              }
-            else
-              {
-                this.(LPatternMatching;::body$percent21$percent1()V;)();
-              }
-          }
-        else
-          {
-            this.(LPatternMatching;::body$percent21$percent1()V;)();
-          }
-      }
+    Lscala/sys/package$;.MODULE$.(Lscala/sys/package$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("whack! you stepped on broken handling of jribble backend.");
   }
   
   public V; shouldBeTranslatedToSwitch(I; x) {
@@ -60,22 +38,18 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     Lscala/Tuple2; $3$;
     if ((temp8 != null))
       {
-        $3$ = (new (Lscala/Tuple2$mcII$sp;::this(I;I;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(temp8.(Lscala/Tuple2;::_1()Ljava/lang/Object;)()), Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(temp8.(Lscala/Tuple2;::_2()Ljava/lang/Object;)())));
+        $3$ = (new (Lscala/Tuple2;::this(Ljava/lang/Object;Ljava/lang/Object;)V;)(temp8.(Lscala/Tuple2;::_1()Ljava/lang/Object;)(), temp8.(Lscala/Tuple2;::_2()Ljava/lang/Object;)()));
       }
     else
       {
         throw (new (Lscala/MatchError;::this(Ljava/lang/Object;)V;)(temp8));
       }
     Lscala/Tuple2; x$1 = $3$;
-    I; x = x$1.(Lscala/Tuple2;::_1$mcI$sp()I;)();
-    I; y = x$1.(Lscala/Tuple2;::_2$mcI$sp()I;)();
+    I; x = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(x$1.(Lscala/Tuple2;::_1()Ljava/lang/Object;)());
+    I; y = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(x$1.(Lscala/Tuple2;::_2()Ljava/lang/Object;)());
   }
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
-  }
-  
-  private final V; body$percent21$percent1() {
-    Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("more than one element list");
   }
 }

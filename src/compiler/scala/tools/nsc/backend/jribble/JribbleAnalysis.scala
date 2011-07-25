@@ -102,4 +102,24 @@ trait JribbleAnalysis {
     }
     return treeTypeReturnable(tree) && typeReturnable(tree.tpe)
   }
+
+  def isEqOnAnyRef(fun: Select) = {
+    import scalaPrimitives._
+    val Select(receiver, _) = fun
+    if (isPrimitive(fun.symbol)) {
+      (getPrimitive(fun.symbol) == EQ) && (receiver.tpe <:< definitions.AnyRefClass.tpe)
+    } else false
+  }
+
+  def isSynchronized(fun: Select) = {
+    import scalaPrimitives._
+    isPrimitive(fun.symbol) && (getPrimitive(fun.symbol) == SYNCHRONIZED)
+  }
+
+  def isLocalValDef(tree: ValDef) = !tree.symbol.owner.isClass
+
+  def isCoercion(sym: Symbol): Boolean = {
+    import scalaPrimitives._
+    isPrimitive(sym) && scalaPrimitives.isCoercion(getPrimitive(sym))
+  }
 }

@@ -1,13 +1,24 @@
 public class LCast; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
-  public V; isInstanceOfCheck() {
+  public V; isInstanceOfCheckOnAnyRef() {
     Ljava/lang/Object; x = (new (Ljava/lang/Object;::this()V;)());
     Z; isString = x.<instanceof>(Ljava/lang/String;);
+    Z; isByte = x.<instanceof>(Ljava/lang/Byte;);
+    Z; isUnit = x.<instanceof>(Lscala/runtime/BoxedUnit;);
   }
   
-  public V; asInstanceOfCast() {
+  public V; asInstanceOfCastFromAny() {
     Ljava/lang/Object; x = (new (Ljava/lang/Object;::this()V;)());
     Ljava/lang/String; y = x.<cast>(Ljava/lang/String;);
+    B; b = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToByte(Ljava/lang/Object;)B;)(x);
+    Lscala/runtime/BoxedUnit; u = x.<cast>(Lscala/runtime/BoxedUnit;);
+  }
+  
+  public V; asInstanceOfCastFromInt() {
+    I; x = 0;
+    Ljava/lang/String; y = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x).<cast>(Ljava/lang/String;);
+    B; b = x.<cast>(B;);
+    Lscala/runtime/BoxedUnit; u = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x).<cast>(Lscala/runtime/BoxedUnit;);
   }
   
   public this() {

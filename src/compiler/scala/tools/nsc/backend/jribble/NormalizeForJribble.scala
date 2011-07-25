@@ -337,11 +337,18 @@ with JribbleNormalization
         transform(box(fun.symbol, expr))
       case Apply(fun, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
         transform(unbox(fun.symbol, expr))
+      //rewrite T <: AnyVal in isInstanceOf[T] checks into boxed ones
+      case Apply(TypeApply(fun, List(tpe)), Nil)
+      //unit is handled by earlier phases
+      if isNonUnitValueClass(tpe.symbol) && fun.symbol == definitions.Object_isInstanceOf =>
+        val boxedTpe = boxedClass(tpe.symbol).tpe
+        Apply(TypeApply(fun, List(TypeTree(boxedTpe))), Nil)
       case tree@Apply(fun: Ident, args) =>
         labelDefs.get(fun.symbol) match {
           case Some(paramLocals) =>
             (paramLocals zip args) foreach {
-              case (local, arg) => newStats += Assign(mkAttributedIdent(local), arg) setType arg.tpe
+              case (local, arg) =>
+                newStats += transformStatement(Assign(mkAttributedIdent(local), arg) setType arg.tpe)
             }
             // the type of a continue should be Nothing
             newStats += mkApply(fun, args) setType definitions.NothingClass.tpe
@@ -369,26 +376,6 @@ with JribbleNormalization
         val funT :: argsT = transformTrees(fun :: args)
         treeCopy.Apply(tree, funT, argsT)
       case tree => super.transform(tree)
-    }
-
-    def isEqOnAnyRef(fun: Select) = {
-      import scalaPrimitives._
-      val Select(receiver, _) = fun
-      if (isPrimitive(fun.symbol)) {
-        (getPrimitive(fun.symbol) == EQ) && (receiver.tpe <:< definitions.AnyRefClass.tpe)
-      } else false
-    }
-
-    def isSynchronized(fun: Select) = {
-      import scalaPrimitives._
-      isPrimitive(fun.symbol) && (getPrimitive(fun.symbol) == SYNCHRONIZED)
-    }
-
-    def isLocalValDef(tree: ValDef) = !tree.symbol.owner.isClass
-
-    def isCoercion(sym: Symbol): Boolean = {
-      import scalaPrimitives._
-      isPrimitive(sym) && scalaPrimitives.isCoercion(getPrimitive(sym))
     }
   }
 }

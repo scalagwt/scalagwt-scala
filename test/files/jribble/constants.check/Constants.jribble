@@ -1,0 +1,16 @@
+public class LConstants; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public V; chars() {
+    C; minChar = '\00';
+    C; maxChar = '￿';
+    C; tabChar = '\t';
+  }
+  
+  public V; strings() {
+    Ljava/lang/String; string = "\t";
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

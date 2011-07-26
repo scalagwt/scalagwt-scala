@@ -58,7 +58,9 @@ with JribbleNormalization
         val fileSuffix = suffix + ".jribble"
         getFile(clazz, fileSuffix)
       }
-      val out = new PrintWriter(new FileOutputStream(file))
+      import java.io.OutputStreamWriter
+      //Scala assumes Unicode (BMP) as an input, we should produce Unicode as an output too
+      val out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
       new JribblePrinter(clazz, out, unit)
     }
       

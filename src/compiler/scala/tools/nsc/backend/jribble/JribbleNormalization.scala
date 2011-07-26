@@ -18,7 +18,7 @@ import util.Position
 /**
  * Miscellaneous methods that create and modify trees.
  * 
- * @author Lex Spoon
+ * @author Lex Spoon, Grzegorz Kossakowski
  */
 trait JribbleNormalization
 extends JavaDefinitions
@@ -43,6 +43,19 @@ with JribbleAnalysis
     mkApply(mkAttributedRef(javaUnboxMethod(boxedType)), List(expr))
   }
   
+  /** Defines trees corresponding to accessing static fields of java.lang.Float class */
+  object Float {
+    def mkNaN         = mkAttributedRef(javaDefinitions.Float.NaN)
+    def mkPosInfinity = mkAttributedRef(javaDefinitions.Float.PosInfinity)
+    def mkNegInfinity = mkAttributedRef(javaDefinitions.Float.NegInfinity)
+  }
+  
+  /** Defines trees corresponding to accessing static fields of java.lang.Double class */
+  object Double {
+    def mkNaN         = mkAttributedRef(javaDefinitions.Double.NaN)
+    def mkPosInfinity = mkAttributedRef(javaDefinitions.Double.PosInfinity)
+    def mkNegInfinity = mkAttributedRef(javaDefinitions.Double.NegInfinity)
+  }
 
   /**
    * Add an explicit block around a tree if tree isn't one already.

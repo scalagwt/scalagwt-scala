@@ -60,5 +60,21 @@ trait JavaDefinitions {
       (Map.empty[Symbol, Symbol] /: unboxNames.keys) ((map,prim) =>
         map + (prim -> getMember(BoxesRuntimeModule, unboxNames(prim))))
     }
+    
+    /** Helper symbols for referring static fields of java.lang.Float class */
+    object Float {
+      private val sym = definitions.BoxedFloatClass.companionSymbol 
+      val NaN         = getMember(sym, "NaN")
+      val PosInfinity = getMember(sym, "POSITIVE_INFINITY")
+      val NegInfinity = getMember(sym, "NEGATIVE_INFINITY")
+    }
+    
+    /** Helper symbols for referring static fields of java.lang.Double class */
+    object Double {
+      private val sym = definitions.BoxedDoubleClass.companionSymbol 
+      val NaN         = getMember(sym, "NaN")
+      val PosInfinity = getMember(sym, "POSITIVE_INFINITY")
+      val NegInfinity = getMember(sym, "NEGATIVE_INFINITY")
+    }
   }
 }

@@ -364,6 +364,20 @@ with JribbleNormalization
           mkApply(treeGen.mkAttributedRef(global.platform.externalEquals), receiver :: args)
         }
       }
+      //replace NaN, PosInfinity, NegInfinity float/double values with references to static fields defining those
+      //we do that because jribble doesn't supporting those values as literals
+      case tree@Literal(Constant(c: Float)) if c.isNaN =>
+        Float.mkNaN
+      case tree@Literal(Constant(c: Float)) if c.isPosInfinity =>
+        Float.mkPosInfinity
+      case tree@Literal(Constant(c: Float)) if c.isNegInfinity =>
+        Float.mkNegInfinity
+      case tree@Literal(Constant(c: Double)) if c.isNaN =>
+        Double.mkNaN
+      case tree@Literal(Constant(c: Double)) if c.isPosInfinity =>
+        Double.mkPosInfinity
+      case tree@Literal(Constant(c: Double)) if c.isNegInfinity =>
+        Double.mkNegInfinity
       //jribble doesn't support synchronized construct so we just get rid of it
       case Apply(fun @ Select(receiver, name), args) if isSynchronized(fun) =>
         assert(args.tail.isEmpty)

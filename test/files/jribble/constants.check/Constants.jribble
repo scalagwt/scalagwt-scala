@@ -1,0 +1,38 @@
+public class LConstants; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+  
+  public V; chars() {
+    C; minChar = '\00';
+    C; maxChar = '￿';
+    C; tabChar = '\t';
+  }
+  
+  public V; strings() {
+    Ljava/lang/String; string = "\t";
+  }
+  
+  public V; doubles() {
+    D; min = -(1.7976931348623157E308D);
+    D; eps = 4.9E-324D;
+    D; max = 1.7976931348623157E308D;
+    D; nan = Ljava/lang/Double;.NaN;
+    D; negInf = Ljava/lang/Double;.NEGATIVE_INFINITY;
+    D; posInf = Ljava/lang/Double;.POSITIVE_INFINITY;
+    D; zero = 0.0D;
+    D; minusZero = -0.0D;
+  }
+  
+  public V; floats() {
+    F; min = -(3.4028235E38F);
+    F; eps = 1.4E-45F;
+    F; max = 3.4028235E38F;
+    F; nan = Ljava/lang/Float;.NaN;
+    F; negInf = Ljava/lang/Float;.NEGATIVE_INFINITY;
+    F; posInf = Ljava/lang/Float;.POSITIVE_INFINITY;
+    F; zero = 0.0F;
+    F; minusZero = -0.0F;
+  }
+  
+  public this() {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

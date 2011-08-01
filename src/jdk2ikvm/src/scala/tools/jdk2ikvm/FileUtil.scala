@@ -1,7 +1,8 @@
 /* based on Scala X-Ray, Copyright 2009 Mark Harrah
  */
 
-package scala.tools.jdk2ikvm
+package scala.tools
+package jdk2ikvm
 
 import java.io.{FileOutputStream, InputStream, OutputStream}
 import java.io.{BufferedReader, BufferedWriter, File, FileReader, FileWriter, OutputStreamWriter}

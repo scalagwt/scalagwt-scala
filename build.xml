@@ -462,9 +462,9 @@ QUICK BUILD (QUICK)
     </uptodate>
   </target>
 
-  <target name="quick.pre-lib-jribble" depends="quick.comp, quick.lib">
+  <target name="quick.pre-lib-jribble" depends="quick.lib-jdk2ikvm">
     <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-jribble.complete">
-      <srcfiles dir="${src.dir}">
+      <srcfiles dir="${build-quick.dir}/jdk2ikvm">
         <include name="library/**"/>
         <include name="factorymanifests/**"/>
       </srcfiles>
@@ -561,52 +561,13 @@ QUICK BUILD (QUICK)
     <scalacfork
       destdir="${build-quick.dir}/jribble/library"
       compilerpathref="quick.classpath"
-      srcpath="${src.dir}/library"
+      srcpath="${build-quick.dir}/jdk2ikvm/library"
       params="${scalac.args.jribble} -Xplugin:${build-quick.dir}/misc/scala-devel/plugins/factorymanifests.jar"
-      srcdir="${src.dir}/library"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
       target="jribble"
       jvmargs="${scalacfork.jvmargs}">
-      <!-- TODO(grek): scala/text/Document.scala is the only scala file from scala library
-           that crashes jribble backend so it's disabled for now -->
-      <include name="scala/annotation/**/*.scala"/>
-      <!-- Collections, excluding parallel stuff, WeakHashMap and things referring to reflection -->
-      <include name="scala/collection/generic/**/*.scala"/>
-      <exclude name="scala/collection/generic/Signalling.scala"/>
-      <exclude name="scala/collection/generic/CanCombineFrom.scala"/>
-      <exclude name="scala/collection/generic/*Parallel*.scala"/>
-      <exclude name="scala/collection/generic/HasNewCombiner.scala"/>
-      <include name="scala/collection/immutable/**/*.scala"/>
-      <exclude name="scala/collection/immutable/PagedSeq.scala"/>
-      <include name="scala/collection/interfaces/**/*.scala"/>
-      <include name="scala/collection/mutable/**/*.scala"/>
-      <exclude name="scala/collection/mutable/WeakHashMap.scala"/>
-      <include name="scala/collection/script/**/*.scala"/>
-      <include name="scala/collection/*.scala"/>
-      <exclude name="scala/collection/Parallel*.scala"/>
-      <exclude name="scala/collection/JavaConversions.scala"/>
-      <include name="scala/math/**/*.scala"/>
-      <include name="scala/reflect/*Manifest*.scala"/>
-      <include name="scala/runtime/**/*.scala"/>
-      <exclude name="scala/runtime/MethodCache.scala"/>
-      <include name="scala/util/Random.scala"/>
-      <include name="scala/util/automata/**/*.scala"/>
-      <include name="scala/util/control/**/*.scala"/>
-      <include name="scala/util/regexp/**/*.scala"/>
-      <include name="scala/util/MurmurHash.scala"/>
-      <include name="scala/xml/*.scala"/>
-      <exclude name="scala/xml/Xhtml.scala"/>
-      <include name="scala/xml/dtd/*.scala"/>
-      <exclude name="scala/xml/dtd/ContentModelParser.scala"/>
-      <include name="scala/xml/parsing/TokenTests.scala"/>
-      <include name="scala/xml/parsing/XhtmlEntities.scala"/>
-      <include name="scala/xml/transform/**/*.scala"/>
-      <include name="scala/compat/*.scala"/>
-      <include name="scala/*.scala"/>
-      <exclude name="scala/specialized.scala"/>
-      <exclude name="scala/Symbol.scala"/>
-      <exclude name="scala/Application.scala"/>
-      <exclude name="scala/App.scala"/>
-      <compilationpath refid="quick.compilation.path"/>
+      <include name="scala/**/*.scala"/>
+      <include name="scala/**/*.java"/>
     </scalacfork>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
@@ -720,7 +681,7 @@ QUICK BUILD (QUICK)
     <touch file="${build-quick.dir}/jdk2ikvm.complete" verbose="no"/>
     <stopwatch name="quick.jdk2ikvm.timer" action="total"/>
   </target>
-  
+
   <target name="quick.pre-lib-jdk2ikvm" depends="quick.jdk2ikvm">
     <condition property="quick.lib-jdk2ikvm.available">
       <and>

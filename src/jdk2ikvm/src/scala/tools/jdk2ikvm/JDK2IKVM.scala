@@ -66,12 +66,21 @@ abstract class JDK2IKVM
       outputFile.getParentFile.mkdirs()
 
       val shouldSkip = {
-        val skips = List("Predef.scala") // , "Manifest.scala", "ClassManifest.scala"
-        skips exists (fname => unit.source.file.path.endsWith(java.io.File.separator + fname))
-        false
+        val prefixes = Set("scala/collection/parallel",
+            "scala/collection/Parallelizable.scala", 
+            "scala/collection/CustomParallelizable.scala",
+            "scala/collection/generic/GenericParCompanion.scala",
+            "scala/collection/generic/GenericParTemplate.scala",
+            "scala/collection/generic/GenericParTemplate.scala",
+            "scala/collection/generic/ParFactory.scala",
+            "scala/collection/generic/ParMapFactory.scala",
+            "scala/collection/generic/ParSetFactory.scala",
+            "scala/collection/generic/CanCombineFrom.scala",
+            "scala/collection/generic/HasNewCombiner.scala")
+        prefixes exists (x => relativeSourcePath startsWith x)
       }
 
-      if(false && shouldSkip) {
+      if(shouldSkip) {
         scala.Console.println("[jdk2ikvm] not writing: " + unit.source.file.path)
       } else if(unit.isJava) {
         // serialize as is

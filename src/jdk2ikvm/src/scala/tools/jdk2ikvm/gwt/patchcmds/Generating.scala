@@ -64,6 +64,55 @@ trait Generating extends Patching { this : Plugin =>
         case parents => spliceAfter(parents.last, " with " + extraSuper + " ")
       }
     }
+    
+    def removeFromExtendsClause(idef: ImplDef, symbols: Symbol*) {
+      val ss = Set(symbols: _*)
+      /*  Filter out parents that do not have RangePosition. Roughly speaking, there are two cases for parent to not have RangePosition:
+       *   
+       *  a) it's been added implicitly by compiler (e.g. scala.ScalaObject is being added implicitly everywhere)
+       *  b) we've stumbled upon compiler bug in positions logic
+       * 
+       * It's really hard to distinguish those two cases so we assume only a) here and keep fingers crossed. In case of
+       * b) the rest of logic that follows will get wrong positions and will corrupt the output. It's not that bad
+       * because corrupted output will be easily detected once patched source will be tried to compile.
+       */ 
+      val parents = idef.impl.parents.filter(_.pos.isInstanceOf[RangePosition])
+      if (!parents.isEmpty) {
+        //create a sequence of Symbols and positions attached to them
+        //those positions are different from RangePositions and include things like keywords.
+        //E.g. if we have `A with B with C` the sequence will look like this:
+        //(A.symbol, (0, 1)), (B.symbol, (2, 8)), (C.symbol, (9, 15))
+        val symbolsAndRanges: Seq[(Symbol, (Int, Int))] = parents.map(_.symbol) zip {
+          val ranges = parents.map(_.pos.asInstanceOf[RangePosition])
+          val ends = ranges.map(_.end)
+          (ranges.head.start -> ranges.head.end) :: (ends.map(_+1) zip ends.tail)
+        }
+        symbolsAndRanges foreach {
+          case (s, (start, end)) if ss contains s => patchtree.replace(start, end, "")
+          case _ => ()
+        }
+      }
+    }
+    
+    def removeTemplate(idef: ImplDef) {
+      //annotation info is accessible only through symbol
+      idef.symbol.annotations foreach removeAnnotation
+      val range = idef.pos.asInstanceOf[RangePosition]
+      patchtree.replace(range.start, range.end, "")
+    }
+    
+    def removeAnnotation(x: AnnotationInfo) {
+      val range = x.pos.asInstanceOf[RangePosition]
+      //stat-1 because range doesn't include position for @ character
+      patchtree.replace(range.start-1, range.end, "")
+    }
+    
+    def removeDefDef(x: DefDef) {
+      //annotation info is accessible only through symbol
+      x.symbol.annotations foreach removeAnnotation
+      val range = x.pos.asInstanceOf[RangePosition]
+      patchtree.replace(range.start, range.end, "")
+    }
 
     /** inserts the definition given by ikvmDef right after the existing jdkTree (that represents a JDK-based definition). */
     def spliceAfter(jdkTree: Tree, ikvmDefs: String*) {
@@ -149,13 +198,47 @@ trait Generating extends Patching { this : Plugin =>
 
   /* ------------ individual patch-collectors ------------ */
 
+  private[Generating] class RemoveParallelCollections(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private lazy val ParallelizableClass = definitions.getClass("scala.collection.Parallelizable")
+    
+    private lazy val CustomParallelizableClass = definitions.getClass("scala.collection.CustomParallelizable")
+    
+    private lazy val ParallelPackage = definitions.getModule("scala.collection.parallel")
+    
+    private val parallDefNames = Set("par", "parCombiner") map (newTermName) 
+    
+    private def enclTransPackage(sym: Symbol, encl: Symbol): Boolean =
+      if (sym == NoSymbol) false
+      else sym == encl || enclTransPackage(sym.enclosingPackage, encl)
+
+    def collectPatches(tree: Tree) {
+      tree match {
+        case idef: ImplDef =>
+          removeFromExtendsClause(idef, ParallelizableClass, CustomParallelizableClass)
+          
+        case imp: Import if enclTransPackage(imp.expr.symbol, ParallelPackage) =>
+          val range = imp.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+
+        //TODO(grek): Improve accuracy of a condition by checking type arguments and return type
+        case x: DefDef if parallDefNames contains x.name =>
+          removeDefDef(x)
+
+        case _ => ()
+      }
+    }
+
+  }
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
+    
+    private lazy val removeParallelCollections = new RemoveParallelCollections(patchtree)
 
     override def traverse(tree: Tree): Unit = {
       
-      //TODO: call collectPatches on each collector
+      removeParallelCollections collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

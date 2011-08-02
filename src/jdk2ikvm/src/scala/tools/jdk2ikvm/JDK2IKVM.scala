@@ -76,7 +76,8 @@ abstract class JDK2IKVM
             "scala/collection/generic/ParMapFactory.scala",
             "scala/collection/generic/ParSetFactory.scala",
             "scala/collection/generic/CanCombineFrom.scala",
-            "scala/collection/generic/HasNewCombiner.scala")
+            "scala/collection/generic/HasNewCombiner.scala",
+            "scala/collection/generic/Signalling.scala")
         prefixes exists (x => relativeSourcePath startsWith x)
       }
 

@@ -215,6 +215,9 @@ trait Generating extends Patching { this : Plugin =>
         case _ => false
       }
     }
+    
+    protected def enclosingClass(s: Symbol)(t: Tree)(f: PartialFunction[Tree, Unit]): Unit =
+      if ((t.symbol != null) && (t.symbol.enclClass == s) && f.isDefinedAt(t)) f(t) else ()
 
   }
 
@@ -310,14 +313,9 @@ trait Generating extends Patching { this : Plugin =>
     
     private val defNames = Set("exit", "props", "runtime", "env", "allThreads", "addShutdownHook") map (newTermName)
     
-    def collectPatches(tree: Tree) {
-      if (tree.symbol != null && tree.symbol.enclClass == pkgObjectClass) {
-        tree match {
-          case x: DefDef if defNames contains x.name =>
-            removeDefDef(x)
-          case _ => ()
-        }
-      }
+    def collectPatches(tree: Tree) = enclosingClass(pkgObjectClass)(tree) {
+      case x: DefDef if defNames contains x.name =>
+        removeDefDef(x)
     }
     
   }
@@ -328,20 +326,15 @@ trait Generating extends Patching { this : Plugin =>
     
     private val defNames = Set("exit") map (newTermName)
     
-    def collectPatches(tree: Tree) {
-      if (tree.symbol != null && tree.symbol.enclClass == moduleClass) {
-        tree match {
-          case x: DefDef if defNames contains x.name =>
-            removeDefDef(x)
-          //probably a call to Console.read*
-          case x: DefDef if x.name startsWith "read" =>
-            removeDefDef(x)
-          //probably a call to Console.print*
-          case x: DefDef if x.name startsWith "print" =>
-            removeDefDef(x)
-          case _ => ()
-        }
-      }
+    def collectPatches(tree: Tree) = enclosingClass(moduleClass)(tree) {
+      case x: DefDef if defNames contains x.name =>
+        removeDefDef(x)
+      //probably a call to Console.read*
+      case x: DefDef if x.name startsWith "read" =>
+        removeDefDef(x)
+      //probably a call to Console.print*
+      case x: DefDef if x.name startsWith "print" =>
+        removeDefDef(x)
     }
     
   }
@@ -354,14 +347,9 @@ trait Generating extends Patching { this : Plugin =>
     //surprisingly enough ValDef have a trailing space in it's name and it is *not* a bug
     private val valNames = Set("mirror") map (_+" ") map (newTermName)
     
-    def collectPatches(tree: Tree) {
-      if (tree.symbol != null && tree.symbol.enclClass == pkgObjectClass) {
-        tree match {
-          case x: ValDef if valNames contains x.name =>
-            removeValDef(x)
-          case _ => ()
-        }
-      }
+    def collectPatches(tree: Tree) = enclosingClass(pkgObjectClass)(tree) {
+      case x: ValDef if valNames contains x.name =>
+        removeValDef(x)
     }
     
   }
@@ -443,9 +431,11 @@ trait Generating extends Patching { this : Plugin =>
         case x: Import if x.expr.symbol == XmlParsingPackage && x.selectors.exists(_.name == FactoryAdapterName) =>
           val range = x.pos.asInstanceOf[RangePosition]
           patchtree.replace(range.start, range.end, "")
-        case x: DefDef if (defNames contains x.name) && (x.symbol.enclClass == XmlObjectClass) =>
-          removeDefDef(x)
         case _ => ()
+      }
+      enclosingClass(XmlObjectClass)(tree) {
+        case x: DefDef if (defNames contains x.name) =>
+          removeDefDef(x)
       }
     }
 

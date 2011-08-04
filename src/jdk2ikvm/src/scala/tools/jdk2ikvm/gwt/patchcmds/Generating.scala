@@ -218,6 +218,9 @@ trait Generating extends Patching { this : Plugin =>
     
     protected def enclosingClass(s: Symbol)(t: Tree)(f: PartialFunction[Tree, Unit]): Unit =
       if ((t.symbol != null) && (t.symbol.enclClass == s) && f.isDefinedAt(t)) f(t) else ()
+      
+    protected def within(s: Symbol)(t: Tree)(f: PartialFunction[Tree, Unit]): Unit =
+      if ((t.symbol != null) && (t.symbol != NoSymbol) && (t.symbol.owner == s) && f.isDefinedAt(t)) f(t) else ()
 
   }
 
@@ -469,6 +472,87 @@ trait Generating extends Patching { this : Plugin =>
 
   }
   
+  /** Removes references to java.util.concurrent, java.util.Dictionary and java.util.Properties */
+  private[Generating] class CleanupJavaConversions(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private lazy val UtilPackage = definitions.getModule("java.util")
+    private val concurrentName = newTermName("concurrent")
+    
+    private lazy val ConcurrentPackage = definitions.getModule("java.util.concurrent")
+    
+    private lazy val JavaConverionsObjectClass = definitions.getModule("scala.collection.JavaConversions").moduleClass
+    
+    private lazy val DictionaryClass = definitions.getClass("java.util.Dictionary")
+    
+    private lazy val PropertiesClass = definitions.getClass("java.util.Properties")
+    
+    private val templateNames: Set[Name] = Set("JConcurrentMapWrapper", "JDictionaryWrapper", "ConcurrentMapWrapper", "DictionaryWrapper", "JPropertiesWrapper") map (newTypeName)
+    
+    private def concurrentRef(s: Symbol): Boolean = s hasTransOwner ConcurrentPackage.moduleClass
+    
+    private def dictionaryRef(s: Symbol): Boolean = s hasTransOwner DictionaryClass
+    
+    private def propertiesRef(s: Symbol): Boolean = s hasTransOwner PropertiesClass
+    
+    private def badRef(s: Symbol): Boolean = concurrentRef(s) ||  dictionaryRef(s) || propertiesRef(s) 
+
+    def collectPatches(tree: Tree) {
+      tree match {
+        case x: Import if x.expr.symbol == UtilPackage && x.selectors.exists(_.name == concurrentName) =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        case _ => ()
+      }
+      within(JavaConverionsObjectClass)(tree) {
+        case x: ClassDef if (templateNames contains x.name) =>
+          removeTemplate(x)
+      }
+      enclosingClass(JavaConverionsObjectClass)(tree) {
+        case x: DefDef if methodRefersTo(x.symbol)(badRef) =>
+          removeDefDef(x)
+      }
+    }
+
+  }
+  
+  /** Removes references to java.util.concurrent, java.util.Dictionary and java.util.Properties */
+  private[Generating] class CleanupJavaConverters(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private lazy val ConcurrentPackage = definitions.getModule("java.util.concurrent")
+    
+    private lazy val JavaConvertersObjectClass = definitions.getModule("scala.collection.JavaConverters").moduleClass
+    
+    private lazy val DictionaryClass = definitions.getClass("java.util.Dictionary")
+    
+    private lazy val PropertiesClass = definitions.getClass("java.util.Properties")
+    
+    private val defNames = Set("asJavaDictionaryConverter", "asJavaConcurrentMapConverter") map (newTermName)
+    
+    private val templateNames: Set[Name] = Set("AsJavaDictionary") map (newTypeName)
+    
+    private def concurrentRef(s: Symbol): Boolean = s hasTransOwner ConcurrentPackage.moduleClass
+    
+    private def dictionaryRef(s: Symbol): Boolean = s hasTransOwner DictionaryClass
+    
+    private def propertiesRef(s: Symbol): Boolean = s hasTransOwner PropertiesClass
+    
+    private def badRef(s: Symbol): Boolean = concurrentRef(s) ||  dictionaryRef(s) || propertiesRef(s) 
+
+    def collectPatches(tree: Tree) {
+      within(JavaConvertersObjectClass)(tree) {
+        case x: ClassDef if (templateNames contains x.name) =>
+          removeTemplate(x)
+      }
+      enclosingClass(JavaConvertersObjectClass)(tree) {
+        case x: DefDef if methodRefersTo(x.symbol)(badRef) =>
+          removeDefDef(x)
+        case x: DefDef if defNames contains x.name =>
+          removeDefDef(x)
+      }
+    }
+
+  }
+  
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
@@ -490,6 +574,10 @@ trait Generating extends Patching { this : Plugin =>
     private lazy val cleanupXmlPackage = new CleanupXmlPackage(patchtree)
     
     private lazy val removeBadJavaImports = new RemoveBadJavaImports(patchtree)
+    
+    private lazy val cleanupJavaConversions = new CleanupJavaConversions(patchtree)
+    
+    private lazy val cleanupJavaConverters = new CleanupJavaConverters(patchtree)
 
     override def traverse(tree: Tree): Unit = {
       
@@ -510,6 +598,10 @@ trait Generating extends Patching { this : Plugin =>
       cleanupXmlPackage collectPatches tree
       
       removeBadJavaImports collectPatches tree
+      
+      cleanupJavaConversions collectPatches tree
+      
+      cleanupJavaConverters collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

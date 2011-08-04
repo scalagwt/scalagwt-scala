@@ -183,7 +183,13 @@ abstract class JDK2IKVM
     val patchtree = new PatchTree(unit.source)
     if (!unit.isJava) {
       val rephrasingTraverser = new RephrasingTraverser(patchtree)
-      rephrasingTraverser traverse unit.body
+      try {
+        rephrasingTraverser traverse unit.body
+      } catch {
+        case e: Exception =>
+          scala.Console.err.println("Exception " + e + " thrown when traversing " + unit.source.file.path)
+          throw e
+      }
     }
     patchtree
   }

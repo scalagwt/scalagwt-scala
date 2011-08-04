@@ -202,13 +202,18 @@ trait Generating extends Patching { this : Plugin =>
       }
     }
     
-    protected def methodRefersTo(m: Symbol)(p: Symbol => Boolean): Boolean = m.tpe match {
-      case MethodType(params, rtpe) =>
-        val types = rtpe :: params.map(_.tpe)
+    protected def methodRefersTo(m: Symbol)(p: Symbol => Boolean): Boolean = {
+      def methodType(m: MethodType) = {
+        val types = m.resultType :: m.params.map(_.tpe)
         //we need typeSymbolDirect instead of typeSymbol in order to not resolve type aliases
         val typeSymbols = types.map(_.typeSymbolDirect)
         typeSymbols.exists(p)
-      case _ => false
+      }
+      m.tpe match {
+        case m: MethodType => methodType(m)
+        case PolyType(_, result: MethodType) => methodType(result)
+        case _ => false
+      }
     }
 
   }

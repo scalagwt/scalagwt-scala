@@ -328,6 +328,12 @@ trait Generating extends Patching { this : Plugin =>
         tree match {
           case x: DefDef if defNames contains x.name =>
             removeDefDef(x)
+          //probably a call to Console.read*
+          case x: DefDef if x.name startsWith "read" =>
+            removeDefDef(x)
+          //probably a call to Console.print*
+          case x: DefDef if x.name startsWith "print" =>
+            removeDefDef(x)
           case _ => ()
         }
       }
@@ -440,6 +446,34 @@ trait Generating extends Patching { this : Plugin =>
 
   }
   
+  /** Removes imports of stuff from java.io that is not supported */
+  private[Generating] class RemoveBadJavaImports(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private lazy val JavaIoPackage = definitions.getModule("java.io")
+    private val JavaIoNames = Set("BufferedReader", "Reader", "InputStream", "InputStreamReader", "PrintStream", "OutputStream") map (newTermName)
+    private lazy val JavaIoClasses = JavaIoNames map (x => definitions.getClass(JavaIoPackage.fullName + "." + x.toString))
+    
+    private def removeImport(x: Import): Boolean =
+      (x.expr.symbol == JavaIoPackage) && (x.selectors exists (x => JavaIoNames contains x.name))
+      
+    private def badJavaIoClass(s: Symbol) = {
+      val r = JavaIoClasses exists (x => s hasTransOwner x)
+      r
+    }
+
+    def collectPatches(tree: Tree) {
+      tree match {
+        case x: Import if removeImport(x) =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        case x: DefDef if methodRefersTo(x.symbol)(badJavaIoClass) =>
+          removeDefDef(x)
+        case _ => ()
+      }
+    }
+
+  }
+  
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
@@ -459,6 +493,8 @@ trait Generating extends Patching { this : Plugin =>
     private lazy val removeNoStackTraceParent = new RemoveNoStackTraceParent(patchtree)
     
     private lazy val cleanupXmlPackage = new CleanupXmlPackage(patchtree)
+    
+    private lazy val removeBadJavaImports = new RemoveBadJavaImports(patchtree)
 
     override def traverse(tree: Tree): Unit = {
       
@@ -477,6 +513,8 @@ trait Generating extends Patching { this : Plugin =>
       removeNoStackTraceParent collectPatches tree
       
       cleanupXmlPackage collectPatches tree
+      
+      removeBadJavaImports collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

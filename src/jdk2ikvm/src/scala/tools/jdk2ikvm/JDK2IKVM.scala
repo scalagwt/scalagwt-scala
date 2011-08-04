@@ -66,7 +66,14 @@ abstract class JDK2IKVM
       outputFile.getParentFile.mkdirs()
 
       val shouldSkip = {
-        val prefixes = Set("scala/collection/parallel",
+        val prefixes = Set(
+            "scala/App.scala",
+            "scala/Application.scala",
+            //TODO(grek): Provide GWT-specific replacement
+            "scala/Console.scala",
+            //depends on Weak/Soft refs
+            "scala/Symbol.scala",
+            "scala/collection/parallel",
             "scala/collection/Parallelizable.scala", 
             "scala/collection/CustomParallelizable.scala",
             "scala/collection/generic/GenericParCompanion.scala",
@@ -81,6 +88,7 @@ abstract class JDK2IKVM
             "scala/collection/generic/Signalling.scala",
             //depends on scala.io
             "scala/collection/immutable/PagedSeq.scala",
+            "scala/collection/mutable/WeakHashMap.scala",
             "scala/concurrent/",
             "scala/parallel/",
             "scala/io/",
@@ -102,6 +110,10 @@ abstract class JDK2IKVM
             "scala/Enumeration.scala",
             //depends on org.xml.* stuff, depends on I/O, etc.
             "scala/xml/package.scala",
+            //not sure what it is, but doesn't seem we need it 
+            "scala/text/",
+            //not sure what it is, but doesn't seem we need it
+            "scala/testing/",
             "scala/xml/include/sax/",
             //everything apart from XhmtlEntities and TokenTests, probably those two should be moved to some other package
             "scala/xml/parsing/ConstructingHandler.scala",
@@ -121,7 +133,14 @@ abstract class JDK2IKVM
             "scala/xml/factory/",
             //we are removing this because it depends on sys/Prop.scala, so it might be included again once props are being handled
             "scala/util/control/NoStackTrace.scala",
-            "scala/util/parsing/")
+            "scala/util/parsing/",
+            "scala/util/Properties.scala",
+            //depends on I/O (serialization)
+            "scala/util/Marshal.scala",
+            //depends on threads
+            "scala/util/DynamicVariable.scala",
+            //depends on Console
+            "scala/util/logging/")
         prefixes exists (x => relativeSourcePath startsWith x)
       }
 

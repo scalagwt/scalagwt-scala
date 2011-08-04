@@ -14,6 +14,7 @@ object JDK2IKVMPlugin
 	val PluginName = "jdk2ikvm"
   /** This is the name of the option that specifies the output directory.*/
   val OutputDirectoryOptionName = "output-directory:"
+  val ReplacementsDirectoryOptionName = "replacements-directory:"
 }
 /* The standard plugin setup.  The main implementation is in JDK2IKVM.  The entry point is JDK2IKVM.generateOutput */
 class JDK2IKVMPlugin(val global: nsc.Global) extends JDK2IKVM
@@ -28,6 +29,9 @@ class JDK2IKVMPlugin(val global: nsc.Global) extends JDK2IKVM
 
   /** The directory to which the converted sources will be written. */
 	override var outputDirectory: Option[File] = None
+	
+	/** The directory where replacements are stored. */
+  override var replacementsDirectory: Option[File] = None
 
   var afterWhichPhase  = "typer"
   var beforeWhichPhase = "superaccessors"
@@ -38,17 +42,23 @@ class JDK2IKVMPlugin(val global: nsc.Global) extends JDK2IKVM
 		{
 			if(option.startsWith(OutputDirectoryOptionName))
 				outputDirectory = Some(new File(option.substring(OutputDirectoryOptionName.length)))
+			else if (option.startsWith(ReplacementsDirectoryOptionName))
+			  replacementsDirectory = Some(new File(option.substring(ReplacementsDirectoryOptionName.length)))
 		}
     if(outputDirectory == None)
       error("Output directory option for " + name + " plugin not understood.")
+    if(replacementsDirectory == None)
+      error("Replacements directory option for " + name + " plugin not understood.")
     if(settings.sourcepath.isDefault)
       error("-sourcepath was not specified.")
 	}
 	override val optionsHelp: Option[String] =
 	{
 		val prefix = "  -P:" + name + ":"
-    val msg1 = prefix + OutputDirectoryOptionName + "<name>            Set the directory to which the converted sources will be written.\n"
-		Some(msg1)
+    val msg = """|%1$s%2$s<name>            Set the directory to which the converted sources will be written.
+      |%1$s%3$s<name>      Set the directory where replacement files are stored.
+      |""".stripMargin.format(prefix, OutputDirectoryOptionName, ReplacementsDirectoryOptionName)
+		Some(msg)
 	}
 
 	/* For source compatibility between 2.7.x and 2.8.x */

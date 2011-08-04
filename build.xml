@@ -709,6 +709,7 @@ QUICK BUILD (QUICK)
       srcpath="${src.dir}/library"
       params="-Ystop-before:superaccessors
 			    -P:jdk2ikvm:output-directory:${build-quick.dir}/jdk2ikvm/library
+			    -P:jdk2ikvm:replacements-directory:${src.dir}/jdk2ikvm/resources/replacements
 			    -d ${build-quick.dir}/jdk2ikvm/library
 			    -Xplugin ${build-quick.dir}/misc/scala-devel/jdk2ikvm.jar
 			    -Yrangepos"

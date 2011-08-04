@@ -22,6 +22,8 @@ abstract class JDK2IKVM
 
   /** The directory to which the sources will be written. */
   var outputDirectory: Option[File]
+  /** The directory where replacements are stored. */
+  var replacementsDirectory: Option[File]
   /** The directory against which the input source paths will be relativized. */
   def baseDirectory: Option[File] = Some(new File(settings.sourcepath.value))
 
@@ -64,6 +66,17 @@ abstract class JDK2IKVM
       val relativeSourcePath = getRelativeSourcePath(sourceFile)
       val outputFile = new File(outputDirectory.get, relativeSourcePath)
       outputFile.getParentFile.mkdirs()
+      
+      val replaced = {
+        val basePath = replacementsDirectory.get
+        assert(basePath.exists)
+        val javaClasspath = System.getProperty("java.class.path")
+        val f = new File(basePath, relativeSourcePath)
+        if (f.exists()) {
+          FileUtil.write(new java.io.FileInputStream(f), outputFile)
+          true
+        } else false
+      }
 
       val shouldSkip = {
         val prefixes = Set(
@@ -71,8 +84,6 @@ abstract class JDK2IKVM
             "scala/Application.scala",
             //TODO(grek): Provide GWT-specific replacement
             "scala/Console.scala",
-            //depends on Weak/Soft refs
-            "scala/Symbol.scala",
             "scala/collection/parallel",
             "scala/collection/Parallelizable.scala", 
             "scala/collection/CustomParallelizable.scala",
@@ -105,7 +116,11 @@ abstract class JDK2IKVM
             "scala/reflect/generic/",
             "scala/reflect/api/",
             "scala/reflect/Print.scala",
+            //refers to reflection
+            "scala/reflect/ScalaBeanInfo.scala",
             "scala/reflect/NameTransformer.scala",
+            //refers to reflection
+            "scala/runtime/MethodCache.scala",
             //depends on reflections, find out if we can do something about it
             "scala/Enumeration.scala",
             //depends on org.xml.* stuff, depends on I/O, etc.
@@ -145,8 +160,10 @@ abstract class JDK2IKVM
             "scala/util/logging/")
         prefixes exists (x => relativeSourcePath startsWith x)
       }
-
-      if(shouldSkip) {
+      
+      if (replaced) {
+        scala.Console.println("[jdk2ikvm] replaced: " + unit.source.file.path)
+      } else if(shouldSkip) {
         scala.Console.println("[jdk2ikvm] not writing: " + unit.source.file.path)
       } else if(unit.isJava) {
         // serialize as is

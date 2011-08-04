@@ -500,15 +500,11 @@ QUICK BUILD (QUICK)
       target="1.5" source="1.5">
       <compilerarg line="${javac.args}"/>
     </javac>
-    <!-- TODO(grek): We are using scalac.args.jribble instead of scalac.args.quick compiler options
-         to stay consistent with jribble target for scala library. scalac.args.jribble will
-         be removed as soon as jribble backend supports standard compiler options and then
-         we'll switch back to scalac.args.quick here. -->
     <scalacfork
       destdir="${build-quick.dir}/classes/library"
       compilerpathref="locker.classpath"
       srcpath="${src.dir}/library"
-      params="${scalac.args.jribble}"
+      params="${scalac.args.quick}"
       srcdir="${src.dir}/library"
       jvmargs="${scalacfork.jvmargs}">
       <include name="**/*.scala"/>

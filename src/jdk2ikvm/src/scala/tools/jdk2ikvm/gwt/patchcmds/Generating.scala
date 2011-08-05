@@ -448,15 +448,22 @@ trait Generating extends Patching { this : Plugin =>
   private[Generating] class RemoveBadJavaImports(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
     
     private lazy val JavaIoPackage = definitions.getModule("java.io")
-    private val JavaIoNames = Set("BufferedReader", "Reader", "InputStream", "InputStreamReader", "PrintStream", "OutputStream") map (newTermName)
+    private val JavaIoNames = Set("BufferedReader", "Reader", "InputStream", "InputStreamReader", "PrintStream", "OutputStream",
+        "File", "FileDescriptor", "FileInputStream", "FileOutputStream") map (newTermName)
     private lazy val JavaIoClasses = JavaIoNames map (x => definitions.getClass(JavaIoPackage.fullName + "." + x.toString))
     
+    private lazy val JavaNioPackage = definitions.getModule("java.nio")
+    
+    private def enclTransPackage(sym: Symbol, encl: Symbol): Boolean =
+      if (sym == NoSymbol) false
+      else sym == encl || enclTransPackage(sym.enclosingPackage, encl)
+    
     private def removeImport(x: Import): Boolean =
-      (x.expr.symbol == JavaIoPackage) && (x.selectors exists (x => JavaIoNames contains x.name))
+      (x.expr.symbol == JavaIoPackage) && (x.selectors exists (x => JavaIoNames contains x.name)) ||
+      (enclTransPackage(x.expr.symbol, JavaNioPackage))
       
-    private def badJavaIoClass(s: Symbol) = {
-      val r = JavaIoClasses exists (x => s hasTransOwner x)
-      r
+    private def badJavaClass(s: Symbol) = {
+      JavaIoClasses exists (x => s hasTransOwner x)
     }
 
     def collectPatches(tree: Tree) {
@@ -464,7 +471,7 @@ trait Generating extends Patching { this : Plugin =>
         case x: Import if removeImport(x) =>
           val range = x.pos.asInstanceOf[RangePosition]
           patchtree.replace(range.start, range.end, "")
-        case x: DefDef if methodRefersTo(x.symbol)(badJavaIoClass) =>
+        case x: DefDef if methodRefersTo(x.symbol)(badJavaClass) =>
           removeDefDef(x)
         case _ => ()
       }

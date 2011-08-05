@@ -70,6 +70,18 @@ scala/runtime/ScalaRunTime.scala
 --------------------------------
 Lots of platform specific stuff. We need to reimplement it from scratch.
 
+scala/runtime/ArrayRuntime.java
+-------------------------------
+Depends on cloning.
+
+scala/runtime/BoxedUnit.java
+----------------------------
+Depends on java.lang.Void.TYPE
+
+scala/runtime/BoxesRunTime.java
+-------------------------------
+Depends on exception types unsupported by GWT.
+
 scala/Symbol.scala
 ------------------
 Depends on weak references for caching. JavaScript doesn't have anything

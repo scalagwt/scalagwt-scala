@@ -567,6 +567,22 @@ QUICK BUILD (QUICK)
       <include name="scala/**/*.scala"/>
       <include name="scala/**/*.java"/>
     </scalacfork>
+    <!-- Delete jribble files corresponding to primitive types. Name of classes declared for
+         primitive types are broken and would cause parsing error. Those classes are stubs
+         and are never referenced so we can safely exclude them. -->
+    <delete>
+      <fileset dir="${build-quick.dir}/jribble/library/scala">
+        <include name="Boolean.jribble"/>
+        <include name="Byte.jribble"/>
+        <include name="Char.jribble"/>
+        <include name="Double.jribble"/>
+        <include name="Float.jribble"/>
+        <include name="Int.jribble"/>
+        <include name="Long.jribble"/>
+        <include name="Short.jribble"/>
+        <include name="Unit.jribble"/>
+      </fileset>
+    </delete>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>

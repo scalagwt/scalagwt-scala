@@ -590,8 +590,11 @@ QUICK BUILD (QUICK)
     <copy todir="${build-quick.dir}/jribble/library">
       <fileset dir="${src.dir}/library">
         <include name="**/*.xml"/>
-        <include name="scala/runtime/*.java"/>
-        <include name="scala/math/ScalaNumber.java"/>
+      </fileset>
+    </copy>
+    <copy todir="${build-quick.dir}/jribble/library">
+      <fileset dir="${build-quick.dir}/jdk2ikvm/library">
+        <include name="**/*.java"/>
       </fileset>
     </copy>
     <touch file="${build-quick.dir}/library-jribble.complete" verbose="no"/>
@@ -734,6 +737,14 @@ QUICK BUILD (QUICK)
       <include name="**/*.scala"/>
       <compilationpath refid="quick.compilation.path"/>
     </scalacfork>
+    <!-- HACK! jdk2ikvm should handle it but scalacfork ant task filters out anything that doesn't have .scala extension -->
+    <copy todir="${build-quick.dir}/jdk2ikvm/library" overwrite="true">
+      <fileset dir="${src.dir}/jdk2ikvm/resources/replacements">
+        <include name="**/*.java"/>
+      </fileset>
+    </copy>
+    <!-- now we copy rest of Java files that have no correspodning replacement defined. Copy ant task doesn't
+    overwrite by default so files copied above will be kept intact -->
     <copy todir="${build-quick.dir}/jdk2ikvm/library">
       <fileset dir="${src.dir}/library">
         <include name="**/*.java"/>

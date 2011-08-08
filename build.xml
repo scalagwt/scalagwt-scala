@@ -583,6 +583,17 @@ QUICK BUILD (QUICK)
         <include name="Unit.jribble"/>
       </fileset>
     </delete>
+    <mkdir dir="${build-quick.dir}/classes/library-gwt"/>
+    <scalacfork
+      destdir="${build-quick.dir}/classes/library-gwt"
+      compilerpathref="quick.classpath"
+      srcpath="${build-quick.dir}/jdk2ikvm/library"
+      params="${scalac.args.jribble}"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/**/*.scala"/>
+      <include name="scala/**/*.java"/>
+    </scalacfork>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
@@ -1048,6 +1059,9 @@ PACKED QUICK BUILD (PACK)
     <mkdir dir="${build-pack.dir}/lib"/>
     <jar destfile="${build-pack.dir}/lib/scala-library-jribble.jar">
       <fileset dir="${build-quick.dir}/jribble/library"/>
+    </jar>
+    <jar destfile="${build-pack.dir}/lib/scala-library-gwt.jar">
+      <fileset dir="${build-quick.dir}/classes/library-gwt"/>
     </jar>
   </target>
 

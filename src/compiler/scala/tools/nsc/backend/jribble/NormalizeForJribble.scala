@@ -256,7 +256,7 @@ with JribbleNormalization
         val paramLocals = params.map(x => allocLocal(x.tpe, x.pos))
         newStats ++= paramLocals map (ValDef)
         recordLabelDefDuring(tree.symbol, paramLocals) {
-          if (isUnit(rhs.tpe)) {
+          if (isUnitOrNothing(rhs)) {
             treeCopy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
           } else {
             val resultLocal = allocLocal(rhs.tpe, tree.pos)

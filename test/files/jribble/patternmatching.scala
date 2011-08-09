@@ -19,5 +19,13 @@ class PatternMatching {
   def unpackTuple(t: (Int, Int)) = {
     val (x, y) = t
   }
+  
+  def throwInPatternBranch(x: Int): Int = x match {
+      //having a guard expression triggers pattern matching to emit a tree
+      //of slightly different shape that would result with assignment to
+      //a variable with throw on rhs which is invalid jribble construct
+      case x if x == 0 => throw new RuntimeException("don't like zeros")
+      case x => x
+    }
 
 }

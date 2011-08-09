@@ -49,6 +49,28 @@ public class LPatternMatching; extends Ljava/lang/Object; implements Lscala/Scal
     I; y = x$1.(Lscala/Tuple2;::_2$mcI$sp()I;)();
   }
   
+  public I; throwInPatternBranch(I; x) {
+    I; temp11 = x;
+    I; x = temp11;
+    I; $4$;
+    if (this.(LPatternMatching;::gd1$1(I;)Z;)(x))
+      {
+        I; $5$;
+        body$percent03: while(true) {
+          throw (new (Ljava/lang/RuntimeException;::this(Ljava/lang/String;)V;)("don\'t like zeros"));
+        }
+      }
+    else
+      {
+        $4$ = temp11;
+      }
+    return $4$;
+  }
+  
+  private final Z; gd1$1(I; x$1) {
+    return (x$1 == 0);
+  }
+  
   public this() {
     (Ljava/lang/Object;::super()V;)();
   }

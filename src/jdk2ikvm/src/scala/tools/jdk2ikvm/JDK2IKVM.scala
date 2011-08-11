@@ -154,8 +154,6 @@ abstract class JDK2IKVM
             "scala/util/Marshal.scala",
             //depends on java.util.regex
             "scala/util/matching/",
-            //depends on threads
-            "scala/util/DynamicVariable.scala",
             //depends on Console
             "scala/util/logging/")
         prefixes exists (x => relativeSourcePath startsWith x)

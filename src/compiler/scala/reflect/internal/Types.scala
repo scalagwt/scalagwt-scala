@@ -116,7 +116,7 @@ trait Types extends api.Types { self: SymbolTable =>
     }
 
     private[Types] def record(tv: TypeVar) = {
-      log ::= ((tv, tv.constr.cloneInternal))
+      log ::= (tv, tv.constr.cloneInternal)
     }
     private[scala] def clear() {
       if (settings.debug.value)
@@ -826,8 +826,7 @@ trait Types extends api.Types { self: SymbolTable =>
     /** The string representation of this type, with singletypes explained. */
     def toLongString = {
       val str = toString
-      if (str == "type") widen.toString
-      else if (str endsWith ".type") str + " (with underlying type " + widen + ")"
+      if (str endsWith ".type") str + " (with underlying type " + widen + ")"
       else str
     }
 
@@ -3484,7 +3483,6 @@ A type's typeSymbol should never be inspected directly.
    */
   object rawToExistential extends TypeMap {
     private var expanded = immutable.Set[Symbol]()
-    private var generated = immutable.Set[Type]()
     def apply(tp: Type): Type = tp match {
       case TypeRef(pre, sym, List()) if isRawIfWithoutArgs(sym) =>
         if (expanded contains sym) AnyRefClass.tpe
@@ -3495,10 +3493,8 @@ A type's typeSymbol should never be inspected directly.
         } finally {
           expanded -= sym
         }
-      case ExistentialType(_, _) if !(generated contains tp) => // to avoid infinite expansions. todo: not sure whether this is needed
-        val result = mapOver(tp)
-        generated += result
-        result
+      case ExistentialType(_, _) => // stop to avoid infinite expansions
+        tp
       case _ =>
         mapOver(tp)
     }

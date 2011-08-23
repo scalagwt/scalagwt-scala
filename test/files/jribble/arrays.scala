@@ -24,5 +24,14 @@ class Arrays {
   def getTwoArray[T: ClassManifest] = returnTwoArray
   
   def arrayLength(x: Array[Int]) = x.length
+  
+  def genericArrays(): Unit = {
+    returnOneArray[Int]
+    returnOneArray[String]
+    returnOneArray[Object]
+    returnOneArray[Array[String]]
+    returnOneArray[Array[Array[String]]]
+    returnOneArray[Array[Array[Int]]]
+  }
 
 }

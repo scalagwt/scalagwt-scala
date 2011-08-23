@@ -1,0 +1,18 @@
+public final class LArrays$$anon$5$$anon$6; extends Ljava/lang/Object; implements Lscala/reflect/FactoryManifest$Factory; {
+  
+  public Ljava/lang/String;[[ newInstance(I; len) {
+    return new Ljava/lang/String;[len][];
+  }
+  
+  public Lscala/reflect/FactoryManifest$Factory; forArrayOf() {
+    Lscala/sys/package$;.MODULE$.(Lscala/sys/package$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("FactoryManifests support limited depth of generic Array nesting.");
+  }
+  
+  public Ljava/lang/Object; newInstance(I; len) {
+    return this.(LArrays$$anon$5$$anon$6;::newInstance(I;)Ljava/lang/String;[[)(len);
+  }
+  
+  public this(LArrays$$anon$5; $outer) {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

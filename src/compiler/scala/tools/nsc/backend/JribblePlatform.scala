@@ -24,7 +24,7 @@ trait JribblePlatform extends Platform[AbstractFile] {
     removeForwardJumps,        // translate forward jumps into method calls
     normalizeForJribble,       // many normalizations needed for emitting Jribble
     genJribble                 // generate .jribble files
-  )
+  ) ++ loadFactoryManifestsPlugin.components //add `factorymanifests` plugin components, they are required!
 
   lazy val externalEquals = getMember(BoxesRunTimeClass, nme.equals_)
   def externalEqualsNumNum = getMember(BoxesRunTimeClass, "equalsNumNum")
@@ -39,4 +39,8 @@ trait JribblePlatform extends Platform[AbstractFile] {
     (sym isNonBottomSubClass BoxedNumberClass) ||
     (sym isNonBottomSubClass BoxedCharacterClass)
   }
+  
+  def loadFactoryManifestsPlugin =
+    global.plugins.find(_.name == "factorymanifests") getOrElse
+      sys.error("Jribble backend requires `factorymanifests` plugin. Did you forget to include it using -Xplugin option?")
 }

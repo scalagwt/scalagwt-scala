@@ -1,0 +1,18 @@
+public final class LArrays$$anon$5; extends Ljava/lang/Object; implements Lscala/reflect/FactoryManifest$Factory; {
+  
+  public Ljava/lang/String;[ newInstance(I; len) {
+    return new Ljava/lang/String;[len];
+  }
+  
+  public Lscala/reflect/FactoryManifest$Factory; forArrayOf() {
+    return (new (LArrays$$anon$5$$anon$6;::this(LArrays$$anon$5;)V;)(this));
+  }
+  
+  public Ljava/lang/Object; newInstance(I; len) {
+    return this.(LArrays$$anon$5;::newInstance(I;)Ljava/lang/String;[)(len);
+  }
+  
+  public this(LArrays; $outer) {
+    (Ljava/lang/Object;::super()V;)();
+  }
+}

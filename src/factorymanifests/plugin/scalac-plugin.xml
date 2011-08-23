@@ -1,0 +1,4 @@
+<plugin>
+  <name>factorymanifests</name>
+  <classname>scala.tools.factorymanifests.FactoryManifestsPlugin</classname>
+</plugin>

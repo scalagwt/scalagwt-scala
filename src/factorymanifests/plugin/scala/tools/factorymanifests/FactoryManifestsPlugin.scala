@@ -21,6 +21,4 @@ class FactoryManifestsPlugin(val global: Global) extends Plugin {
   
   
   val components = List[PluginComponent](phase)
-
-  global.log("instantiated factorymanifests plugin: " + this)
 }

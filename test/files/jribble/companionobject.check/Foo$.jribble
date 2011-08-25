@@ -13,6 +13,7 @@ public final class LFoo$; extends Ljava/lang/Object; implements Lscala/ScalaObje
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
+    LFoo$;.MODULE$ = this;
     this.(LFoo$;)x$u0020 = 1;
   }
 }

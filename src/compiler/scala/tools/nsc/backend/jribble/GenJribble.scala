@@ -200,6 +200,13 @@ with JribbleNormalization
      * them should be printed as continue's.
      */
     val labelSyms = mut.Set.empty[Symbol]
+    
+    //TODO(grek): Idea of this field comes from GenJVM backend code but it's fairly ugly hack. We should seriously
+    //consider extracting such things like module initialization, module static forwarders, etc. into separate
+    //compiler phase that both jribble and genjvm can share
+    private var isModuleInitialized = false
+    
+    private var currentMethod: Symbol = NoSymbol
 
     override def printRaw(tree: Tree): Unit = printRaw(tree, false)
     
@@ -305,6 +312,8 @@ with JribbleNormalization
         print(";")
 
       case tree@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
+        val oldCurrentMethod = currentMethod
+        currentMethod = tree.symbol
         val resultType = tree.symbol.tpe.resultType
         
         // TODO(spoon): decide about these two prints; put them in or delete the comments
@@ -326,6 +335,7 @@ with JribbleNormalization
           print(" ")
           printInBraces(rhs, true)
         }
+        currentMethod = oldCurrentMethod
 
       case Block(stats, expr) =>
         assert (expr equalsStructure Literal(()))
@@ -420,6 +430,12 @@ with JribbleNormalization
       case tree@Apply(Select(_: Super, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>
         print(jribbleSuperConstructorSignature(tree.symbol))
         printParams(args)
+        // we initialize the MODULE$ field immediately after the super ctor, see GenJVM
+        if (isStaticModule(clazz) && !isModuleInitialized && currentMethod.name == nme.CONSTRUCTOR) {
+          isModuleInitialized = true
+          print(";"); println;
+          print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD); print(" = this"); 
+        }
 
       //trigerred by call to auxiliary constructor
       case tree@Apply(Select(receiver, nme.CONSTRUCTOR), args) if tree.symbol.isConstructor =>

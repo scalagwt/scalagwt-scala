@@ -23,6 +23,7 @@ public final class LTestObject$; extends Ljava/lang/Object; implements Lscala/Sc
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
+    LTestObject$;.MODULE$ = this;
     this.(LTestObject$;)field$u0020 = 0;
     this.(LTestObject$;)mutableField$u0020 = 0;
   }

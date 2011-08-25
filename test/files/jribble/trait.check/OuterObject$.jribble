@@ -3,5 +3,6 @@ public final class LOuterObject$; extends Ljava/lang/Object; implements Lscala/S
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
+    LOuterObject$;.MODULE$ = this;
   }
 }

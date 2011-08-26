@@ -265,7 +265,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
 
   /** Create a line manager.  Overridable.  */
   protected def createLineManager(): Line.Manager =
-    if (replProps.noThreads) null else new Line.Manager
+    if (ReplPropsKludge.noThreadCreation(settings)) null else new Line.Manager
 
   /** Instantiate a compiler.  Overridable. */
   protected def newCompiler(settings: Settings, reporter: Reporter) = {
@@ -967,7 +967,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
 
     /** load and run the code using reflection */
     def loadAndRun: (String, Boolean) = {
-      if (replProps.noThreads) return {
+      if (lineManager == null) return {
         try   { ("" + (lineRep call sessionNames.print), true) }
         catch { case ex => (lineRep.bindError(ex), false) }
       }
@@ -1064,13 +1064,12 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     for {
       tpe <- typeOfTerm(id)
       clazz <- classOfTerm(id)
-      val staticSym = tpe.typeSymbol
+      staticSym = tpe.typeSymbol
       runtimeSym <- safeClass(clazz.getName)
       if runtimeSym != staticSym
       if runtimeSym isSubClass staticSym
-    } yield {
-      runtimeSym.info
     }
+    yield runtimeSym.info
   }
 
   object replTokens extends {

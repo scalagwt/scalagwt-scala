@@ -81,6 +81,7 @@ object NestUI {
     println("    --script        run script runner tests")
     println("    --shootout      run shootout tests")
     println("    --jribble       run jribble tests")
+    println("    --presentation  run presentation compiler tests")
     println("    --grep <expr>    run all tests whose source file contains <expr>")
     println
     println("  Other options:")

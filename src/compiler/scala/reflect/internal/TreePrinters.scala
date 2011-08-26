@@ -39,6 +39,7 @@ trait TreePrinters { self: SymbolTable =>
     protected var indentString = "                                        " // 40
 
     def flush() = out.flush()
+    def close() = out.close()
 
     def indent() = indentMargin += indentStep
     def undent() = indentMargin -= indentStep

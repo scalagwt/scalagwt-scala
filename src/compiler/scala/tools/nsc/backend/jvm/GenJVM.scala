@@ -623,7 +623,11 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
         // println("addGenericSignature: "+ (sym.ownerChain map (x => (x.name, x.isImplClass))))
         erasure.javaSig(sym, memberTpe) foreach { sig =>
           debuglog("sig(" + jmember.getName + ", " + sym + ", " + owner + ")      " + sig)
-
+          /** Since we're using a sun internal class for signature validation,
+           *  we have to allow for it not existing or otherwise malfunctioning:
+           *  in which case we treat every signature as valid.  Medium term we
+           *  should certainly write independent signature validation.
+           */
           if (settings.Xverify.value && !erasure.isValidSignature(sym, sig)) {
             clasz.cunit.warning(sym.pos,
                 """|compiler bug: created invalid generic signature for %s in %s
@@ -783,6 +787,7 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
 
     def genMethod(m: IMethod) {
       if (m.symbol.isStaticConstructor) return
+      if ((m.symbol.name == nme.getClass_) && m.params.isEmpty) return
 
       debuglog("Generating method " + m.symbol.fullName)
       method = m
@@ -1814,14 +1819,20 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
 
     /**
      * Compute the indexes of each local variable of the given
-     * method. Assumes parameters come first in the list of locals.
+     * method. *Does not assume the parameters come first!*
      */
     def computeLocalVarsIndex(m: IMethod) {
       var idx = 1
       if (m.symbol.isStaticMember)
         idx = 0;
 
-      for (l <- m.locals) {
+      for (l <- m.params) {
+        debuglog("Index value for " + l + "{" + l.## + "}: " + idx)
+        l.index = idx
+        idx += sizeOf(l.kind)
+      }
+
+      for (l <- m.locals if !(m.params contains l)) {
         debuglog("Index value for " + l + "{" + l.## + "}: " + idx)
         l.index = idx
         idx += sizeOf(l.kind)

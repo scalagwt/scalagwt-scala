@@ -328,13 +328,13 @@ with JribbleNormalization
         }
 
       case Block(stats, expr) =>
-        assert (expr equalsStructure Literal(()))
+        assert (expr equalsStructure Literal(Constant(())))
         print("{"); indent; println
         printStats(stats)
         undent; println; print("}")
 
       case tree@LabelDef(_, _, body@Block(bodyStats, bodyExpr)) =>
-        assert (bodyExpr equalsStructure Literal(()))
+        assert (bodyExpr equalsStructure Literal(Constant(())))
         labelSyms += tree.symbol
         print(tree.symbol.name); print(": while(true) {"); indent; println;
         printStats(bodyStats)
@@ -513,7 +513,7 @@ with JribbleNormalization
           trees.headOption
         }
         def printBody(body: Tree) = body match {
-          case Block(stats, expr) if (expr equalsStructure Literal(())) =>
+          case Block(stats, expr) if (expr equalsStructure Literal(Constant(()))) =>
             print(" {");
             indent;
             println;

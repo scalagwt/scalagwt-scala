@@ -100,6 +100,25 @@ abstract class JDK2IKVM
             "scala/reflect/NameTransformer.scala",
             //depends on reflections, find out if we can do something about it
             "scala/Enumeration.scala",
+            //depends on org.xml.* stuff, depends on I/O, etc.
+            "scala/xml/package.scala",
+            "scala/xml/include/sax/",
+            //everything apart from XhmtlEntities and TokenTests, probably those two should be moved to some other package
+            "scala/xml/parsing/ConstructingHandler.scala",
+            "scala/xml/parsing/ConstructingParser.scala",
+            "scala/xml/parsing/DefaultMarkupHandler.scala",
+            "scala/xml/parsing/ExternalSources.scala",
+            "scala/xml/parsing/FactoryAdapter.scala",
+            "scala/xml/parsing/FatalError.scala",
+            "scala/xml/parsing/MarkupHandler.scala",
+            "scala/xml/parsing/MarkupParser.scala",
+            "scala/xml/parsing/MarkupParserCommon.scala",
+            "scala/xml/parsing/NoBindingFactoryAdapter.scala",
+            "scala/xml/parsing/ValidatingMarkupHandler.scala",
+            "scala/xml/parsing/XhtmlParser.scala",
+            "scala/xml/pull/XMLEventReader.scala",
+            "scala/xml/persistent/",
+            "scala/xml/factory/",
             //we are removing this because it depends on sys/Prop.scala, so it might be included again once props are being handled
             "scala/util/control/NoStackTrace.scala",
             "scala/util/parsing/")

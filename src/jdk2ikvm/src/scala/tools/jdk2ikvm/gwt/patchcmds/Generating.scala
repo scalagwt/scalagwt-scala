@@ -394,6 +394,52 @@ trait Generating extends Patching { this : Plugin =>
 
   }
   
+  /** Removes references to I/O related classes from xml package */
+  private[Generating] class CleanupXmlPackage(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private lazy val XmlFactoryPackage = definitions.getModule("scala.xml.factory")
+    private lazy val XmlParsingPackage = definitions.getModule("scala.xml.parsing")
+    
+    private val NoBindingFactoryAdapterName = newTermName("NoBindingFactoryAdapter")
+    private val FactoryAdapterName = newTermName("FactoryAdapter")
+    
+    private lazy val XmlLoaderClass = definitions.getClass("scala.xml.factory.XMLLoader")
+    private val XmlLoaderName = newTermName("XMLLoader")
+    
+    private lazy val XmlObjectClass = definitions.getModule("scala.xml.XML").moduleClass
+    
+    private lazy val XmlSource = definitions.getModule("scala.xml.Source")
+    
+    private val defNames = Set("withSAXParser", "saveFull", "save", "write") map (newTermName)
+
+    def collectPatches(tree: Tree) {
+      tree match {
+        case idef: ImplDef if idef.symbol == XmlSource =>
+          removeTemplate(idef)
+        case x: Import if x.expr.symbol == XmlSource =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        case idef: ImplDef =>
+          removeFromExtendsClause(idef, XmlLoaderClass)
+        case x: Import if x.expr.symbol == XmlFactoryPackage && x.selectors.exists(_.name == XmlLoaderName) =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        //this probably could be removed upstream as it seems to be unused import
+        case x: Import if x.expr.symbol == XmlParsingPackage && x.selectors.exists(_.name == NoBindingFactoryAdapterName) =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        //this probably could be removed upstream as it seems to be unused import
+        case x: Import if x.expr.symbol == XmlParsingPackage && x.selectors.exists(_.name == FactoryAdapterName) =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        case x: DefDef if (defNames contains x.name) && (x.symbol.enclClass == XmlObjectClass) =>
+          removeDefDef(x)
+        case _ => ()
+      }
+    }
+
+  }
+  
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
@@ -411,6 +457,8 @@ trait Generating extends Patching { this : Plugin =>
     private lazy val cleanupReflectPackage = new CleanupReflectPackageObject(patchtree)
     
     private lazy val removeNoStackTraceParent = new RemoveNoStackTraceParent(patchtree)
+    
+    private lazy val cleanupXmlPackage = new CleanupXmlPackage(patchtree)
 
     override def traverse(tree: Tree): Unit = {
       
@@ -427,6 +475,8 @@ trait Generating extends Patching { this : Plugin =>
       cleanupReflectPackage collectPatches tree
       
       removeNoStackTraceParent collectPatches tree
+      
+      cleanupXmlPackage collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

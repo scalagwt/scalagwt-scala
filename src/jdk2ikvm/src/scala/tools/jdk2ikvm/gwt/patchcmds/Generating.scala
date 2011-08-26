@@ -21,6 +21,11 @@ trait Generating extends Patching { this : Plugin =>
   def warning(pos: Position, msg: String) = reporter.warning(pos, msgPrefix + msg) 
   def info(pos: Position, msg: String)    = reporter.info(pos, msgPrefix + msg, false)
 
+  def rangePosition(pos: Position): Option[RangePosition] =
+    if (pos.isInstanceOf[RangePosition]) Some(pos.asInstanceOf[RangePosition])
+    else None
+
+
   /* ------------------ utility methods invoked by more than one patch-collector ------------------ */
 
   private[Generating] class CallsiteUtils(patchtree: PatchTree) {
@@ -110,15 +115,20 @@ trait Generating extends Patching { this : Plugin =>
     def removeDefDef(x: DefDef) {
       //annotation info is accessible only through symbol
       x.symbol.annotations foreach removeAnnotation
-      val range = x.pos.asInstanceOf[RangePosition]
-      patchtree.replace(range.start, range.end, "")
+      val rangeOpt = rangePosition(x.pos)
+      (rangeOpt
+          map { range => patchtree.replace(range.start, range.end, "") }
+          getOrElse warning(x.pos, "Unable to remove def " + x.name))
+
     }
     
     def removeValDef(x: ValDef) {
       //annotation info is accessible only through symbol
       x.symbol.annotations foreach removeAnnotation
-      val range = x.pos.asInstanceOf[RangePosition]
-      patchtree.replace(range.start, range.end, "")
+      val rangeOpt = rangePosition(x.pos)
+      (rangeOpt
+          map { range => patchtree.replace(range.start, range.end, "") }
+          getOrElse warning(x.pos, "Unable to remove val " + x.name))
     }
     
 
@@ -335,9 +345,6 @@ trait Generating extends Patching { this : Plugin =>
       //probably a call to Console.read*
       case x: DefDef if x.name startsWith "read" =>
         removeDefDef(x)
-      //probably a call to Console.print*
-      case x: DefDef if x.name startsWith "print" =>
-        removeDefDef(x)
     }
     
   }
@@ -380,6 +387,24 @@ trait Generating extends Patching { this : Plugin =>
       }
     }
     
+  }
+
+  private [Generating] class CleanupConsole(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    private val consoleModuleClass = definitions.getModule("scala.Console").moduleClass
+
+    private val defNames = Set("in", "setIn", "withIn", "flush", "textComponents")
+
+    private def shouldRemove(x: TermName): Boolean =
+      ((x startsWith "read") || (defNames contains x.toString))
+
+    def collectPatches(tree: Tree) {
+      enclosingClass(consoleModuleClass)(tree) {
+        case x: DefDef if shouldRemove(x.name) =>
+          removeDefDef(x)
+        case x: ValDef if x.name.toString == "inVar " =>
+          removeValDef(x)
+      }
+    }
   }
   
   private[Generating] class RemoveNoStackTraceParent(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
@@ -448,20 +473,34 @@ trait Generating extends Patching { this : Plugin =>
   private[Generating] class RemoveBadJavaImports(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
     
     private lazy val JavaIoPackage = definitions.getModule("java.io")
-    private val JavaIoNames = Set("BufferedReader", "Reader", "InputStream", "InputStreamReader", "PrintStream", "OutputStream",
-        "File", "FileDescriptor", "FileInputStream", "FileOutputStream") map (newTermName)
+    private val JavaIoNames = Set("BufferedReader", "Reader", "InputStream", "InputStreamReader",
+        "File", "FileDescriptor", "FileInputStream", "FileOutputStream",
+        "ObjectOutputStream", "ObjectInputStream", "StringReader", "Writer") map (newTermName)
     private lazy val JavaIoClasses = JavaIoNames map (x => definitions.getClass(JavaIoPackage.fullName + "." + x.toString))
-    
+
+    private lazy val JavaTextPackage = definitions.getModule("java.text")
     private lazy val JavaNioPackage = definitions.getModule("java.nio")
     
     private def enclTransPackage(sym: Symbol, encl: Symbol): Boolean =
       if (sym == NoSymbol) false
       else sym == encl || enclTransPackage(sym.enclosingPackage, encl)
-    
+
+    private def containsIoClass(x: Import): Boolean =
+      (x.expr.symbol == JavaIoPackage) && (x.selectors exists (x => JavaIoNames contains x.name))
+
     private def removeImport(x: Import): Boolean =
-      (x.expr.symbol == JavaIoPackage) && (x.selectors exists (x => JavaIoNames contains x.name)) ||
-      (enclTransPackage(x.expr.symbol, JavaNioPackage))
-      
+      (enclTransPackage(x.expr.symbol, JavaNioPackage) || enclTransPackage(x.expr.symbol, JavaTextPackage))
+
+    private def filterImport(x: Import, selectorsToRemove: Set[TermName]) = {
+      val filteredSelectors = x.selectors map (_.name) filterNot (selectorsToRemove contains _)
+      val range = x.pos.asInstanceOf[RangePosition]
+      if (filteredSelectors isEmpty)
+        patchtree.replace(range.start, range.end, "")
+      else
+        patchtree.replace(range.start, range.end,
+          "import " + x.expr.toString + ".{" + (filteredSelectors mkString ", ") + "}\n")
+    }
+
     private def badJavaClass(s: Symbol) = {
       JavaIoClasses exists (x => s hasTransOwner x)
     }
@@ -471,6 +510,8 @@ trait Generating extends Patching { this : Plugin =>
         case x: Import if removeImport(x) =>
           val range = x.pos.asInstanceOf[RangePosition]
           patchtree.replace(range.start, range.end, "")
+        case x: Import if containsIoClass(x) =>
+          filterImport(x, JavaIoNames)
         case x: DefDef if methodRefersTo(x.symbol)(badJavaClass) =>
           removeDefDef(x)
         case _ => ()
@@ -560,6 +601,28 @@ trait Generating extends Patching { this : Plugin =>
 
   }
   
+  /** Removes references to java.util.concurrent, java.util.Dictionary and java.util.Properties */
+  private[Generating] class RemoveCloneMethod(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private val cloneName: Name = newTermName("clone")
+
+    def collectPatches(tree: Tree) {
+      tree match {
+//        case x: Apply if x.symbol.name == cloneName =>
+//          val range = x.pos.asInstanceOf[RangePosition]
+//          patchtree.replace(range.start, range.end-1, "sys.error(\"GWT doesn't support clone method.\")")
+        case x: DefDef if x.name == cloneName =>
+          if (x.symbol.nextOverriddenSymbol == definitions.Object_clone)
+            //since Object.clone doesn't exist we should remove override modifier
+            delOverrideModif(x)
+          val range = x.rhs.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "{ sys.error(\"GWT doesn't support clone method.\") }\n")
+        case _ => ()
+      }
+    }
+
+  }
+  
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
@@ -571,6 +634,8 @@ trait Generating extends Patching { this : Plugin =>
     private lazy val cleanupSysPackage = new CleanupSysPackageObject(patchtree)
     
     private lazy val cleanupBigDecimal = new CleanupBigDecimal(patchtree)
+
+    private lazy val cleanupConsole = new CleanupConsole(patchtree)
     
     private lazy val cleanupPredef = new CleanupPredef(patchtree)
     
@@ -585,6 +650,8 @@ trait Generating extends Patching { this : Plugin =>
     private lazy val cleanupJavaConversions = new CleanupJavaConversions(patchtree)
     
     private lazy val cleanupJavaConverters = new CleanupJavaConverters(patchtree)
+    
+    private lazy val removeCloneMethod = new RemoveCloneMethod(patchtree)
 
     override def traverse(tree: Tree): Unit = {
       
@@ -595,6 +662,8 @@ trait Generating extends Patching { this : Plugin =>
       cleanupSysPackage collectPatches tree
       
       cleanupBigDecimal collectPatches tree
+
+      cleanupConsole collectPatches tree
       
       cleanupPredef collectPatches tree
       
@@ -609,6 +678,8 @@ trait Generating extends Patching { this : Plugin =>
       cleanupJavaConversions collectPatches tree
       
       cleanupJavaConverters collectPatches tree
+      
+      removeCloneMethod collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

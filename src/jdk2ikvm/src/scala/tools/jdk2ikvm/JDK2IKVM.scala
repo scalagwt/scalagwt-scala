@@ -82,8 +82,6 @@ abstract class JDK2IKVM
         val prefixes = Set(
             "scala/App.scala",
             "scala/Application.scala",
-            //TODO(grek): Provide GWT-specific replacement
-            "scala/Console.scala",
             "scala/collection/parallel",
             "scala/collection/Parallelizable.scala", 
             "scala/collection/CustomParallelizable.scala",

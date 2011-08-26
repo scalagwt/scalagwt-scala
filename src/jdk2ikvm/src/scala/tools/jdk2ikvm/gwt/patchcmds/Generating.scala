@@ -230,15 +230,67 @@ trait Generating extends Patching { this : Plugin =>
     }
 
   }
+  
+  private[Generating] class RemoveSerializationSupport(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    private val proxy: Name = newTypeName("SerializationProxy")
+    
+    private val writeReplace = newTermName("writeReplace")
+    
+    private val serializableClass = definitions.getClass("scala.Serializable")
+    
+    private def proxyForRemoval(s: Symbol) = s.name == proxy
+    
+    private object WriteObjectMethod extends (Symbol => Boolean) {
+      val name = newTermName("writeObject")
+      val paramSymbol = definitions.getClass("java.io.ObjectOutputStream")
+      
+      def apply(s: Symbol): Boolean = s.name == name && (s.tpe match {
+        case MethodType(param :: Nil, _) =>
+          param.tpe.typeSymbol == paramSymbol
+        case _ => false
+      })
+    }
+    
+    private object ReadObjectMethod extends (Symbol => Boolean) {
+      val name = newTermName("readObject")
+      val paramSymbol = definitions.getClass("java.io.ObjectInputStream")
+      
+      def apply(s: Symbol): Boolean = s.name == name && (s.tpe match {
+        case MethodType(param :: Nil, _) =>
+          param.tpe.typeSymbol == paramSymbol
+        case _ => false
+      })
+    }
+    
+    def collectPatches(tree: Tree) {
+      tree match {
+        case x: ImplDef if proxyForRemoval(x.symbol) =>
+          removeTemplate(x)
+        //TODO(grek): Find out if we should remove scala.Serializable from parents
+//        case x: ImplDef =>
+//          removeFromExtendsClause(x, serializableClass)
+        case x: DefDef if x.name == writeReplace =>
+          removeDefDef(x)
+        case x: DefDef if ReadObjectMethod(x.symbol) || WriteObjectMethod(x.symbol) =>
+          removeDefDef(x)
+        case _ => ()
+      }
+    }
+  }
+  
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
     
     private lazy val removeParallelCollections = new RemoveParallelCollections(patchtree)
+    
+    private lazy val removeSerializationSupport = new RemoveSerializationSupport(patchtree) 
 
     override def traverse(tree: Tree): Unit = {
       
       removeParallelCollections collectPatches tree
+      
+      removeSerializationSupport collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

@@ -137,6 +137,8 @@ abstract class JDK2IKVM
             "scala/util/Properties.scala",
             //depends on I/O (serialization)
             "scala/util/Marshal.scala",
+            //depends on java.util.regex
+            "scala/util/matching/",
             //depends on threads
             "scala/util/DynamicVariable.scala",
             //depends on Console

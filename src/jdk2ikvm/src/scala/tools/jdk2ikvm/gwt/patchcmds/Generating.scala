@@ -113,6 +113,14 @@ trait Generating extends Patching { this : Plugin =>
       val range = x.pos.asInstanceOf[RangePosition]
       patchtree.replace(range.start, range.end, "")
     }
+    
+    def removeValDef(x: ValDef) {
+      //annotation info is accessible only through symbol
+      x.symbol.annotations foreach removeAnnotation
+      val range = x.pos.asInstanceOf[RangePosition]
+      patchtree.replace(range.start, range.end, "")
+    }
+    
 
     /** inserts the definition given by ikvmDef right after the existing jdkTree (that represents a JDK-based definition). */
     def spliceAfter(jdkTree: Tree, ikvmDefs: String*) {
@@ -193,11 +201,21 @@ trait Generating extends Patching { this : Plugin =>
         case _ => ()
       }
     }
+    
+    protected def methodRefersTo(m: Symbol)(p: Symbol => Boolean): Boolean = m.tpe match {
+      case MethodType(params, rtpe) =>
+        val types = rtpe :: params.map(_.tpe)
+        //we need typeSymbolDirect instead of typeSymbol in order to not resolve type aliases
+        val typeSymbols = types.map(_.typeSymbolDirect)
+        typeSymbols.exists(p)
+      case _ => false
+    }
 
   }
 
   /* ------------ individual patch-collectors ------------ */
 
+  /** Removes par, parCombiner defs and parent traits mixed in to support parallel collections */
   private[Generating] class RemoveParallelCollections(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
     
     private lazy val ParallelizableClass = definitions.getClass("scala.collection.Parallelizable")
@@ -231,6 +249,7 @@ trait Generating extends Patching { this : Plugin =>
 
   }
   
+  /** Removes any definitions related to serialization from scala collections classes */
   private[Generating] class RemoveSerializationSupport(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
     private val proxy: Name = newTypeName("SerializationProxy")
     
@@ -278,19 +297,136 @@ trait Generating extends Patching { this : Plugin =>
     }
   }
   
+  /** Removes def that depend on VM, like exit, runtime, env, etc. */
+  private[Generating] class CleanupSysPackageObject(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    //not sure why definitions.getPackageObjectClass doesn't work
+    private val pkgObjectClass = definitions.getPackageObject("scala.sys").moduleClass
+    
+    private val defNames = Set("exit", "props", "runtime", "env", "allThreads", "addShutdownHook") map (newTermName)
+    
+    def collectPatches(tree: Tree) {
+      if (tree.symbol != null && tree.symbol.enclClass == pkgObjectClass) {
+        tree match {
+          case x: DefDef if defNames contains x.name =>
+            removeDefDef(x)
+          case _ => ()
+        }
+      }
+    }
+    
+  }
+  
+  private[Generating] class CleanupPredef(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+
+    private val moduleClass = definitions.PredefModuleClass
+    
+    private val defNames = Set("exit") map (newTermName)
+    
+    def collectPatches(tree: Tree) {
+      if (tree.symbol != null && tree.symbol.enclClass == moduleClass) {
+        tree match {
+          case x: DefDef if defNames contains x.name =>
+            removeDefDef(x)
+          case _ => ()
+        }
+      }
+    }
+    
+  }
+  
+  /** Removes mirror val def that depends on part of reflect package that we excluded */
+  private[Generating] class CleanupReflectPackageObject(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+
+    private val pkgObjectClass = definitions.getPackageObject("scala.reflect").moduleClass
+    
+    //surprisingly enough ValDef have a trailing space in it's name and it is *not* a bug
+    private val valNames = Set("mirror") map (_+" ") map (newTermName)
+    
+    def collectPatches(tree: Tree) {
+      if (tree.symbol != null && tree.symbol.enclClass == pkgObjectClass) {
+        tree match {
+          case x: ValDef if valNames contains x.name =>
+            removeValDef(x)
+          case _ => ()
+        }
+      }
+    }
+    
+  }
+  
+  /** Removes RoundingMode object that depends on Enumeration */
+  private[Generating] class CleanupBigDecimal(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private val bigDecimalModule = definitions.getModule("scala.math.BigDecimal")
+    
+    private val roundingModeModule = definitions.getMember(bigDecimalModule, "RoundingMode")
+    
+    private def withinRoundingMode(s: Symbol): Boolean =
+      s.hasTransOwner(roundingModeModule.moduleClass)
+    
+    def collectPatches(tree: Tree) {
+      tree match {
+        case x: ModuleDef if x.symbol == roundingModeModule =>
+          removeTemplate(x)
+        case x: Import if x.expr.symbol == roundingModeModule =>
+          val range = x.pos.asInstanceOf[RangePosition]
+          patchtree.replace(range.start, range.end, "")
+        case x: DefDef if methodRefersTo(x.symbol)(withinRoundingMode) =>
+          removeDefDef(x)
+        case _ => ()
+      }
+    }
+    
+  }
+  
+  private[Generating] class RemoveNoStackTraceParent(patchtree: PatchTree) extends CallsiteUtils(patchtree) {
+    
+    private lazy val NoStackTraceClass = definitions.getClass("scala.util.control.NoStackTrace")
+
+    def collectPatches(tree: Tree) {
+      tree match {
+        case idef: ImplDef =>
+          removeFromExtendsClause(idef, NoStackTraceClass)
+        case _ => ()
+      }
+    }
+
+  }
+  
   /* ------------------------ The main patcher ------------------------ */
 
   class RephrasingTraverser(patchtree: PatchTree) extends Traverser {
     
     private lazy val removeParallelCollections = new RemoveParallelCollections(patchtree)
     
-    private lazy val removeSerializationSupport = new RemoveSerializationSupport(patchtree) 
+    private lazy val removeSerializationSupport = new RemoveSerializationSupport(patchtree)
+    
+    private lazy val cleanupSysPackage = new CleanupSysPackageObject(patchtree)
+    
+    private lazy val cleanupBigDecimal = new CleanupBigDecimal(patchtree)
+    
+    private lazy val cleanupPredef = new CleanupPredef(patchtree)
+    
+    private lazy val cleanupReflectPackage = new CleanupReflectPackageObject(patchtree)
+    
+    private lazy val removeNoStackTraceParent = new RemoveNoStackTraceParent(patchtree)
 
     override def traverse(tree: Tree): Unit = {
       
       removeParallelCollections collectPatches tree
       
       removeSerializationSupport collectPatches tree
+      
+      cleanupSysPackage collectPatches tree
+      
+      cleanupBigDecimal collectPatches tree
+      
+      cleanupPredef collectPatches tree
+      
+      cleanupReflectPackage collectPatches tree
+      
+      removeNoStackTraceParent collectPatches tree
       
       super.traverse(tree) // "longest patches first" that's why super.traverse after collectPatches(tree).
     }

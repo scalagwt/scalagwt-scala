@@ -13,7 +13,7 @@ import nsc.util.{Position, SourceFile}
 /** The actual work is done here. */
 abstract class JDK2IKVM
   extends Plugin
-  with patchcmds.Generating
+  with gwt.patchcmds.Generating
 {
 
   import global._

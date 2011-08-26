@@ -1,6 +1,6 @@
 package scala.tools
 package jdk2ikvm
-package patchcmds
+package gwt.patchcmds
 
 trait Patching {
 

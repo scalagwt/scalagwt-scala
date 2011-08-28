@@ -7,5 +7,6 @@ public final class LHelloWorld$; extends Ljava/lang/Object; implements Lscala/Sc
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
+    LHelloWorld$;.MODULE$ = this;
   }
 }

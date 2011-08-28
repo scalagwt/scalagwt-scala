@@ -203,7 +203,7 @@ self: scala.tools.nsc.Global =>
       inform(tree.toString)
       inform("")
       inform("=======")
-      throw new ValidateException(msg)
+     throw new ValidateException(msg)
     }
     
     def validate(tree: Tree, encltree: Tree): Unit = {

@@ -210,7 +210,9 @@ INITIALISATION
 	
     <property name="scalac.args.all" value="${scalac.args} ${scalac.args.optimise}"/>
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
-	<property name="scalac.args.jribble" value="${scalac.args.quick} -g:notailcalls"/>
+	<!-- Define gwt.classpath in build.properties file, it must include gwt-dev.jar, gwt-user.jar, gwt-lang.jar and gwt-java_lang.jar
+	     Last two jars has to be built as described here: https://groups.google.com/d/topic/scalagwt/AUp4r9Qu9Zg/discussion -->
+	<property name="scalac.args.jribble" value="${scalac.args.quick} -javabootclasspath ${gwt.classpath} -g:notailcalls -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar"/>
   <!-- Setting-up Ant contrib tasks -->
     <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${lib.dir}/ant/ant-contrib.jar"/>
     <!-- This is the start time for the distribution -->
@@ -462,9 +464,9 @@ QUICK BUILD (QUICK)
     </uptodate>
   </target>
 
-  <target name="quick.pre-lib-jribble" depends="quick.comp, quick.lib">
+  <target name="quick.pre-lib-jribble" depends="quick.lib-jdk2ikvm">
     <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-jribble.complete">
-      <srcfiles dir="${src.dir}">
+      <srcfiles dir="${build-quick.dir}/jdk2ikvm">
         <include name="library/**"/>
         <include name="factorymanifests/**"/>
       </srcfiles>
@@ -498,15 +500,11 @@ QUICK BUILD (QUICK)
       target="1.5" source="1.5">
       <compilerarg line="${javac.args}"/>
     </javac>
-    <!-- TODO(grek): We are using scalac.args.jribble instead of scalac.args.quick compiler options
-         to stay consistent with jribble target for scala library. scalac.args.jribble will
-         be removed as soon as jribble backend supports standard compiler options and then
-         we'll switch back to scalac.args.quick here. -->
     <scalacfork
       destdir="${build-quick.dir}/classes/library"
       compilerpathref="locker.classpath"
       srcpath="${src.dir}/library"
-      params="${scalac.args.jribble}"
+      params="${scalac.args.quick}"
       srcdir="${src.dir}/library"
       jvmargs="${scalacfork.jvmargs}">
       <include name="**/*.scala"/>
@@ -561,52 +559,40 @@ QUICK BUILD (QUICK)
     <scalacfork
       destdir="${build-quick.dir}/jribble/library"
       compilerpathref="quick.classpath"
-      srcpath="${src.dir}/library"
+      srcpath="${build-quick.dir}/jdk2ikvm/library"
       params="${scalac.args.jribble} -Xplugin:${build-quick.dir}/misc/scala-devel/plugins/factorymanifests.jar"
-      srcdir="${src.dir}/library"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
       target="jribble"
       jvmargs="${scalacfork.jvmargs}">
-      <!-- TODO(grek): scala/text/Document.scala is the only scala file from scala library 
-           that crashes jribble backend so it's disabled for now -->
-      <include name="scala/annotation/**/*.scala"/>
-      <!-- Collections, excluding parallel stuff, WeakHashMap and things referring to reflection -->
-      <include name="scala/collection/generic/**/*.scala"/>
-      <exclude name="scala/collection/generic/Signalling.scala"/>
-      <exclude name="scala/collection/generic/CanCombineFrom.scala"/>
-      <exclude name="scala/collection/generic/*Parallel*.scala"/>
-      <exclude name="scala/collection/generic/HasNewCombiner.scala"/>
-      <include name="scala/collection/immutable/**/*.scala"/>
-      <exclude name="scala/collection/immutable/PagedSeq.scala"/>
-      <include name="scala/collection/interfaces/**/*.scala"/>
-      <include name="scala/collection/mutable/**/*.scala"/>
-      <exclude name="scala/collection/mutable/WeakHashMap.scala"/>
-      <include name="scala/collection/script/**/*.scala"/>
-      <include name="scala/collection/*.scala"/>
-      <exclude name="scala/collection/Parallel*.scala"/>
-      <exclude name="scala/collection/JavaConversions.scala"/>
-      <include name="scala/math/**/*.scala"/>
-      <include name="scala/reflect/*Manifest*.scala"/>
-      <include name="scala/runtime/**/*.scala"/>
-      <exclude name="scala/runtime/MethodCache.scala"/>
-      <include name="scala/util/Random.scala"/>
-      <include name="scala/util/automata/**/*.scala"/>
-      <include name="scala/util/control/**/*.scala"/>
-      <include name="scala/util/regexp/**/*.scala"/>
-      <include name="scala/util/MurmurHash.scala"/>
-      <include name="scala/xml/*.scala"/>
-      <exclude name="scala/xml/Xhtml.scala"/>
-      <include name="scala/xml/dtd/*.scala"/>
-      <exclude name="scala/xml/dtd/ContentModelParser.scala"/>
-      <include name="scala/xml/parsing/TokenTests.scala"/>
-      <include name="scala/xml/parsing/XhtmlEntities.scala"/>
-      <include name="scala/xml/transform/**/*.scala"/>
-      <include name="scala/compat/*.scala"/>
-      <include name="scala/*.scala"/>
-      <exclude name="scala/specialized.scala"/>
-      <exclude name="scala/Symbol.scala"/>
-      <exclude name="scala/Application.scala"/>
-      <exclude name="scala/App.scala"/>
-      <compilationpath refid="quick.compilation.path"/>
+      <include name="scala/**/*.scala"/>
+      <include name="scala/**/*.java"/>
+    </scalacfork>
+    <!-- Delete jribble files corresponding to primitive types. Name of classes declared for
+         primitive types are broken and would cause parsing error. Those classes are stubs
+         and are never referenced so we can safely exclude them. -->
+    <delete>
+      <fileset dir="${build-quick.dir}/jribble/library/scala">
+        <include name="Boolean.jribble"/>
+        <include name="Byte.jribble"/>
+        <include name="Char.jribble"/>
+        <include name="Double.jribble"/>
+        <include name="Float.jribble"/>
+        <include name="Int.jribble"/>
+        <include name="Long.jribble"/>
+        <include name="Short.jribble"/>
+        <include name="Unit.jribble"/>
+      </fileset>
+    </delete>
+    <mkdir dir="${build-quick.dir}/classes/library-gwt"/>
+    <scalacfork
+      destdir="${build-quick.dir}/classes/library-gwt"
+      compilerpathref="quick.classpath"
+      srcpath="${build-quick.dir}/jdk2ikvm/library"
+      params="${scalac.args.jribble}"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/**/*.scala"/>
+      <include name="scala/**/*.java"/>
     </scalacfork>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
@@ -615,8 +601,11 @@ QUICK BUILD (QUICK)
     <copy todir="${build-quick.dir}/jribble/library">
       <fileset dir="${src.dir}/library">
         <include name="**/*.xml"/>
-        <include name="scala/runtime/*.java"/>
-        <include name="scala/math/ScalaNumber.java"/>
+      </fileset>
+    </copy>
+    <copy todir="${build-quick.dir}/jribble/library">
+      <fileset dir="${build-quick.dir}/jdk2ikvm/library">
+        <include name="**/*.java"/>
       </fileset>
     </copy>
     <touch file="${build-quick.dir}/library-jribble.complete" verbose="no"/>
@@ -685,6 +674,99 @@ QUICK BUILD (QUICK)
     </copy>
     <touch file="${build-quick.dir}/compiler.complete" verbose="no"/>
     <stopwatch name="quick.comp.timer" action="total"/>
+  </target>
+
+  <target name="quick.pre-jdk2ikvm" depends="quick.comp">
+    <uptodate property="quick.jdk2ikvm.available" targetfile="${build-quick.dir}/jdk2ikvm.complete">
+      <srcfiles dir="${src.dir}/jdk2ikvm"/>
+    </uptodate>
+  </target>
+
+  <target name="quick.jdk2ikvm" depends="quick.pre-jdk2ikvm" unless="quick.jdk2ikvm.available">
+    <stopwatch name="quick.jdk2ikvm.timer"/>
+    <mkdir dir="${build-quick.dir}/classes/jdk2ikvm-plugin"/>
+    <scalacfork
+      destdir="${build-quick.dir}/classes/jdk2ikvm-plugin"
+      compilerpathref="locker.classpath"
+      params="${scalac.args.quick}"
+      srcdir="${src.dir}/jdk2ikvm/src"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="**/*.scala"/>
+      <compilationpath>
+        <pathelement location="${build-quick.dir}/classes/library"/>
+        <pathelement location="${build-quick.dir}/classes/compiler"/>
+        <pathelement location="${lib.dir}/forkjoin.jar"/>
+      </compilationpath>
+    </scalacfork>
+    <copy
+      file="${src.dir}/jdk2ikvm/resources/scalac-plugin.xml"
+      todir="${build-quick.dir}/classes/jdk2ikvm-plugin"/>
+    <!-- not very nice to create jar here but needed to load plugin -->
+    <!-- <mkdir dir="${build-quick.dir}/misc/scala-devel/goto"/> -->
+    <jar destfile="${build-quick.dir}/misc/scala-devel/jdk2ikvm.jar">
+      <fileset dir="${build-quick.dir}/classes/jdk2ikvm-plugin"/>
+    </jar>
+    <touch file="${build-quick.dir}/jdk2ikvm.complete" verbose="no"/>
+    <stopwatch name="quick.jdk2ikvm.timer" action="total"/>
+  </target>
+  
+  <target name="quick.pre-lib-jdk2ikvm" depends="quick.jdk2ikvm">
+    <condition property="quick.lib-jdk2ikvm.available">
+      <and>
+        <uptodate targetfile="${build-quick.dir}/library-jdk2ikvm.complete" srcfile="${build-quick.dir}/jdk2ikvm.complete"/>
+        <uptodate targetfile="${build-quick.dir}/library-jdk2ikvm.complete">
+          <srcfiles dir="${src.dir}">
+            <include name="library/**"/>
+          </srcfiles>
+        </uptodate>
+      </and>
+    </condition>
+  </target>
+
+  <target name="quick.lib-jdk2ikvm" depends="quick.pre-lib-jdk2ikvm" unless="quick.lib-jdk2ikvm.available">
+    <path id="quick.classpath">
+      <pathelement location="${build-quick.dir}/classes/library"/>
+      <pathelement location="${build-quick.dir}/classes/compiler"/>
+      <pathelement location="${fjbg.jar}"/>
+      <pathelement location="${msil.jar}"/>
+      <pathelement location="${forkjoin.jar}"/>
+      <pathelement location="${ant.jar}"/>
+    </path>
+    <mkdir dir="${build-quick.dir}/jdk2ikvm/library"/>
+    <scalacfork
+      destdir="${build-quick.dir}/jdk2ikvm/library"
+      compilerpathref="quick.classpath"
+      srcpath="${src.dir}/library"
+      params="-Ystop-before:superaccessors
+			    -P:jdk2ikvm:output-directory:${build-quick.dir}/jdk2ikvm/library
+			    -P:jdk2ikvm:replacements-directory:${src.dir}/jdk2ikvm/resources/replacements
+			    -d ${build-quick.dir}/jdk2ikvm/library
+			    -Xplugin ${build-quick.dir}/misc/scala-devel/jdk2ikvm.jar
+			    -Yrangepos"
+      srcdir="${src.dir}/library"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="**/*.scala"/>
+      <compilationpath refid="quick.compilation.path"/>
+    </scalacfork>
+    <!-- HACK! jdk2ikvm should handle it but scalacfork ant task filters out anything that doesn't have .scala extension -->
+    <copy todir="${build-quick.dir}/jdk2ikvm/library" overwrite="true">
+      <fileset dir="${src.dir}/jdk2ikvm/resources/replacements">
+        <include name="**/*.java"/>
+      </fileset>
+    </copy>
+    <!-- now we copy rest of Java files that have no correspodning replacement defined. Copy ant task doesn't
+    overwrite by default so files copied above will be kept intact -->
+    <copy todir="${build-quick.dir}/jdk2ikvm/library">
+      <fileset dir="${src.dir}/library">
+        <include name="**/*.java"/>
+      </fileset>
+    </copy>
+    <copy todir="${build-quick.dir}/jdk2ikvm/library">
+      <fileset dir="${src.dir}/factorymanifests/library">
+        <include name="**/*.scala"/>
+      </fileset>
+    </copy>
+    <touch file="${build-quick.dir}/library-jdk2ikvm.complete" verbose="no"/>
   </target>
 
   <target name="quick.pre-plugins" depends="quick.comp">
@@ -977,6 +1059,9 @@ PACKED QUICK BUILD (PACK)
     <mkdir dir="${build-pack.dir}/lib"/>
     <jar destfile="${build-pack.dir}/lib/scala-library-jribble.jar">
       <fileset dir="${build-quick.dir}/jribble/library"/>
+    </jar>
+    <jar destfile="${build-pack.dir}/lib/scala-library-gwt.jar">
+      <fileset dir="${build-quick.dir}/classes/library-gwt"/>
     </jar>
   </target>
 

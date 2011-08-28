@@ -92,7 +92,9 @@ trait Analyzer extends AnyRef
       def apply(unit: CompilationUnit) {
         try {
           unit.body = newTyper(rootContext(unit)).typed(unit.body)
-          //if (global.settings.Yrangepos.value && !global.reporter.hasErrors) global.validatePositions(unit.body)
+          //TODO(grek): We introduced an ugly check for `jdk2ikvm` plugin as a work-around for SI-4494
+          if (global.settings.Yrangepos.value && !global.reporter.hasErrors && !global.plugins.exists(_.name == "jdk2ikvm"))
+            global.validatePositions(unit.body)
           for (workItem <- unit.toCheck) workItem()
         } finally {
           unit.toCheck.clear()

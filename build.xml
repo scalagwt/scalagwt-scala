@@ -762,7 +762,7 @@ QUICK BUILD (QUICK)
     <scalacfork
       destdir="${build-quick.dir}/classes/library"
       compilerpathref="locker.classpath"
-      params="${scalac.args.quick}"
+      params="${scalac.args.quick} -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar"
       srcdir="${src.dir}/factorymanifests/library"
       jvmargs="${scalacfork.jvmargs}">
       <include name="**/*.scala"/>

@@ -35,6 +35,14 @@ import scala.tools.nsc.plugins.PluginComponent
  * This way we have implementation of Manifests that does not depend on reflection. The price
  * we pay is increased number of classes needed to support generic arrays.
  * 
+ * Also, this transformation takes care of replacing stubs for Factories. Specifically, for:
+ * 
+ * {{{
+ *   val x: FactoryClassManifest.Factory[Foo] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
+ * }}}
+ * 
+ * the rhs will be replaced by expression that returns instance of `Factory[Foo]`.
+ * 
  * It's worth noting that this phase should be run just after 'refchecks' phase (and for sure
  * before flatten) so anonymous classes we generate are lifted to top-level ones. We want to
  * run after 'refcheck' because it means we are running after pickler. It's desirable because
@@ -57,36 +65,105 @@ abstract class FactoryManifestsTransform extends PluginComponent with Transform 
   private class Trans(cunit: CompilationUnit) extends TypingTransformer(cunit) {
 
     lazy val ClassManifestModule = definitions.getModule("scala.reflect.ClassManifest")
+    lazy val ManifestModule = definitions.getModule("scala.reflect.Manifest")
     
-    lazy val classTypeMethod = definitions.getMember(ClassManifestModule, "classType") suchThat {
-      //we want to match this one: def classType[T <: AnyRef](clazz: JClass[_]): ClassManifest[T]
-      _.tpe.params.size == 1
+    lazy val FactoryClassManifestModule = definitions.getModule("scala.reflect.FactoryClassManifest")
+    lazy val FactoryManifestModule = definitions.getModule("scala.reflect.FactoryManifest")
+    
+    lazy val factoryTrait = definitions.getClass("scala.reflect.FactoryClassManifest.Factory")
+    
+    def isClassManifestDef(x: Symbol) = 
+       x.isMethod && x.isPublic && x.owner == ClassManifestModule.moduleClass
+    def isManifestDef(x: Symbol) =
+      x.isMethod && x.isPublic && x.owner == ManifestModule.moduleClass
+    def isPoly(x: Symbol) = x.typeParams.nonEmpty
+    
+    def isFactoryStub(tree: Tree): Boolean = tree match {
+      case tree@Apply(fun, List(Literal(c: Constant))) =>
+        (fun.symbol == definitions.Sys_error) &&
+          (c.value == "stub. to be implemented by `factorymanifests` compiler plug-in.")
+      case _ => false
     }
-    
-    lazy val FactoryManifestModule = definitions.getModule("scala.reflect.FactoryManifest") 
-    
-    lazy val classTypeFactoryMethod = definitions.getMember(FactoryManifestModule, "classType") suchThat {
-      //we want to match this one: def classType[T <: AnyRef](clazz: JClass[_], factory: Factory[T]): ClassManifest[T]
-      _.tpe.params.size == 2
-    }
-    
-    lazy val factoryTrait = definitions.getClass("scala.reflect.FactoryManifest.Factory")
     
     override def transform(tree: Tree): Tree = tree match {
-      case tree@Apply(fun, List(c: Literal)) if fun.symbol == classTypeMethod =>
-        assert(c.value.tag == ClassTag)
-        val forTpe = {
-          val TypeApply(_, List(tp: TypeTree)) = fun
-          tp.tpe
+      case tree@Apply(fun, args) if isClassManifestDef(fun.symbol) && isPoly(fun.symbol) =>
+        reroutePolyApply(tree, FactoryClassManifestModule)
+      case tree@Apply(fun, args) if isManifestDef(fun.symbol) && isPoly(fun.symbol) =>
+        reroutePolyApply(tree, FactoryManifestModule)
+      //those two patterns are intended to rewrite accesses to vals
+      case tree@Select(qual, name) if qual.symbol == ClassManifestModule && tree.symbol.isPublic =>
+        localTyper.typedPos(tree.pos) { Select(gen.mkAttributedRef(FactoryClassManifestModule), name) }
+      case tree@Select(qual, name) if qual.symbol == ManifestModule && tree.symbol.isPublic =>
+        localTyper.typedPos(tree.pos) { Select(gen.mkAttributedRef(FactoryManifestModule), name) }
+      //rewrites FactoryClassManifest.Factory stubs into real implementations
+      //work only with vals declared like this:
+      //val x: FactoryClassManifest.Factory[String] = 
+      //  sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
+      case tree@ValDef(mods, name, tpt, rhs) if isFactoryStub(rhs) =>
+        val forTpe = tpt.tpe.typeArgs.head
+        val factoryExpr = localTyper.typedPos(tree.pos) {
+          mkFactoryClass(forTpe, currentOwner, nestingLevel)
         }
-        val factoryExpr = mkFactoryClass(forTpe, currentOwner, nestingLevel)
-        localTyper.typedPos(tree.pos) {
-          gen.mkMethodCall(classTypeFactoryMethod, List(forTpe), List(c, factoryExpr))
-        }
+        treeCopy.ValDef(tree, mods, name, tpt, factoryExpr)
       case x => super.transform(x)
     }
     
+    /**
+     * Takes application of polymorphic method and returns a new application of
+     * the corresponding method defined in passed module.
+     *
+     * Correspodance between methods is defined in terms of their signatures.
+     * One method has corresponding signature to another if after excluding
+     * any parameters of 'Factory[T]' type erased signatures are the same.
+     *
+     * Note: in implementation we don't use precisely erased signatures but
+     * heuristic emulating them.
+     *
+     * Example: if we call reroutePolyApply with tree for
+     * Manifest.classType[Foo](classOf[Foo]) and symbol for 'FactoryManifest'
+     * as arguments then we'll get back tree for
+     * FactoryManifest.classType[Foo](classOf[Foo], new Factory[Foo] { ... })
+     * assuming that method with such signature exists.
+     */
+    def reroutePolyApply(tree: Apply, module: Symbol): Tree = {
+      val Apply(fun, args) = tree
+      val forTpe = {
+        val TypeApply(_, List(tp: TypeTree)) = fun
+        tp.tpe
+      }
+      val funFactory = definitions.getMember(module, fun.symbol.name) suchThat { x =>
+        val funTpes = fun.symbol.tpe.params.map(_.tpe)
+        val tpes = x.tpe.params.map(_.tpe).filterNot(_.typeSymbol == factoryTrait)
+        //we use heuristic here that bypasses type-related calculations and simulates
+        //comparision of erased types. Should be enough for our purposes of finding
+        //matching method
+        tpes.map(_.typeSymbol) == funTpes.map(_.typeSymbol) 
+      }
+      assert(funFactory != NoSymbol, "Failed to find method corresponding to %1s in %2s".format(fun.symbol.defString, module))
+      val factoryParamIndex = funFactory.tpe.params.indexWhere(_.tpe.typeSymbol == factoryTrait)
+      val transformedArgs = super.transformTrees(args)
+      if (factoryParamIndex != -1 && !canMakeFactoryFor(forTpe)) { 
+        cunit.warning(tree.pos, "Cannot generate factory for type that is not stable (e.g. generic one). " +
+          "Leaving this call as-is. Probably will fail at runtime.")
+        tree
+      } else {
+        //if one of args is of type Factory then we need to create it
+        val completeArgs = if (factoryParamIndex != -1) {
+          val factoryExpr = mkFactoryClass(forTpe, currentOwner, nestingLevel)
+          transformedArgs.patch(factoryParamIndex, List(factoryExpr), 0)
+        } else transformedArgs
+        localTyper.typedPos(tree.pos) {
+          gen.mkMethodCall(funFactory, List(forTpe), completeArgs)
+        }
+      }
+    }
+    
+    def canMakeFactoryFor(tpe: Type) = {
+      tpe.typeSymbol.isClass && tpe.typeSymbol != definitions.ArrayClass
+    }
+    
     def mkFactoryClass(param: Type, owner: Symbol, nest: Int): Tree = {
+      assert(owner != NoSymbol)
       import scala.reflect.internal.Flags._
       val arrayTpe: Type = appliedType(definitions.ArrayClass.tpe, List(param))
       def mkFactoryTpe(t: Type): Type = appliedType(factoryTrait.tpe, List(t))

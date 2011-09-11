@@ -108,6 +108,23 @@ abstract class FactoryManifestsTransform extends PluginComponent with Transform 
       case x => super.transform(x)
     }
     
+    /**
+     * Takes application of polymorphic method and returns a new application of
+     * the corresponding method defined in passed module.
+     *
+     * Correspodance between methods is defined in terms of their signatures.
+     * One method has corresponding signature to another if after excluding
+     * any parameters of 'Factory[T]' type erased signatures are the same.
+     *
+     * Note: in implementation we don't use precisely erased signatures but
+     * heuristic emulating them.
+     *
+     * Example: if we call reroutePolyApply with tree for
+     * Manifest.classType[Foo](classOf[Foo]) and symbol for 'FactoryManifest'
+     * as arguments then we'll get back tree for
+     * FactoryManifest.classType[Foo](classOf[Foo], new Factory[Foo] { ... })
+     * assuming that method with such signature exists.
+     */
     def reroutePolyApply(tree: Apply, module: Symbol): Tree = {
       val Apply(fun, args) = tree
       val forTpe = {

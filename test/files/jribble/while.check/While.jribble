@@ -1,47 +1,458 @@
-public class LWhile; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public I; a() {
-    I; x = 0;
-    I; $1$;
-    if ((x < 0))
-      {
-        while$1: while(true) {
-          if ((x < 0))
-            {
-              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("inside while");
-              continue while$1;
-            }
-          else
-            {
-              
-            }
-          break;
-        }
-        $1$ = 0;
-      }
-    else
-      {
-        $1$ = 1;
-      }
-    return $1$;
+name {
+  name: "While"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; b(I; x) {
-    while$2: while(true) {
-      if ((x < 0))
-        {
-          Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("inside while");
-          continue while$2;
+  method {
+    name: "a"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "x"
+            initializer {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
         }
-      else
-        {
-          
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$1$"
+          }
         }
-      break;
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Lesser
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                rhs {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 0
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: LabelledStat
+                  labelledStat {
+                    label: "while$1"
+                    statement {
+                      type: While
+                      whileStat {
+                        condition {
+                          type: Literal
+                          literal {
+                            type: Boolean
+                            boolValue: true
+                          }
+                        }
+                        body {
+                          type: Block
+                          block {
+                            statement {
+                              type: Block
+                              block {
+                                statement {
+                                  type: If
+                                  ifStat {
+                                    condition {
+                                      type: Binary
+                                      binary {
+                                        op: Lesser
+                                        lhs {
+                                          type: VarRef
+                                          varRef {
+                                            name: "x"
+                                          }
+                                        }
+                                        rhs {
+                                          type: Literal
+                                          literal {
+                                            type: Int
+                                            intValue: 0
+                                          }
+                                        }
+                                      }
+                                    }
+                                    then {
+                                      type: Block
+                                      block {
+                                        statement {
+                                          type: Expr
+                                          expr {
+                                            type: MethodCall
+                                            methodCall {
+                                              receiver {
+                                                type: FieldRef
+                                                fieldRef {
+                                                  enclosingType {
+                                                    pkg: "scala"
+                                                    name: "Predef$"
+                                                  }
+                                                  name: "MODULE$"
+                                                }
+                                              }
+                                              signature {
+                                                name: "println"
+                                                owner {
+                                                  pkg: "scala"
+                                                  name: "Predef$"
+                                                }
+                                                paramType {
+                                                  type: Named
+                                                  namedType {
+                                                    pkg: "java.lang"
+                                                    name: "Object"
+                                                  }
+                                                }
+                                                returnType {
+                                                  type: Void
+                                                }
+                                              }
+                                              argument {
+                                                type: Literal
+                                                literal {
+                                                  type: String
+                                                  stringValue: "inside while"
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                        statement {
+                                          type: Continue
+                                          continueStat {
+                                            label: "while$1"
+                                          }
+                                        }
+                                      }
+                                    }
+                                    elsee {
+                                      type: Block
+                                      block {
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                            statement {
+                              type: Break
+                              break {
+                                label: "while$1"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Literal
+                    literal {
+                      type: Boolean
+                      boolValue: false
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Int
+                          intValue: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Int
+                          intValue: 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$1$"
+              }
+            }
+          }
+        }
+      }
     }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "b"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: LabelledStat
+          labelledStat {
+            label: "while$2"
+            statement {
+              type: While
+              whileStat {
+                condition {
+                  type: Literal
+                  literal {
+                    type: Boolean
+                    boolValue: true
+                  }
+                }
+                body {
+                  type: Block
+                  block {
+                    statement {
+                      type: Block
+                      block {
+                        statement {
+                          type: If
+                          ifStat {
+                            condition {
+                              type: Binary
+                              binary {
+                                op: Lesser
+                                lhs {
+                                  type: VarRef
+                                  varRef {
+                                    name: "x"
+                                  }
+                                }
+                                rhs {
+                                  type: Literal
+                                  literal {
+                                    type: Int
+                                    intValue: 0
+                                  }
+                                }
+                              }
+                            }
+                            then {
+                              type: Block
+                              block {
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: MethodCall
+                                    methodCall {
+                                      receiver {
+                                        type: FieldRef
+                                        fieldRef {
+                                          enclosingType {
+                                            pkg: "scala"
+                                            name: "Predef$"
+                                          }
+                                          name: "MODULE$"
+                                        }
+                                      }
+                                      signature {
+                                        name: "println"
+                                        owner {
+                                          pkg: "scala"
+                                          name: "Predef$"
+                                        }
+                                        paramType {
+                                          type: Named
+                                          namedType {
+                                            pkg: "java.lang"
+                                            name: "Object"
+                                          }
+                                        }
+                                        returnType {
+                                          type: Void
+                                        }
+                                      }
+                                      argument {
+                                        type: Literal
+                                        literal {
+                                          type: String
+                                          stringValue: "inside while"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                                statement {
+                                  type: Continue
+                                  continueStat {
+                                    label: "while$2"
+                                  }
+                                }
+                              }
+                            }
+                            elsee {
+                              type: Block
+                              block {
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    statement {
+                      type: Break
+                      break {
+                        label: "while$2"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "While"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

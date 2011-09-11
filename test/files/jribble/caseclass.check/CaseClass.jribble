@@ -1,103 +1,1522 @@
-public class LCaseClass; extends Ljava/lang/Object; implements Lscala/ScalaObject;, Lscala/Product;, Lscala/Serializable; {
-  public final static Lscala/Function1; andThen(Lscala/Function1; x_0) { return LCaseClass$;.MODULE$.(Lscala/runtime/AbstractFunction1;::andThen(Lscala/Function1;)Lscala/Function1;)(x_0); }
-  public final static Lscala/Function1; compose(Lscala/Function1; x_0) { return LCaseClass$;.MODULE$.(Lscala/runtime/AbstractFunction1;::compose(Lscala/Function1;)Lscala/Function1;)(x_0); }
-  
-  
-  public Lscala/collection/Iterator; productIterator() {
-    return Lscala/Product$class;.(Lscala/Product$class;::productIterator(Lscala/Product;)Lscala/collection/Iterator;)(this);
+name {
+  name: "CaseClass"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+implements {
+  pkg: "scala"
+  name: "Product"
+}
+implements {
+  pkg: "scala"
+  name: "Serializable"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public Lscala/collection/Iterator; productElements() {
-    return Lscala/Product$class;.(Lscala/Product$class;::productElements(Lscala/Product;)Lscala/collection/Iterator;)(this);
-  }
-  
-  private I; x$u0020;
-  
-  public I; x() {
-    return this.(LCaseClass;)x$u0020;
-  }
-  
-  public LCaseClass; copy(I; x) {
-    return (new (LCaseClass;::this(I;)V;)(x));
-  }
-  
-  public I; copy$default$1() {
-    return this.(LCaseClass;::x()I;)();
-  }
-  
-  public I; hashCode() {
-    return Lscala/runtime/ScalaRunTime$;.MODULE$.(Lscala/runtime/ScalaRunTime$;::_hashCode(Lscala/Product;)I;)(this);
-  }
-  
-  public Ljava/lang/String; toString() {
-    return Lscala/runtime/ScalaRunTime$;.MODULE$.(Lscala/runtime/ScalaRunTime$;::_toString(Lscala/Product;)Ljava/lang/String;)(this);
-  }
-  
-  public Z; equals(Ljava/lang/Object; x$1) {
-    Ljava/lang/Object; temp1 = x$1;
-    Z; $1$;
-    if (temp1.<instanceof>(LCaseClass;))
-      {
-        LCaseClass; temp2 = temp1.<cast>(LCaseClass;);
-        I; temp3 = temp2.(LCaseClass;::x()I;)();
-        I; x$1 = temp3;
-        Z; $2$;
-        if (this.(LCaseClass;::gd1$1(I;)Z;)(x$1))
-          {
-            I; $3$;
-            Z; $4$;
-            body$percent01: while(true) {
-              $4$ = x$1.<cast>(LCaseClass;).(Lscala/Equals;::canEqual(Ljava/lang/Object;)Z;)(this);
-              break;
+  method {
+    name: "productIterator"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala.collection"
+        name: "Iterator"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "productIterator"
+                  owner {
+                    pkg: "scala"
+                    name: "Product$class"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala"
+                      name: "Product"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.collection"
+                      name: "Iterator"
+                    }
+                  }
+                }
+                argument {
+                  type: ThisRef
+                }
+              }
             }
-            $2$ = $4$;
           }
-        else
-          {
-            $2$ = false;
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "productElements"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala.collection"
+        name: "Iterator"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "productElements"
+                  owner {
+                    pkg: "scala"
+                    name: "Product$class"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala"
+                      name: "Product"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.collection"
+                      name: "Iterator"
+                    }
+                  }
+                }
+                argument {
+                  type: ThisRef
+                }
+              }
+            }
           }
-        $1$ = $2$;
+        }
       }
-    else
-      {
-        $1$ = false;
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "x$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "CaseClass"
+                }
+                name: "x$u0020"
+              }
+            }
+          }
+        }
       }
-    return ((this == x$1) || $1$);
+    }
   }
-  
-  public Ljava/lang/String; productPrefix() {
-    return "CaseClass";
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public I; productArity() {
-    return 1;
-  }
-  
-  public Ljava/lang/Object; productElement(I; x$1) {
-    I; temp4 = x$1;
-    Ljava/lang/Object; $5$;
-    if ((temp4 == 0))
-      {
-        $5$ = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(this.(LCaseClass;::x()I;)());
+  method {
+    name: "copy"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
       }
-    else
-      {
-        throw (new (Ljava/lang/IndexOutOfBoundsException;::this(Ljava/lang/String;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x$1).(Ljava/lang/Object;::toString()Ljava/lang/String;)()));
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "CaseClass"
       }
-    return $5$;
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: NewObject
+              newObject {
+                clazz {
+                  name: "CaseClass"
+                }
+                signature {
+                  name: "new"
+                  owner {
+                    name: "CaseClass"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      name: "CaseClass"
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public Z; canEqual(Ljava/lang/Object; x$1) {
-    return x$1.<instanceof>(LCaseClass;);
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  private final Z; gd1$1(I; x$1) {
-    return (x$1 == this.(LCaseClass;::x()I;)());
+  method {
+    name: "copy$default$1"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "x"
+                  owner {
+                    name: "CaseClass"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public this(I; x) {
-    this.(LCaseClass;)x$u0020 = x;
-    (Ljava/lang/Object;::super()V;)();
-    Lscala/Product$class;.(Lscala/Product$class;::$init$(Lscala/Product;)V;)(this);
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "hashCode"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      pkg: "scala.runtime"
+                      name: "ScalaRunTime$"
+                    }
+                    name: "MODULE$"
+                  }
+                }
+                signature {
+                  name: "_hashCode"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "ScalaRunTime$"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala"
+                      name: "Product"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+                argument {
+                  type: ThisRef
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "toString"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "String"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      pkg: "scala.runtime"
+                      name: "ScalaRunTime$"
+                    }
+                    name: "MODULE$"
+                  }
+                }
+                signature {
+                  name: "_toString"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "ScalaRunTime$"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala"
+                      name: "Product"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "String"
+                    }
+                  }
+                }
+                argument {
+                  type: ThisRef
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "equals"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Object"
+        }
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "Object"
+              }
+            }
+            name: "temp1"
+            initializer {
+              type: VarRef
+              varRef {
+                name: "x$1"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$1$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: InstanceOf
+              instanceOf {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "temp1"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "CaseClass"
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: VarDef
+                  varDef {
+                    tpe {
+                      type: Named
+                      namedType {
+                        name: "CaseClass"
+                      }
+                    }
+                    name: "temp2"
+                    initializer {
+                      type: Cast
+                      cast {
+                        expr {
+                          type: VarRef
+                          varRef {
+                            name: "temp1"
+                          }
+                        }
+                        tpe {
+                          type: Named
+                          namedType {
+                            name: "CaseClass"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: VarDef
+                  varDef {
+                    tpe {
+                      type: Primitive
+                      primitiveType: Int
+                    }
+                    name: "temp3"
+                    initializer {
+                      type: MethodCall
+                      methodCall {
+                        receiver {
+                          type: VarRef
+                          varRef {
+                            name: "temp2"
+                          }
+                        }
+                        signature {
+                          name: "x"
+                          owner {
+                            name: "CaseClass"
+                          }
+                          returnType {
+                            type: Primitive
+                            primitiveType: Int
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: VarDef
+                  varDef {
+                    tpe {
+                      type: Primitive
+                      primitiveType: Int
+                    }
+                    name: "x$1"
+                    initializer {
+                      type: VarRef
+                      varRef {
+                        name: "temp3"
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: VarDef
+                  varDef {
+                    tpe {
+                      type: Primitive
+                      primitiveType: Boolean
+                    }
+                    name: "$2$"
+                  }
+                }
+                statement {
+                  type: If
+                  ifStat {
+                    condition {
+                      type: MethodCall
+                      methodCall {
+                        receiver {
+                          type: ThisRef
+                        }
+                        signature {
+                          name: "gd1$1"
+                          owner {
+                            name: "CaseClass"
+                          }
+                          paramType {
+                            type: Primitive
+                            primitiveType: Int
+                          }
+                          returnType {
+                            type: Primitive
+                            primitiveType: Boolean
+                          }
+                        }
+                        argument {
+                          type: VarRef
+                          varRef {
+                            name: "x$1"
+                          }
+                        }
+                      }
+                    }
+                    then {
+                      type: Block
+                      block {
+                        statement {
+                          type: VarDef
+                          varDef {
+                            tpe {
+                              type: Primitive
+                              primitiveType: Int
+                            }
+                            name: "$3$"
+                          }
+                        }
+                        statement {
+                          type: VarDef
+                          varDef {
+                            tpe {
+                              type: Primitive
+                              primitiveType: Boolean
+                            }
+                            name: "$4$"
+                          }
+                        }
+                        statement {
+                          type: LabelledStat
+                          labelledStat {
+                            label: "body$percent01"
+                            statement {
+                              type: While
+                              whileStat {
+                                condition {
+                                  type: Literal
+                                  literal {
+                                    type: Boolean
+                                    boolValue: true
+                                  }
+                                }
+                                body {
+                                  type: Block
+                                  block {
+                                    statement {
+                                      type: Block
+                                      block {
+                                        statement {
+                                          type: Expr
+                                          expr {
+                                            type: Assignment
+                                            assignment {
+                                              lhs {
+                                                type: VarRef
+                                                varRef {
+                                                  name: "$4$"
+                                                }
+                                              }
+                                              rhs {
+                                                type: MethodCall
+                                                methodCall {
+                                                  receiver {
+                                                    type: Cast
+                                                    cast {
+                                                      expr {
+                                                        type: VarRef
+                                                        varRef {
+                                                          name: "x$1"
+                                                        }
+                                                      }
+                                                      tpe {
+                                                        type: Named
+                                                        namedType {
+                                                          name: "CaseClass"
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                  signature {
+                                                    name: "canEqual"
+                                                    owner {
+                                                      pkg: "scala"
+                                                      name: "Equals"
+                                                    }
+                                                    paramType {
+                                                      type: Named
+                                                      namedType {
+                                                        pkg: "java.lang"
+                                                        name: "Object"
+                                                      }
+                                                    }
+                                                    returnType {
+                                                      type: Primitive
+                                                      primitiveType: Boolean
+                                                    }
+                                                  }
+                                                  argument {
+                                                    type: ThisRef
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                    statement {
+                                      type: Break
+                                      break {
+                                        label: "body$percent01"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$2$"
+                                }
+                              }
+                              rhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$4$"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    elsee {
+                      type: Block
+                      block {
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$2$"
+                                }
+                              }
+                              rhs {
+                                type: Literal
+                                literal {
+                                  type: Boolean
+                                  boolValue: false
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Binary
+              binary {
+                op: Or
+                lhs {
+                  type: Binary
+                  binary {
+                    op: Equal
+                    lhs {
+                      type: ThisRef
+                    }
+                    rhs {
+                      type: VarRef
+                      varRef {
+                        name: "x$1"
+                      }
+                    }
+                  }
+                }
+                rhs {
+                  type: VarRef
+                  varRef {
+                    name: "$1$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "productPrefix"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "String"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "CaseClass"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "productArity"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "productElement"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "temp4"
+            initializer {
+              type: VarRef
+              varRef {
+                name: "x$1"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "Object"
+              }
+            }
+            name: "$5$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "temp4"
+                  }
+                }
+                rhs {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 0
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$5$"
+                        }
+                      }
+                      rhs {
+                        type: MethodCall
+                        methodCall {
+                          signature {
+                            name: "boxToInteger"
+                            owner {
+                              pkg: "scala.runtime"
+                              name: "BoxesRunTime"
+                            }
+                            paramType {
+                              type: Primitive
+                              primitiveType: Int
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                pkg: "java.lang"
+                                name: "Integer"
+                              }
+                            }
+                          }
+                          argument {
+                            type: MethodCall
+                            methodCall {
+                              receiver {
+                                type: ThisRef
+                              }
+                              signature {
+                                name: "x"
+                                owner {
+                                  name: "CaseClass"
+                                }
+                                returnType {
+                                  type: Primitive
+                                  primitiveType: Int
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Throw
+                  throwStat {
+                    expression {
+                      type: NewObject
+                      newObject {
+                        clazz {
+                          pkg: "java.lang"
+                          name: "IndexOutOfBoundsException"
+                        }
+                        signature {
+                          name: "new"
+                          owner {
+                            pkg: "java.lang"
+                            name: "IndexOutOfBoundsException"
+                          }
+                          paramType {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "String"
+                            }
+                          }
+                          returnType {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "IndexOutOfBoundsException"
+                            }
+                          }
+                        }
+                        argument {
+                          type: MethodCall
+                          methodCall {
+                            receiver {
+                              type: MethodCall
+                              methodCall {
+                                signature {
+                                  name: "boxToInteger"
+                                  owner {
+                                    pkg: "scala.runtime"
+                                    name: "BoxesRunTime"
+                                  }
+                                  paramType {
+                                    type: Primitive
+                                    primitiveType: Int
+                                  }
+                                  returnType {
+                                    type: Named
+                                    namedType {
+                                      pkg: "java.lang"
+                                      name: "Integer"
+                                    }
+                                  }
+                                }
+                                argument {
+                                  type: VarRef
+                                  varRef {
+                                    name: "x$1"
+                                  }
+                                }
+                              }
+                            }
+                            signature {
+                              name: "toString"
+                              owner {
+                                pkg: "java.lang"
+                                name: "Object"
+                              }
+                              returnType {
+                                type: Named
+                                namedType {
+                                  pkg: "java.lang"
+                                  name: "String"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$5$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "canEqual"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Object"
+        }
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: InstanceOf
+              instanceOf {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x$1"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "CaseClass"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPrivate: true
+    isFinal: true
+  }
+  method {
+    name: "gd1$1"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "x$1"
+                  }
+                }
+                rhs {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: ThisRef
+                    }
+                    signature {
+                      name: "x"
+                      owner {
+                        name: "CaseClass"
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "CaseClass"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "CaseClass"
+                  }
+                  name: "x$u0020"
+                }
+              }
+              rhs {
+                type: VarRef
+                varRef {
+                  name: "x"
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "scala"
+                  name: "Product$class"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala"
+                    name: "Product"
+                  }
+                }
+                returnType {
+                  type: Void
+                }
+              }
+              argument {
+                type: ThisRef
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isFinal: true
+    isStatic: true
+  }
+  method {
+    name: "andThen"
+    paramDef {
+      name: "x_0"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "scala"
+          name: "Function1"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala"
+        name: "Function1"
+      }
+    }
+    body {
+      type: Return
+      returnStat {
+        expression {
+          type: MethodCall
+          methodCall {
+            receiver {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  name: "CaseClass$"
+                }
+                name: "MODULE$"
+              }
+            }
+            signature {
+              name: "andThen"
+              owner {
+                pkg: "scala.runtime"
+                name: "AbstractFunction1"
+              }
+              paramType {
+                type: Named
+                namedType {
+                  pkg: "scala"
+                  name: "Function1"
+                }
+              }
+              returnType {
+                type: Named
+                namedType {
+                  pkg: "scala"
+                  name: "Function1"
+                }
+              }
+            }
+            argument {
+              type: VarRef
+              varRef {
+                name: "x_0"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isFinal: true
+    isStatic: true
+  }
+  method {
+    name: "compose"
+    paramDef {
+      name: "x_0"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "scala"
+          name: "Function1"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala"
+        name: "Function1"
+      }
+    }
+    body {
+      type: Return
+      returnStat {
+        expression {
+          type: MethodCall
+          methodCall {
+            receiver {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  name: "CaseClass$"
+                }
+                name: "MODULE$"
+              }
+            }
+            signature {
+              name: "compose"
+              owner {
+                pkg: "scala.runtime"
+                name: "AbstractFunction1"
+              }
+              paramType {
+                type: Named
+                namedType {
+                  pkg: "scala"
+                  name: "Function1"
+                }
+              }
+              returnType {
+                type: Named
+                namedType {
+                  pkg: "scala"
+                  name: "Function1"
+                }
+              }
+            }
+            argument {
+              type: VarRef
+              varRef {
+                name: "x_0"
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,15 +1,192 @@
-public final class LValDef$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LValDef$; MODULE$ = new (LValDef$;::this()V;)();
-  
-  private I; b$u0020;
-  
-  public I; b() {
-    return this.(LValDef$;)b$u0020;
+name {
+  name: "ValDef$"
+}
+modifiers {
+  isPublic: true
+  isFinal: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    LValDef$;.MODULE$ = this;
-    this.(LValDef$;)b$u0020 = 1;
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "b$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "b"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "ValDef$"
+                }
+                name: "b$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "ValDef$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    name: "ValDef$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              rhs {
+                type: ThisRef
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "ValDef$"
+                  }
+                  name: "b$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "ValDef$"
+      }
+    }
+    name: "MODULE$"
+    initializer {
+      type: NewObject
+      newObject {
+        clazz {
+          name: "ValDef$"
+        }
+        signature {
+          name: "new"
+          owner {
+            name: "ValDef$"
+          }
+          returnType {
+            type: Named
+            namedType {
+              name: "ValDef$"
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,20 +1,209 @@
-public abstract class LEnclosing$Inner1; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  protected LEnclosing; $outer$u0020;
-  
-  public LEnclosing; Enclosing$Inner1$$$outer() {
-    return this.(LEnclosing$Inner1;)$outer$u0020;
+name {
+  name: "Enclosing$Inner1"
+}
+modifiers {
+  isPublic: true
+  isAbstract: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isProtected: true
   }
-  
-  public this(LEnclosing; $outer) {
-    if (($outer == null))
-      {
-        throw (new (Ljava/lang/NullPointerException;::this()V;)());
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "Enclosing"
       }
-    else
-      {
-        this.(LEnclosing$Inner1;)$outer$u0020 = $outer;
+    }
+    name: "$outer$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "Enclosing$Inner1$$$outer"
+    returnType {
+      type: Named
+      namedType {
+        name: "Enclosing"
       }
-    (Ljava/lang/Object;::super()V;)();
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Enclosing$Inner1"
+                }
+                name: "$outer$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    paramDef {
+      name: "$outer"
+      tpe {
+        type: Named
+        namedType {
+          name: "Enclosing"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "Enclosing$Inner1"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "$outer"
+                  }
+                }
+                rhs {
+                  type: Literal
+                  literal {
+                    type: Null
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Throw
+                  throwStat {
+                    expression {
+                      type: NewObject
+                      newObject {
+                        clazz {
+                          pkg: "java.lang"
+                          name: "NullPointerException"
+                        }
+                        signature {
+                          name: "new"
+                          owner {
+                            pkg: "java.lang"
+                            name: "NullPointerException"
+                          }
+                          returnType {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "NullPointerException"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: FieldRef
+                        fieldRef {
+                          qualifier {
+                            type: ThisRef
+                          }
+                          enclosingType {
+                            name: "Enclosing$Inner1"
+                          }
+                          name: "$outer$u0020"
+                        }
+                      }
+                      rhs {
+                        type: VarRef
+                        varRef {
+                          name: "$outer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

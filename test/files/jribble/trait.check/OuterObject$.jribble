@@ -1,8 +1,117 @@
-public final class LOuterObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LOuterObject$; MODULE$ = new (LOuterObject$;::this()V;)();
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    LOuterObject$;.MODULE$ = this;
+name {
+  name: "OuterObject$"
+}
+modifiers {
+  isPublic: true
+  isFinal: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "OuterObject$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    name: "OuterObject$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              rhs {
+                type: ThisRef
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "OuterObject$"
+      }
+    }
+    name: "MODULE$"
+    initializer {
+      type: NewObject
+      newObject {
+        clazz {
+          name: "OuterObject$"
+        }
+        signature {
+          name: "new"
+          owner {
+            name: "OuterObject$"
+          }
+          returnType {
+            type: Named
+            namedType {
+              name: "OuterObject$"
+            }
+          }
+        }
+      }
+    }
   }
 }

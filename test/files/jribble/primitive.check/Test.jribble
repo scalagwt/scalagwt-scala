@@ -1,34 +1,360 @@
-public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  private I; x1$u0020;
-  
-  public I; x1() {
-    return this.(LTest;)x1$u0020;
+name {
+  name: "Test"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  private J; x2$u0020;
-  
-  public J; x2() {
-    return this.(LTest;)x2$u0020;
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "x1$u0020"
   }
-  
-  private F; x3$u0020;
-  
-  public F; x3() {
-    return this.(LTest;)x3$u0020;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  private D; x4$u0020;
-  
-  public D; x4() {
-    return this.(LTest;)x4$u0020;
+  method {
+    name: "x1"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Test"
+                }
+                name: "x1$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    this.(LTest;)x1$u0020 = 0;
-    this.(LTest;)x2$u0020 = 0L;
-    this.(LTest;)x3$u0020 = 0.0F;
-    this.(LTest;)x4$u0020 = 0.0D;
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Long
+    }
+    name: "x2$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x2"
+    returnType {
+      type: Primitive
+      primitiveType: Long
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Test"
+                }
+                name: "x2$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Float
+    }
+    name: "x3$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x3"
+    returnType {
+      type: Primitive
+      primitiveType: Float
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Test"
+                }
+                name: "x3$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Double
+    }
+    name: "x4$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x4"
+    returnType {
+      type: Primitive
+      primitiveType: Double
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Test"
+                }
+                name: "x4$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Test"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "Test"
+                  }
+                  name: "x1$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 0
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "Test"
+                  }
+                  name: "x2$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Long
+                  longValue: 0
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "Test"
+                  }
+                  name: "x3$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Float
+                  floatValue: 0.0
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "Test"
+                  }
+                  name: "x4$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Double
+                  doubleValue: 0.0
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

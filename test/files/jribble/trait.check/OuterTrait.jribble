@@ -1,4 +1,30 @@
-public interface LOuterTrait; extends Lscala/ScalaObject; {
-  
-  public LOuterTrait$Inner$; OuterTrait$$Inner();
+name {
+  name: "OuterTrait"
+}
+isInterface: true
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "OuterTrait$$Inner"
+    returnType {
+      type: Named
+      namedType {
+        name: "OuterTrait$Inner$"
+      }
+    }
+  }
 }

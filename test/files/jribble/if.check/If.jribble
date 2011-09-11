@@ -1,166 +1,1392 @@
-public class LIf; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public Z; cond() {
-    return true;
+name {
+  name: "If"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; ifWithUnboxedUnitType() {
-    if (this.(LIf;::cond()Z;)())
-      {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("Hello, world!");
-      }
-    else
-      {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("Hello odd world!");
-      }
-  }
-  
-  public V; ifWithNothingType() {
-    Lscala/runtime/Nothing$; $1$;
-    if (this.(LIf;::cond()Z;)())
-      {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("Hello, world!");
-      }
-    else
-      {
-        Lscala/Predef$;.MODULE$.(Lscala/Predef$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("Hello odd world!");
-      }
-  }
-  
-  public I; ifWithStatmentsButReturningValue() {
-    I; $2$;
-    if (this.(LIf;::cond()Z;)())
-      {
-        this.(LIf;::cond()Z;)();
-        $2$ = 0;
-      }
-    else
-      {
-        this.(LIf;::cond()Z;)();
-        $2$ = 1;
-      }
-    return $2$;
-  }
-  
-  public V; ifWithoutElseAsStmt() {
-    if (this.(LIf;::cond()Z;)())
-      {
-        
-      }
-    else
-      {
-        
-      }
-  }
-  
-  public V; sideeffect() {
-    
-  }
-  
-  public V; deeplyNestedIf() {
-    I; x = 0;
-    if ((x == 0))
-      {
-        this.(LIf;::sideeffect()V;)();
-      }
-    else
-      {
-        if ((x == 1))
-          {
-            this.(LIf;::sideeffect()V;)();
-          }
-        else
-          {
-            if ((x == 2))
-              {
-                this.(LIf;::sideeffect()V;)();
+  method {
+    name: "cond"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
               }
-            else
-              {
-                if ((x == 3))
-                  {
-                    this.(LIf;::sideeffect()V;)();
-                  }
-                else
-                  {
-                    if ((x == 4))
-                      {
-                        this.(LIf;::sideeffect()V;)();
-                      }
-                    else
-                      {
-                        if ((x == 5))
-                          {
-                            this.(LIf;::sideeffect()V;)();
-                          }
-                        else
-                          {
-                            if ((x == 6))
-                              {
-                                this.(LIf;::sideeffect()V;)();
-                              }
-                            else
-                              {
-                                if ((x == 7))
-                                  {
-                                    this.(LIf;::sideeffect()V;)();
-                                  }
-                                else
-                                  {
-                                    if ((x == 8))
-                                      {
-                                        this.(LIf;::sideeffect()V;)();
-                                      }
-                                    else
-                                      {
-                                        if ((x == 9))
-                                          {
-                                            this.(LIf;::sideeffect()V;)();
-                                          }
-                                        else
-                                          {
-                                            if ((x == 10))
-                                              {
-                                                this.(LIf;::sideeffect()V;)();
-                                              }
-                                            else
-                                              {
-                                                if ((x == 11))
-                                                  {
-                                                    this.(LIf;::sideeffect()V;)();
-                                                  }
-                                                else
-                                                  {
-                                                    if ((x == 12))
-                                                      {
-                                                        this.(LIf;::sideeffect()V;)();
-                                                      }
-                                                    else
-                                                      {
-                                                        if ((x == 13))
-                                                          {
-                                                            this.(LIf;::sideeffect()V;)();
-                                                          }
-                                                        else
-                                                          {
-                                                            
-                                                          }
-                                                      }
-                                                  }
-                                              }
-                                          }
-                                      }
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
+            }
           }
+        }
       }
+    }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "ifWithUnboxedUnitType"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "cond"
+                  owner {
+                    name: "If"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "Predef$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "println"
+                        owner {
+                          pkg: "scala"
+                          name: "Predef$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "Object"
+                          }
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                      argument {
+                        type: Literal
+                        literal {
+                          type: String
+                          stringValue: "Hello, world!"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "Predef$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "println"
+                        owner {
+                          pkg: "scala"
+                          name: "Predef$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "Object"
+                          }
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                      argument {
+                        type: Literal
+                        literal {
+                          type: String
+                          stringValue: "Hello odd world!"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "ifWithNothingType"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "scala.runtime"
+                name: "Nothing$"
+              }
+            }
+            name: "$1$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "cond"
+                  owner {
+                    name: "If"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "Predef$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "error"
+                        owner {
+                          pkg: "scala"
+                          name: "Predef$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "String"
+                          }
+                        }
+                        returnType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.runtime"
+                            name: "Nothing$"
+                          }
+                        }
+                      }
+                      argument {
+                        type: Literal
+                        literal {
+                          type: String
+                          stringValue: "Hello, world!"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "Predef$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "error"
+                        owner {
+                          pkg: "scala"
+                          name: "Predef$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "String"
+                          }
+                        }
+                        returnType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.runtime"
+                            name: "Nothing$"
+                          }
+                        }
+                      }
+                      argument {
+                        type: Literal
+                        literal {
+                          type: String
+                          stringValue: "Hello odd world!"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "ifWithStatmentsButReturningValue"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$2$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "cond"
+                  owner {
+                    name: "If"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "cond"
+                        owner {
+                          name: "If"
+                        }
+                        returnType {
+                          type: Primitive
+                          primitiveType: Boolean
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Int
+                          intValue: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "cond"
+                        owner {
+                          name: "If"
+                        }
+                        returnType {
+                          type: Primitive
+                          primitiveType: Boolean
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Int
+                          intValue: 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$2$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "ifWithoutElseAsStmt"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "cond"
+                  owner {
+                    name: "If"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+              }
+            }
+            elsee {
+              type: Block
+              block {
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "sideeffect"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "deeplyNestedIf"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "x"
+            initializer {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                rhs {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 0
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "sideeffect"
+                        owner {
+                          name: "If"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: If
+                  ifStat {
+                    condition {
+                      type: Binary
+                      binary {
+                        op: Equal
+                        lhs {
+                          type: VarRef
+                          varRef {
+                            name: "x"
+                          }
+                        }
+                        rhs {
+                          type: Literal
+                          literal {
+                            type: Int
+                            intValue: 1
+                          }
+                        }
+                      }
+                    }
+                    then {
+                      type: Block
+                      block {
+                        statement {
+                          type: Expr
+                          expr {
+                            type: MethodCall
+                            methodCall {
+                              receiver {
+                                type: ThisRef
+                              }
+                              signature {
+                                name: "sideeffect"
+                                owner {
+                                  name: "If"
+                                }
+                                returnType {
+                                  type: Void
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    elsee {
+                      type: Block
+                      block {
+                        statement {
+                          type: If
+                          ifStat {
+                            condition {
+                              type: Binary
+                              binary {
+                                op: Equal
+                                lhs {
+                                  type: VarRef
+                                  varRef {
+                                    name: "x"
+                                  }
+                                }
+                                rhs {
+                                  type: Literal
+                                  literal {
+                                    type: Int
+                                    intValue: 2
+                                  }
+                                }
+                              }
+                            }
+                            then {
+                              type: Block
+                              block {
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: MethodCall
+                                    methodCall {
+                                      receiver {
+                                        type: ThisRef
+                                      }
+                                      signature {
+                                        name: "sideeffect"
+                                        owner {
+                                          name: "If"
+                                        }
+                                        returnType {
+                                          type: Void
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                            elsee {
+                              type: Block
+                              block {
+                                statement {
+                                  type: If
+                                  ifStat {
+                                    condition {
+                                      type: Binary
+                                      binary {
+                                        op: Equal
+                                        lhs {
+                                          type: VarRef
+                                          varRef {
+                                            name: "x"
+                                          }
+                                        }
+                                        rhs {
+                                          type: Literal
+                                          literal {
+                                            type: Int
+                                            intValue: 3
+                                          }
+                                        }
+                                      }
+                                    }
+                                    then {
+                                      type: Block
+                                      block {
+                                        statement {
+                                          type: Expr
+                                          expr {
+                                            type: MethodCall
+                                            methodCall {
+                                              receiver {
+                                                type: ThisRef
+                                              }
+                                              signature {
+                                                name: "sideeffect"
+                                                owner {
+                                                  name: "If"
+                                                }
+                                                returnType {
+                                                  type: Void
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                    elsee {
+                                      type: Block
+                                      block {
+                                        statement {
+                                          type: If
+                                          ifStat {
+                                            condition {
+                                              type: Binary
+                                              binary {
+                                                op: Equal
+                                                lhs {
+                                                  type: VarRef
+                                                  varRef {
+                                                    name: "x"
+                                                  }
+                                                }
+                                                rhs {
+                                                  type: Literal
+                                                  literal {
+                                                    type: Int
+                                                    intValue: 4
+                                                  }
+                                                }
+                                              }
+                                            }
+                                            then {
+                                              type: Block
+                                              block {
+                                                statement {
+                                                  type: Expr
+                                                  expr {
+                                                    type: MethodCall
+                                                    methodCall {
+                                                      receiver {
+                                                        type: ThisRef
+                                                      }
+                                                      signature {
+                                                        name: "sideeffect"
+                                                        owner {
+                                                          name: "If"
+                                                        }
+                                                        returnType {
+                                                          type: Void
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                            elsee {
+                                              type: Block
+                                              block {
+                                                statement {
+                                                  type: If
+                                                  ifStat {
+                                                    condition {
+                                                      type: Binary
+                                                      binary {
+                                                        op: Equal
+                                                        lhs {
+                                                          type: VarRef
+                                                          varRef {
+                                                            name: "x"
+                                                          }
+                                                        }
+                                                        rhs {
+                                                          type: Literal
+                                                          literal {
+                                                            type: Int
+                                                            intValue: 5
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                    then {
+                                                      type: Block
+                                                      block {
+                                                        statement {
+                                                          type: Expr
+                                                          expr {
+                                                            type: MethodCall
+                                                            methodCall {
+                                                              receiver {
+                                                                type: ThisRef
+                                                              }
+                                                              signature {
+                                                                name: "sideeffect"
+                                                                owner {
+                                                                  name: "If"
+                                                                }
+                                                                returnType {
+                                                                  type: Void
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                    elsee {
+                                                      type: Block
+                                                      block {
+                                                        statement {
+                                                          type: If
+                                                          ifStat {
+                                                            condition {
+                                                              type: Binary
+                                                              binary {
+                                                                op: Equal
+                                                                lhs {
+                                                                  type: VarRef
+                                                                  varRef {
+                                                                    name: "x"
+                                                                  }
+                                                                }
+                                                                rhs {
+                                                                  type: Literal
+                                                                  literal {
+                                                                    type: Int
+                                                                    intValue: 6
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                            then {
+                                                              type: Block
+                                                              block {
+                                                                statement {
+                                                                  type: Expr
+                                                                  expr {
+                                                                    type: MethodCall
+                                                                    methodCall {
+                                                                      receiver {
+                                                                        type: ThisRef
+                                                                      }
+                                                                      signature {
+                                                                        name: "sideeffect"
+                                                                        owner {
+                                                                          name: "If"
+                                                                        }
+                                                                        returnType {
+                                                                          type: Void
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                            elsee {
+                                                              type: Block
+                                                              block {
+                                                                statement {
+                                                                  type: If
+                                                                  ifStat {
+                                                                    condition {
+                                                                      type: Binary
+                                                                      binary {
+                                                                        op: Equal
+                                                                        lhs {
+                                                                          type: VarRef
+                                                                          varRef {
+                                                                            name: "x"
+                                                                          }
+                                                                        }
+                                                                        rhs {
+                                                                          type: Literal
+                                                                          literal {
+                                                                            type: Int
+                                                                            intValue: 7
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                    then {
+                                                                      type: Block
+                                                                      block {
+                                                                        statement {
+                                                                          type: Expr
+                                                                          expr {
+                                                                            type: MethodCall
+                                                                            methodCall {
+                                                                              receiver {
+                                                                                type: ThisRef
+                                                                              }
+                                                                              signature {
+                                                                                name: "sideeffect"
+                                                                                owner {
+                                                                                  name: "If"
+                                                                                }
+                                                                                returnType {
+                                                                                  type: Void
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                    elsee {
+                                                                      type: Block
+                                                                      block {
+                                                                        statement {
+                                                                          type: If
+                                                                          ifStat {
+                                                                            condition {
+                                                                              type: Binary
+                                                                              binary {
+                                                                                op: Equal
+                                                                                lhs {
+                                                                                  type: VarRef
+                                                                                  varRef {
+                                                                                    name: "x"
+                                                                                  }
+                                                                                }
+                                                                                rhs {
+                                                                                  type: Literal
+                                                                                  literal {
+                                                                                    type: Int
+                                                                                    intValue: 8
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                            then {
+                                                                              type: Block
+                                                                              block {
+                                                                                statement {
+                                                                                  type: Expr
+                                                                                  expr {
+                                                                                    type: MethodCall
+                                                                                    methodCall {
+                                                                                      receiver {
+                                                                                        type: ThisRef
+                                                                                      }
+                                                                                      signature {
+                                                                                        name: "sideeffect"
+                                                                                        owner {
+                                                                                          name: "If"
+                                                                                        }
+                                                                                        returnType {
+                                                                                          type: Void
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                            elsee {
+                                                                              type: Block
+                                                                              block {
+                                                                                statement {
+                                                                                  type: If
+                                                                                  ifStat {
+                                                                                    condition {
+                                                                                      type: Binary
+                                                                                      binary {
+                                                                                        op: Equal
+                                                                                        lhs {
+                                                                                          type: VarRef
+                                                                                          varRef {
+                                                                                            name: "x"
+                                                                                          }
+                                                                                        }
+                                                                                        rhs {
+                                                                                          type: Literal
+                                                                                          literal {
+                                                                                            type: Int
+                                                                                            intValue: 9
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                    then {
+                                                                                      type: Block
+                                                                                      block {
+                                                                                        statement {
+                                                                                          type: Expr
+                                                                                          expr {
+                                                                                            type: MethodCall
+                                                                                            methodCall {
+                                                                                              receiver {
+                                                                                                type: ThisRef
+                                                                                              }
+                                                                                              signature {
+                                                                                                name: "sideeffect"
+                                                                                                owner {
+                                                                                                  name: "If"
+                                                                                                }
+                                                                                                returnType {
+                                                                                                  type: Void
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                    elsee {
+                                                                                      type: Block
+                                                                                      block {
+                                                                                        statement {
+                                                                                          type: If
+                                                                                          ifStat {
+                                                                                            condition {
+                                                                                              type: Binary
+                                                                                              binary {
+                                                                                                op: Equal
+                                                                                                lhs {
+                                                                                                  type: VarRef
+                                                                                                  varRef {
+                                                                                                    name: "x"
+                                                                                                  }
+                                                                                                }
+                                                                                                rhs {
+                                                                                                  type: Literal
+                                                                                                  literal {
+                                                                                                    type: Int
+                                                                                                    intValue: 10
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                            then {
+                                                                                              type: Block
+                                                                                              block {
+                                                                                                statement {
+                                                                                                  type: Expr
+                                                                                                  expr {
+                                                                                                    type: MethodCall
+                                                                                                    methodCall {
+                                                                                                      receiver {
+                                                                                                        type: ThisRef
+                                                                                                      }
+                                                                                                      signature {
+                                                                                                        name: "sideeffect"
+                                                                                                        owner {
+                                                                                                          name: "If"
+                                                                                                        }
+                                                                                                        returnType {
+                                                                                                          type: Void
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                            elsee {
+                                                                                              type: Block
+                                                                                              block {
+                                                                                                statement {
+                                                                                                  type: If
+                                                                                                  ifStat {
+                                                                                                    condition {
+                                                                                                      type: Binary
+                                                                                                      binary {
+                                                                                                        op: Equal
+                                                                                                        lhs {
+                                                                                                          type: VarRef
+                                                                                                          varRef {
+                                                                                                            name: "x"
+                                                                                                          }
+                                                                                                        }
+                                                                                                        rhs {
+                                                                                                          type: Literal
+                                                                                                          literal {
+                                                                                                            type: Int
+                                                                                                            intValue: 11
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                    then {
+                                                                                                      type: Block
+                                                                                                      block {
+                                                                                                        statement {
+                                                                                                          type: Expr
+                                                                                                          expr {
+                                                                                                            type: MethodCall
+                                                                                                            methodCall {
+                                                                                                              receiver {
+                                                                                                                type: ThisRef
+                                                                                                              }
+                                                                                                              signature {
+                                                                                                                name: "sideeffect"
+                                                                                                                owner {
+                                                                                                                  name: "If"
+                                                                                                                }
+                                                                                                                returnType {
+                                                                                                                  type: Void
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                    elsee {
+                                                                                                      type: Block
+                                                                                                      block {
+                                                                                                        statement {
+                                                                                                          type: If
+                                                                                                          ifStat {
+                                                                                                            condition {
+                                                                                                              type: Binary
+                                                                                                              binary {
+                                                                                                                op: Equal
+                                                                                                                lhs {
+                                                                                                                  type: VarRef
+                                                                                                                  varRef {
+                                                                                                                    name: "x"
+                                                                                                                  }
+                                                                                                                }
+                                                                                                                rhs {
+                                                                                                                  type: Literal
+                                                                                                                  literal {
+                                                                                                                    type: Int
+                                                                                                                    intValue: 12
+                                                                                                                  }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                            then {
+                                                                                                              type: Block
+                                                                                                              block {
+                                                                                                                statement {
+                                                                                                                  type: Expr
+                                                                                                                  expr {
+                                                                                                                    type: MethodCall
+                                                                                                                    methodCall {
+                                                                                                                      receiver {
+                                                                                                                        type: ThisRef
+                                                                                                                      }
+                                                                                                                      signature {
+                                                                                                                        name: "sideeffect"
+                                                                                                                        owner {
+                                                                                                                          name: "If"
+                                                                                                                        }
+                                                                                                                        returnType {
+                                                                                                                          type: Void
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                            elsee {
+                                                                                                              type: Block
+                                                                                                              block {
+                                                                                                                statement {
+                                                                                                                  type: If
+                                                                                                                  ifStat {
+                                                                                                                    condition {
+                                                                                                                      type: Binary
+                                                                                                                      binary {
+                                                                                                                        op: Equal
+                                                                                                                        lhs {
+                                                                                                                          type: VarRef
+                                                                                                                          varRef {
+                                                                                                                            name: "x"
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                        rhs {
+                                                                                                                          type: Literal
+                                                                                                                          literal {
+                                                                                                                            type: Int
+                                                                                                                            intValue: 13
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                    then {
+                                                                                                                      type: Block
+                                                                                                                      block {
+                                                                                                                        statement {
+                                                                                                                          type: Expr
+                                                                                                                          expr {
+                                                                                                                            type: MethodCall
+                                                                                                                            methodCall {
+                                                                                                                              receiver {
+                                                                                                                                type: ThisRef
+                                                                                                                              }
+                                                                                                                              signature {
+                                                                                                                                name: "sideeffect"
+                                                                                                                                owner {
+                                                                                                                                  name: "If"
+                                                                                                                                }
+                                                                                                                                returnType {
+                                                                                                                                  type: Void
+                                                                                                                                }
+                                                                                                                              }
+                                                                                                                            }
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                    elsee {
+                                                                                                                      type: Block
+                                                                                                                      block {
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "If"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

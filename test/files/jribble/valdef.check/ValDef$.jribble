@@ -9,6 +9,7 @@ public final class LValDef$; extends Ljava/lang/Object; implements Lscala/ScalaO
   
   public this() {
     (Ljava/lang/Object;::super()V;)();
+    LValDef$;.MODULE$ = this;
     this.(LValDef$;)b$u0020 = 1;
   }
 }

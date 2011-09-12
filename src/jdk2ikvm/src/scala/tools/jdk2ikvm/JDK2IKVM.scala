@@ -93,6 +93,12 @@ abstract class JDK2IKVM
             "scala/collection/generic/ParSetFactory.scala",
             "scala/collection/generic/CanCombineFrom.scala",
             "scala/collection/generic/HasNewCombiner.scala",
+            //breaks GWT due to bugs in scala (broken signatures) and bugs in jribble backend (broken jribble output)
+            //excluding it for now
+            "scala/collection/immutable/RedBlack.scala",
+            //TreeMap and TreeSet depend on RedBlack.scala
+            "scala/collection/immutable/TreeMap.scala",
+            "scala/collection/immutable/TreeSet.scala",
             //depends on threads
             "scala/collection/generic/Signalling.scala",
             //depends on scala.io

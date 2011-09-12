@@ -65,13 +65,26 @@ trait Namers { self: Analyzer =>
     classAndNamerOfModule.clear
   }
 
-  abstract class Namer(val context: Context) {
+  abstract class Namer(val context: Context) extends NamerErrorTrees {
 
     val typer = newTyper(context)
 
     def setPrivateWithin[Sym <: Symbol](tree: Tree, sym: Sym, mods: Modifiers): Sym = {
-      if (mods.hasAccessBoundary)
-        sym.privateWithin = typer.qualifyingClass(tree, mods.privateWithin, true)
+      if (mods.hasAccessBoundary) {
+        val symOrError = typer.qualifyingClass(tree, mods.privateWithin, true) match {
+          case Left(err) =>
+            try {
+              err.emit(context)
+            } catch {
+              case _: TypeError =>
+                assert(false, "qualifying class info can fail but cannot throw type errors")
+            }
+            NoSymbol
+          case Right(sym) =>
+            sym
+        }
+        sym.privateWithin = symOrError
+      }
       sym
     }
 
@@ -80,7 +93,7 @@ trait Namers { self: Analyzer =>
       else 0l
 
     def moduleClassFlags(moduleFlags: Long) =
-      (moduleFlags & ModuleToClassFlags) | FINAL | inConstructorFlag
+      (moduleFlags & ModuleToClassFlags) | inConstructorFlag
 
     def updatePosFlags(sym: Symbol, pos: Position, flags: Long): Symbol = {
       debuglog("overwriting " + sym)
@@ -92,7 +105,7 @@ trait Namers { self: Analyzer =>
         updatePosFlags(sym.moduleClass, pos, moduleClassFlags(flags))
       var companion: Symbol = NoSymbol
       if (sym.owner.isPackageClass && {companion = companionSymbolOf(sym, context); companion != NoSymbol} &&
-        (companion.rawInfo.isInstanceOf[loaders.SymbolLoader] ||
+        (companion.rawInfo.isInstanceOf[SymLoader] ||
          companion.rawInfo.isComplete && runId(sym.validTo) != currentRunId))
         // pre-set linked symbol to NoType, in case it is not loaded together with this symbol.
         companion.setInfo(NoType)
@@ -151,6 +164,7 @@ trait Namers { self: Analyzer =>
 
     private def setInfo[Sym <: Symbol](sym : Sym)(tpe : LazyType) : Sym = sym.setInfo(tpe)
 
+    // TODO: make it into error trees
     private def doubleDefError(pos: Position, sym: Symbol) {
       val s1 = if (sym.isModule) "case class companion " else ""
       val s2 = if (sym.isSynthetic) "(compiler-generated) " + s1 else ""
@@ -191,8 +205,9 @@ trait Namers { self: Analyzer =>
       var pkg = owner.info.decls.lookup(pid.name)
       if (!pkg.isPackage || owner != pkg.owner) {
         pkg = owner.newPackage(pos, pid.name.toTermName)
-        pkg.moduleClass.setInfo(new PackageClassInfoType(new Scope, pkg.moduleClass))
-        pkg.setInfo(pkg.moduleClass.tpe)
+        val pkgClass = pkg.moduleClass
+        pkgClass.setInfo(new PackageClassInfoType(newPackageScope(pkgClass), pkgClass))
+        pkg.setInfo(pkgClass.tpe)
         enterInScope(pkg, owner.info.decls)
       }
       pkg
@@ -229,9 +244,9 @@ trait Namers { self: Analyzer =>
     /** Enter a module symbol. The tree parameter can be either a module definition
      *  or a class definition */
     def enterModuleSymbol(tree : ModuleDef): Symbol = {
-      // .pos, mods.flags | MODULE | FINAL, name
+      // .pos, mods.flags | MODULE, name
       var m: Symbol = context.scope.lookup(tree.name)
-      val moduleFlags = tree.mods.flags | MODULE | FINAL
+      val moduleFlags = tree.mods.flags | MODULE
       if (m.isModule && !m.isPackage && inCurrentScope(m) && (currentRun.canRedefine(m) || m.isSynthetic)) {
         updatePosFlags(m, tree.pos, moduleFlags)
         setPrivateWithin(tree, m, tree.mods)
@@ -633,10 +648,18 @@ trait Namers { self: Analyzer =>
         case _ =>
       }
       sym.setInfo(if (sym.isJavaDefined) RestrictJavaArraysMap(tp) else tp)
-      if ((sym.isAliasType || sym.isAbstractType) && !sym.isParameter &&
-          !typer.checkNonCyclic(tree.pos, tp))
-        sym.setInfo(ErrorType) // this early test is there to avoid infinite baseTypes when
-                               // adding setters and getters --> bug798
+      if ((sym.isAliasType || sym.isAbstractType) && !sym.isParameter) {
+        val check = typer.checkNonCyclic(tree.pos, tp)
+        if (check.isDefined) {
+          sym.setInfo(ErrorType) // this early test is there to avoid infinite baseTypes when
+                                 // adding setters and getters --> bug798
+          try {
+            check.get.emit(context)
+          } catch {
+            case _: TypeError => assert(false, "Type errors cannot be thrown in type completers")
+          }
+        }
+      }
       debuglog("defined " + sym);
       validate(sym)
     }
@@ -802,7 +825,14 @@ trait Namers { self: Analyzer =>
 
       }
 */
-      var parents = typer.parentTypes(templ) map checkParent
+      var parents0 = typer.parentTypes(templ)
+      try {
+        parents0.foreach(p => if (p.containsError()) typer.emitAllErrorTrees(p, context))
+      } catch {
+        case _: TypeError =>
+          assert(false, "parent types cannot throw type errors")
+      }
+      val parents = parents0 map checkParent
       enterSelf(templ.self)
       val decls = new Scope
 //      for (etdef <- earlyTypes) decls enter etdef.symbol
@@ -927,7 +957,7 @@ trait Namers { self: Analyzer =>
         // is more compact than: def foo[T, T2](a: T, x: T2)(implicit w: ComputeT2[T, T2])
         // moreover, the latter is not an encoding of the former, which hides type inference of T2, so you can specify T while T2 is purely computed
         val checkDependencies: TypeTraverser = new TypeTraverser {
-          def traverse(tp: Type) = {
+          def traverse(tp: Type) {
             tp match {
               case SingleType(_, sym) =>
                 if (sym.owner == meth && sym.isValueParameter && !(okParams contains sym))
@@ -940,7 +970,6 @@ trait Namers { self: Analyzer =>
               case _ =>
                 mapOver(tp)
             }
-            this
           }
         }
         for(vps <- vparamSymss) {
@@ -1287,7 +1316,10 @@ trait Namers { self: Analyzer =>
 
             case Import(expr, selectors) =>
               val expr1 = typer.typedQualifier(expr)
-              typer checkStable expr1
+              val stable = typer.checkStable(expr1)
+              if (stable.containsError())
+                typer.emitAllErrorTrees(stable, context)
+
               if (expr1.symbol != null && expr1.symbol.isRootPackage)
                 context.error(tree.pos, "_root_ cannot be imported")
 
@@ -1303,7 +1335,10 @@ trait Namers { self: Analyzer =>
         } catch {
           case ex: TypeError =>
             //Console.println("caught " + ex + " in typeSig")
-            typer.reportTypeError(tree.pos, ex)
+            // TODO: once ErrorTrees are implemented we should be able
+            // to get rid of this catch and simply report the error
+            // (maybe apart from cyclic errors)
+            TypeSigError(tree, ex).emit(context)
             ErrorType
         }
       result match {

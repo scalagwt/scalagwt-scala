@@ -131,10 +131,13 @@ trait Definitions extends reflect.api.StandardDefinitions {
       RootClass.sourceModule = rp
       rp
     }
-    // This is the actual root of everything, including the package _root_.
-    lazy val RootClass: ModuleClassSymbol = NoSymbol.newModuleClass(NoPosition, tpnme.ROOT)
-          .setFlag(FINAL | MODULE | PACKAGE | JAVA).setInfo(rootLoader)
 
+    // This is the actual root of everything, including the package _root_.
+    lazy val RootClass: ModuleClassSymbol = (
+      NoSymbol.newModuleClass(NoPosition, tpnme.ROOT)
+        setFlag (FINAL | MODULE | PACKAGE | JAVA)
+        setInfo rootLoader
+    )
     // The empty package, which holds all top level types without given packages.
     lazy val EmptyPackage       = RootClass.newPackage(NoPosition, nme.EMPTY_PACKAGE_NAME).setFlag(FINAL)
     lazy val EmptyPackageClass  = EmptyPackage.moduleClass
@@ -289,6 +292,7 @@ trait Definitions extends reflect.api.StandardDefinitions {
     def isJavaRepeatedParamType(tp: Type)  = tp.typeSymbol == JavaRepeatedParamClass
     def isRepeatedParamType(tp: Type)      = isScalaRepeatedParamType(tp) || isJavaRepeatedParamType(tp)
 
+    def isJavaVarArgs(params: List[Symbol])  = params.nonEmpty && isJavaRepeatedParamType(params.last.tpe)
     def isScalaVarArgs(params: List[Symbol]) = params.nonEmpty && isScalaRepeatedParamType(params.last.tpe)
     def isVarArgsList(params: List[Symbol])  = params.nonEmpty && isRepeatedParamType(params.last.tpe)
     def isVarArgTypes(formals: List[Type])   = formals.nonEmpty && isRepeatedParamType(formals.last)
@@ -660,36 +664,25 @@ trait Definitions extends reflect.api.StandardDefinitions {
     def packageExists(packageName: String): Boolean =
       getModuleIfDefined(packageName).isPackage
 
+    private def getModuleOrClass(path: Name, len: Int): Symbol = {
+      val point = path lastPos('.', len - 1)
+      val owner = if (point > 0) getModuleOrClass(path.toTermName, point) else RootClass
+      val name = path subName (point + 1, len)
+      val sym = owner.info member name
+      val result = if (path.isTermName) sym.suchThat(_ hasFlag MODULE) else sym
+      if (result != NoSymbol) result
+      else {
+        if (settings.debug.value) { log(sym.info); log(sym.info.members) }//debug
+        missingHook(owner, name) orElse {
+          MissingRequirementError.notFound((if (path.isTermName) "object " else "class ")+path)
+        }
+      }
+    }
+
     /** If you're looking for a class, pass a type name.
      *  If a module, a term name.
      */
-    private def getModuleOrClass(path: Name): Symbol = {
-      val module   = path.isTermName
-      val fullname = path.toTermName
-      if (fullname == nme.NO_NAME)
-        return NoSymbol
-
-      var sym: Symbol = RootClass
-      var i = 0
-      var j = fullname.pos('.', i)
-      while (j < fullname.length) {
-        sym = sym.info.member(fullname.subName(i, j))
-        // if (sym == NoSymbol)
-        //   println("no member "+fullname.subName(i, j)+" found in "+sym0+sym0.info.getClass+" "+sym0.info.typeSymbol.info.getClass)
-        i = j + 1
-        j = fullname.pos('.', i)
-      }
-      val result =
-        if (module) sym.info.member(fullname.subName(i, j)).suchThat(_ hasFlag MODULE)
-        else sym.info.member(fullname.subName(i, j).toTypeName)
-      if (result == NoSymbol) {
-      //   println("no member "+fullname.subName(i, j)+" found in "+sym+" "+module)
-        if (settings.debug.value)
-          { log(sym.info); log(sym.info.members) }//debug
-        throw new MissingRequirementError((if (module) "object " else "class ") + fullname)
-      }
-      result
-    }
+    private def getModuleOrClass(path: Name): Symbol = getModuleOrClass(path, path.length)
 
     private def newClass(owner: Symbol, name: TypeName, parents: List[Type]): Symbol = {
       val clazz = owner.newClass(NoPosition, name)
@@ -838,7 +831,7 @@ trait Definitions extends reflect.api.StandardDefinitions {
     def init() {
       if (isInitialized) return
 
-      EmptyPackageClass setInfo ClassInfoType(Nil, new Scope, EmptyPackageClass)
+      EmptyPackageClass setInfo ClassInfoType(Nil, newPackageScope(EmptyPackageClass), EmptyPackageClass)
       EmptyPackage setInfo EmptyPackageClass.tpe
 
       RootClass.info.decls enter EmptyPackage

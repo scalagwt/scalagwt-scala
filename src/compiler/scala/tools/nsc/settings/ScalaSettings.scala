@@ -60,6 +60,7 @@ trait ScalaSettings extends AbsScalaSettings
   val assemextdirs  = StringSetting     ("-Xassem-extdirs", "dirs", "(Requires -target:msil) List of directories containing assemblies.  default:lib", Defaults.scalaLibDir.path).dependsOn(target, "msil")
   val sourcedir     = StringSetting     ("-Xsourcedir", "directory", "(Requires -target:msil) Mirror source folder structure in output directory.", ".").dependsOn(target, "msil")
   val checkInit     = BooleanSetting    ("-Xcheckinit", "Wrap field accessors to throw an exception on uninitialized access.")
+  val errortrees    = BooleanSetting    ("-Yerrortrees", "Provide more info about error trees." )
   val noassertions  = BooleanSetting    ("-Xdisable-assertions", "Generate no assertions or assumptions.")
   val elidebelow    = IntSetting        ("-Xelide-below", "Calls to @elidable methods are omitted if method priority is lower than argument",
                                                 elidable.MINIMUM, None, elidable.byName get _)
@@ -92,7 +93,7 @@ trait ScalaSettings extends AbsScalaSettings
 
   // Experimental Extensions
   val Xexperimental = BooleanSetting    ("-Xexperimental", "Enable experimental extensions.") .
-                          withPostSetHook(set => List(YdepMethTpes, YmethodInfer) foreach (_.value = set.value)) //YvirtClasses,
+                          withPostSetHook(set => List(YdepMethTpes, YmethodInfer, overrideObjects) foreach (_.value = set.value)) //YvirtClasses,
 
   /** Compatibility stubs for options whose value name did
    *  not previously match the option name.
@@ -107,6 +108,7 @@ trait ScalaSettings extends AbsScalaSettings
   /**
    * -Y "Private" settings
    */
+  val overrideObjects = BooleanSetting ("-Yoverride-objects", "Allow member objects to be overridden.")
   val Yhelp         = BooleanSetting    ("-Y", "Print a synopsis of private options.")
   val browse        = PhasesSetting     ("-Ybrowse", "Browse the abstract syntax tree after")
   val check         = PhasesSetting     ("-Ycheck", "Check the tree at the end of")
@@ -145,6 +147,7 @@ trait ScalaSettings extends AbsScalaSettings
   val refinementMethodDispatch =
                       ChoiceSetting     ("-Ystruct-dispatch", "policy", "structural method dispatch policy",
                         List("no-cache", "mono-cache", "poly-cache", "invoke-dynamic"), "poly-cache")
+  val globalClass   = StringSetting     ("-Yglobal-class", "class", "subclass of scala.tools.nsc.Global to use for compiler", "")
   val Yrangepos     = BooleanSetting    ("-Yrangepos", "Use range positions for syntax trees.")
   val YrichExes     = BooleanSetting    ("-Yrich-exceptions",
                                             "Fancier exceptions.  Set source search path with -D" +

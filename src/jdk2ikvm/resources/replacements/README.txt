@@ -44,10 +44,6 @@ scala/math/package.scala
 Depends on java.lang.Math.ulp method that is not supported by GWT. Probably should be patched
 automatically if GWT cannot be fixed.
 
-scala/MathCommon.scala
-----------------------
-See above.
-
 scala/package.scala
 -------------------
 Depends on java.lang.AbstractMethodError. Maybe we could create it in GWT?
@@ -60,6 +56,16 @@ Goes without the comment. We need to reimplement this stuff to the extent
 that is really needed. The only reason why we need Manifests is to support
 Arrays. Once we figure this out, we should have a very simple implementation
 of Manifests that doesn't provide any reflective functionality at all.
+
+scala/reflect/api/Modifier.scala
+--------------------------------
+Depends on Enumeration. Rewritten to be source-compatible stub object.
+
+scala/reflect/package.scala
+---------------------------
+Depends on ReflectionUtils. Replaced by stub-implementation that always
+fails to provide an access to Scala reflection API. We don't support
+Scala reflection in GWT.
 
 scala/runtime/RichChar.scala
 ----------------------------
@@ -96,6 +102,10 @@ Depends on JVM specific exception types that are not supported by GWT. Those inc
   
 Also, depends on reflection. I believe this stuff should be refactored or not referenced
 from the rest of library.
+
+scala/xml/Atom.scala
+--------------------
+Depends on Class.getSimpleName that GWT doesn't support. Rewritten it.
   
 scala/xml/parsing/TokenTests.scala
 ----------------------------------
@@ -103,4 +113,3 @@ The whole XML stuff is a mess. We shouldn't support scala.xml.parsing in GWT at 
 However, this object is being referenced from other places in xml package.
 This object has to be rewritten because of dependencies on methods in RichChar
 that are removed. Check scala/runtime/RichChar for details.
-

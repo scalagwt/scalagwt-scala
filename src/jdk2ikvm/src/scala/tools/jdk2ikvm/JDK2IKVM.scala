@@ -118,11 +118,11 @@ abstract class JDK2IKVM
             "scala/ref/",
             //we cannot exclude the whole reflect package, compiler depends on some classes and we need manifests
             "scala/reflect/generic/",
-            "scala/reflect/api/",
             "scala/reflect/Print.scala",
             //refers to reflection
             "scala/reflect/ScalaBeanInfo.scala",
             "scala/reflect/NameTransformer.scala",
+            "scala/reflect/ReflectionUtils.scala",
             //refers to reflection
             "scala/runtime/MethodCache.scala",
             //depends on reflections, find out if we can do something about it

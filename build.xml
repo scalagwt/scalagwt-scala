@@ -464,11 +464,12 @@ QUICK BUILD (QUICK)
     </uptodate>
   </target>
 
-  <target name="quick.pre-lib-jribble" depends="quick.lib-jdk2ikvm">
+  <target name="quick.pre-lib-jribble" depends="quick.lib-jdk2ikvm, quick.plugins">
     <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-jribble.complete">
       <srcfiles dir="${build-quick.dir}/jdk2ikvm">
         <include name="library/**"/>
         <include name="factorymanifests/**"/>
+        <include name="continuations/**"/>
       </srcfiles>
     </uptodate>
     <path id="quick.classpath">
@@ -566,6 +567,7 @@ QUICK BUILD (QUICK)
       jvmargs="${scalacfork.jvmargs}">
       <include name="scala/**/*.scala"/>
       <include name="scala/**/*.java"/>
+      <exclude name="scala/util/continuations/**"/>
     </scalacfork>
     <!-- Delete jribble files corresponding to primitive types. Name of classes declared for
          primitive types are broken and would cause parsing error. Those classes are stubs
@@ -583,6 +585,16 @@ QUICK BUILD (QUICK)
         <include name="Unit.jribble"/>
       </fileset>
     </delete>
+    <scalacfork
+      destdir="${build-quick.dir}/jribble/library"
+      compilerpathref="quick.classpath"
+      params="${scalac.args.quick} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      target="jribble"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/util/continuations/**"/>
+      <compilationpath refid="quick.compilation.path"/>
+    </scalacfork>
     <mkdir dir="${build-quick.dir}/classes/library-gwt"/>
     <scalacfork
       destdir="${build-quick.dir}/classes/library-gwt"
@@ -594,6 +606,23 @@ QUICK BUILD (QUICK)
       <include name="scala/**/*.scala"/>
       <include name="scala/**/*.java"/>
     </scalacfork>
+    <scalacfork
+      destdir="${build-quick.dir}/classes/library-gwt"
+      compilerpathref="quick.classpath"
+      params="${scalac.args.quick} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/util/continuations/**"/>
+      <compilationpath refid="quick.compilation.path"/>
+    </scalacfork>
+    <javac
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      destdir="${build-quick.dir}/classes/library-gwt"
+      classpath="${build-quick.dir}/classes/library"
+      includes="**/*.java"
+      target="1.5" source="1.5">
+      <compilerarg line="${javac.args}"/> 
+    </javac>
     <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
@@ -732,18 +761,39 @@ QUICK BUILD (QUICK)
       <pathelement location="${forkjoin.jar}"/>
       <pathelement location="${ant.jar}"/>
     </path>
+    <mkdir dir="${build-quick.dir}/pre-jdk2ikvm/library"/>
+    <!-- HACK!(grek): If we copy with copy ant target then scala compiler fails with NPE.
+         I believe we rely on some order that is only preserved if all attributes
+         of files being copied are preserved. On my system it's enough to just
+         omit -p flag for cp commmand to make build fail. Obviously, it's a bug
+         in scala compiler but I don't want to spend time fixing it when fairly
+         easy work-around is present. This stuff will be moved out of scalagwt-scala
+         project soon anyway. -->
+    <exec executable="cp">
+      <arg value="-Rp"/>
+      <arg value="${src.dir}/library/"/>
+      <arg value="${build-quick.dir}/pre-jdk2ikvm/library/"/>
+    </exec>
+    <copy todir="${build-quick.dir}/pre-jdk2ikvm/library">
+      <fileset dir="${src.dir}/factorymanifests/library">
+        <include name="**/*.scala"/>
+      </fileset>
+      <fileset dir="${src.dir}/continuations/library">
+        <include name="**/*.scala"/>
+      </fileset>
+    </copy>
     <mkdir dir="${build-quick.dir}/jdk2ikvm/library"/>
     <scalacfork
       destdir="${build-quick.dir}/jdk2ikvm/library"
       compilerpathref="quick.classpath"
-      srcpath="${src.dir}/library"
+      srcpath="${build-quick.dir}/pre-jdk2ikvm/library"
       params="-Ystop-before:superaccessors
 			    -P:jdk2ikvm:output-directory:${build-quick.dir}/jdk2ikvm/library
 			    -P:jdk2ikvm:replacements-directory:${src.dir}/jdk2ikvm/resources/replacements
 			    -d ${build-quick.dir}/jdk2ikvm/library
 			    -Xplugin ${build-quick.dir}/misc/scala-devel/jdk2ikvm.jar
 			    -Yrangepos"
-      srcdir="${src.dir}/library"
+      srcdir="${build-quick.dir}/pre-jdk2ikvm/library"
       jvmargs="${scalacfork.jvmargs}">
       <include name="**/*.scala"/>
       <compilationpath refid="quick.compilation.path"/>
@@ -757,13 +807,8 @@ QUICK BUILD (QUICK)
     <!-- now we copy rest of Java files that have no correspodning replacement defined. Copy ant task doesn't
     overwrite by default so files copied above will be kept intact -->
     <copy todir="${build-quick.dir}/jdk2ikvm/library">
-      <fileset dir="${src.dir}/library">
+      <fileset dir="${build-quick.dir}/pre-jdk2ikvm/library">
         <include name="**/*.java"/>
-      </fileset>
-    </copy>
-    <copy todir="${build-quick.dir}/jdk2ikvm/library">
-      <fileset dir="${src.dir}/factorymanifests/library">
-        <include name="**/*.scala"/>
       </fileset>
     </copy>
     <touch file="${build-quick.dir}/library-jdk2ikvm.complete" verbose="no"/>

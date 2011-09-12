@@ -104,3 +104,11 @@ However, this object is being referenced from other places in xml package.
 This object has to be rewritten because of dependencies on methods in RichChar
 that are removed. Check scala/runtime/RichChar for details.
 
+scala/util/continuations/package.scala
+--------------------------------------
+Change NoSuchMethodException to RuntimeException as GWT doesn't support former.
+See https://github.com/scalagwt/scalagwt-scala/issues/22
+
+scala/util/continuations/ControlContext.scala
+---------------------------------------------
+Work-arounds (rewrites) for pattern matcher shortcomings.

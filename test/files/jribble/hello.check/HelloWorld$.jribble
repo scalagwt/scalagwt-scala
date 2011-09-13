@@ -1,4 +1,4 @@
-public final class LHelloWorld$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+public class LHelloWorld$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   public static LHelloWorld$; MODULE$ = new (LHelloWorld$;::this()V;)();
   
   public V; main(Ljava/lang/String;[ args) {

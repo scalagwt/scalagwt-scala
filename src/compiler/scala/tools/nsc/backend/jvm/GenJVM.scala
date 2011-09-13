@@ -209,12 +209,38 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
     val emitLines  = debugLevel >= 2
     val emitVars   = debugLevel >= 3
 
+    /** For given symbol return a symbol corresponding to a class that should be declared as inner class.
+     *
+     *  For example:
+     *  class A {
+     *    class B
+     *    object C
+     *  }
+     *
+     *  then method will return NoSymbol for A, the same symbol for A.B (corresponding to A$B class) and A$C$ symbol
+     *  for A.C.
+     */
+    private def innerClassSymbolFor(s: Symbol): Symbol =
+      if (s.isClass) s else if (s.isModule) s.moduleClass else NoSymbol
+
     override def javaName(sym: Symbol): String = {
-      val isInner = sym.isClass && !sym.rawowner.isPackageClass && !sym.isModuleClass
-      // TODO: something atPhase(currentRun.flattenPhase.prev) which accounts for
-      // being nested in parameterized classes (if we're going to selectively flatten.)
-      if (isInner && !innerClassBuffer(sym))
-        innerClassBuffer += sym
+      /**
+       * Checks if given symbol corresponds to inner class/object and add it to innerClassBuffer
+       *
+       * Note: This method is called recursively thus making sure that we add complete chain
+       * of inner class all until root class.
+       */
+      def collectInnerClass(s: Symbol): Unit = {
+        // TODO: something atPhase(currentRun.flattenPhase.prev) which accounts for
+        // being nested in parameterized classes (if we're going to selectively flatten.)
+        val x = innerClassSymbolFor(s)
+        val isInner = x.isClass && !x.rawowner.isPackageClass
+        if (isInner) {
+          innerClassBuffer += x
+          collectInnerClass(x.rawowner)
+        }
+      }
+      collectInnerClass(sym)
 
       super.javaName(sym)
     }
@@ -623,7 +649,11 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
         // println("addGenericSignature: "+ (sym.ownerChain map (x => (x.name, x.isImplClass))))
         erasure.javaSig(sym, memberTpe) foreach { sig =>
           debuglog("sig(" + jmember.getName + ", " + sym + ", " + owner + ")      " + sig)
-
+          /** Since we're using a sun internal class for signature validation,
+           *  we have to allow for it not existing or otherwise malfunctioning:
+           *  in which case we treat every signature as valid.  Medium term we
+           *  should certainly write independent signature validation.
+           */
           if (settings.Xverify.value && !erasure.isValidSignature(sym, sig)) {
             clasz.cunit.warning(sym.pos,
                 """|compiler bug: created invalid generic signature for %s in %s
@@ -724,13 +754,12 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
         if (innerSym.isAnonymousClass || innerSym.isAnonymousFunction)
           null
         else
-          innerSym.rawname.toString
+          innerSym.rawname + innerSym.moduleSuffix
 
       // add inner classes which might not have been referenced yet
       atPhase(currentRun.erasurePhase.next) {
-        for (sym <- List(clasz.symbol, clasz.symbol.linkedClassOfClass) ; m <- sym.info.decls ; if m.isClass)
-          if (!innerClassBuffer(m))
-            innerClassBuffer += m
+        for (sym <- List(clasz.symbol, clasz.symbol.linkedClassOfClass); m <- sym.info.decls.map(innerClassSymbolFor) if m.isClass)
+          innerClassBuffer += m
       }
 
       val allInners = innerClassBuffer.toList
@@ -783,6 +812,7 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
 
     def genMethod(m: IMethod) {
       if (m.symbol.isStaticConstructor) return
+      if ((m.symbol.name == nme.getClass_) && m.params.isEmpty) return
 
       debuglog("Generating method " + m.symbol.fullName)
       method = m
@@ -1814,14 +1844,20 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
 
     /**
      * Compute the indexes of each local variable of the given
-     * method. Assumes parameters come first in the list of locals.
+     * method. *Does not assume the parameters come first!*
      */
     def computeLocalVarsIndex(m: IMethod) {
       var idx = 1
       if (m.symbol.isStaticMember)
         idx = 0;
 
-      for (l <- m.locals) {
+      for (l <- m.params) {
+        debuglog("Index value for " + l + "{" + l.## + "}: " + idx)
+        l.index = idx
+        idx += sizeOf(l.kind)
+      }
+
+      for (l <- m.locals if !(m.params contains l)) {
         debuglog("Index value for " + l + "{" + l.## + "}: " + idx)
         l.index = idx
         idx += sizeOf(l.kind)
@@ -1882,7 +1918,7 @@ abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with 
     // avoid breaking proxy software which depends on subclassing, we avoid
     // insisting on their finality in the bytecode.
     val finalFlag = (
-         ((sym.rawflags & Flags.FINAL) != 0)
+         ((sym.rawflags & (Flags.FINAL | Flags.MODULE)) != 0)
       && !sym.enclClass.isInterface
       && !sym.isClassConstructor
     )

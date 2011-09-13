@@ -39,6 +39,7 @@ trait TreePrinters { self: SymbolTable =>
     protected var indentString = "                                        " // 40
 
     def flush() = out.flush()
+    def close() = out.close()
 
     def indent() = indentMargin += indentStep
     def undent() = indentMargin -= indentStep
@@ -405,7 +406,8 @@ trait TreePrinters { self: SymbolTable =>
 // SelectFromArray.
 //          case SelectFromArray(qualifier, name, _) =>
 //          print(qualifier); print(".<arr>"); print(symName(tree, name))
-
+        case err: ErrorTreeWithPrettyPrinter =>
+          print(err.toString())
 
         case tree =>
           xprintRaw(this, tree)

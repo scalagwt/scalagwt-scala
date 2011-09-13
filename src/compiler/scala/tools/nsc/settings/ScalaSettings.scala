@@ -48,7 +48,7 @@ trait ScalaSettings extends AbsScalaSettings
   val d             = OutputSetting     (outputDirs, ".")
   val optimise      = BooleanSetting    ("-optimise", "Generates faster bytecode by applying optimisations to the program") .
                                             withAbbreviation("-optimize") .
-                                            withPostSetHook(set => List(inline, Xcloselim, Xdce) foreach (_.value = set.value))
+                                            withPostSetHook(set => List(inline, inlineHandlers, Xcloselim, Xdce) foreach (_.value = set.value))
   val nospecialization = BooleanSetting    ("-no-specialization", "Ignore @specialize annotations.")
 
   /**
@@ -60,6 +60,7 @@ trait ScalaSettings extends AbsScalaSettings
   val assemextdirs  = StringSetting     ("-Xassem-extdirs", "dirs", "(Requires -target:msil) List of directories containing assemblies.  default:lib", Defaults.scalaLibDir.path).dependsOn(target, "msil")
   val sourcedir     = StringSetting     ("-Xsourcedir", "directory", "(Requires -target:msil) Mirror source folder structure in output directory.", ".").dependsOn(target, "msil")
   val checkInit     = BooleanSetting    ("-Xcheckinit", "Wrap field accessors to throw an exception on uninitialized access.")
+  val errortrees    = BooleanSetting    ("-Yerrortrees", "Provide more info about error trees." )
   val noassertions  = BooleanSetting    ("-Xdisable-assertions", "Generate no assertions or assumptions.")
   val elidebelow    = IntSetting        ("-Xelide-below", "Calls to @elidable methods are omitted if method priority is lower than argument",
                                                 elidable.MINIMUM, None, elidable.byName get _)
@@ -78,7 +79,7 @@ trait ScalaSettings extends AbsScalaSettings
   val require       = MultiStringSetting("-Xplugin-require", "plugin", "Abort unless the given plugin(s) are available.")
   val pluginsDir    = StringSetting     ("-Xpluginsdir", "path", "Path to search compiler plugins.", Defaults.scalaPluginPath)
   val Xprint        = PhasesSetting     ("-Xprint", "Print out program after")
-  val writeICode    = BooleanSetting    ("-Xprint-icode", "Log internal icode to *.icode files.")
+  val writeICode    = PhasesSetting     ("-Xprint-icode", "Log internal icode to *.icode files after", "icode")
   val Xprintpos     = BooleanSetting    ("-Xprint-pos", "Print tree positions, as offsets.")
   val printtypes    = BooleanSetting    ("-Xprint-types", "Print tree types (debugging option).")
   val prompt        = BooleanSetting    ("-Xprompt", "Display a prompt after each error (debugging option).")
@@ -92,7 +93,7 @@ trait ScalaSettings extends AbsScalaSettings
 
   // Experimental Extensions
   val Xexperimental = BooleanSetting    ("-Xexperimental", "Enable experimental extensions.") .
-                          withPostSetHook(set => List(YdepMethTpes, YmethodInfer) foreach (_.value = set.value)) //YvirtClasses,
+                          withPostSetHook(set => List(YdepMethTpes, YmethodInfer, overrideObjects) foreach (_.value = set.value)) //YvirtClasses,
 
   /** Compatibility stubs for options whose value name did
    *  not previously match the option name.
@@ -107,6 +108,7 @@ trait ScalaSettings extends AbsScalaSettings
   /**
    * -Y "Private" settings
    */
+  val overrideObjects = BooleanSetting ("-Yoverride-objects", "Allow member objects to be overridden.")
   val Yhelp         = BooleanSetting    ("-Y", "Print a synopsis of private options.")
   val browse        = PhasesSetting     ("-Ybrowse", "Browse the abstract syntax tree after")
   val check         = PhasesSetting     ("-Ycheck", "Check the tree at the end of")
@@ -120,6 +122,7 @@ trait ScalaSettings extends AbsScalaSettings
   val termConflict  = ChoiceSetting     ("-Yresolve-term-conflict", "strategy", "Resolve term conflicts",
     List("package", "object", "error"), "error")
   val inline        = BooleanSetting    ("-Yinline", "Perform inlining when possible.")
+  val inlineHandlers= BooleanSetting    ("-Yinline-handlers", "Perform exception handler inlining when possible.")
   val Xlinearizer   = ChoiceSetting     ("-Ylinearizer", "which", "Linearizer to use", List("normal", "dfs", "rpo", "dump"), "rpo")
   val log           = PhasesSetting     ("-Ylog", "Log operations during")
   val Ylogcp        = BooleanSetting    ("-Ylog-classpath", "Output information about what classpath is being applied.")
@@ -127,7 +130,7 @@ trait ScalaSettings extends AbsScalaSettings
   val noimports     = BooleanSetting    ("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val nopredef      = BooleanSetting    ("-Yno-predef", "Compile without importing Predef.")
   val noAdaptedArgs = BooleanSetting    ("-Yno-adapted-args", "Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver.")
-  val Yprofile      = PhasesSetting     ("-Yprofile", "(Requires jvm -agentpath to contain yjgpagent) Profile CPU usage of given phases.")
+  val Yprofile      = PhasesSetting     ("-Yprofile", "(Requires jvm -agentpath to contain yjgpagent) Profile CPU usage of")
   val YprofileMem   = BooleanSetting    ("-Yprofile-memory", "Profile memory, get heap snapshot after each compiler run (requires yjpagent, see above).")
   val YprofileClass = StringSetting     ("-Yprofile-class", "class", "Name of profiler class.", "scala.tools.util.YourkitProfiling")
   val Yrecursion    = IntSetting        ("-Yrecursion", "Set recursion depth used when locking symbols.", 0, Some((0, Int.MaxValue)), (_: String) => None)
@@ -139,11 +142,12 @@ trait ScalaSettings extends AbsScalaSettings
   val Ynosqueeze    = BooleanSetting    ("-Yno-squeeze", "Disable creation of compact code in matching.")
   val Ystatistics   = BooleanSetting    ("-Ystatistics", "Print compiler statistics.") .
                                           withPostSetHook(set => util.Statistics.enabled = set.value)
-  val stopAfter     = PhasesSetting     ("-Ystop-after", "Stop after given phase") withAbbreviation ("-stop") // backward compat
-  val stopBefore    = PhasesSetting     ("-Ystop-before", "Stop before given phase")
+  val stopAfter     = PhasesSetting     ("-Ystop-after", "Stop after") withAbbreviation ("-stop") // backward compat
+  val stopBefore    = PhasesSetting     ("-Ystop-before", "Stop before")
   val refinementMethodDispatch =
                       ChoiceSetting     ("-Ystruct-dispatch", "policy", "structural method dispatch policy",
                         List("no-cache", "mono-cache", "poly-cache", "invoke-dynamic"), "poly-cache")
+  val globalClass   = StringSetting     ("-Yglobal-class", "class", "subclass of scala.tools.nsc.Global to use for compiler", "")
   val Yrangepos     = BooleanSetting    ("-Yrangepos", "Use range positions for syntax trees.")
   val YrichExes     = BooleanSetting    ("-Yrich-exceptions",
                                             "Fancier exceptions.  Set source search path with -D" +

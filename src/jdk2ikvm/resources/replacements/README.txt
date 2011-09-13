@@ -9,7 +9,7 @@ We need those replacements for two reasons:
   * original files are very much platform-dependent and we
     really have to provide our own implementation from scratch
     examples include: Console.scala, ScalaRunTime.scala, etc.
-    
+
 Below is a more detailed description of every file found in this directory.
 
 scala/Array.scala
@@ -44,10 +44,6 @@ scala/math/package.scala
 Depends on java.lang.Math.ulp method that is not supported by GWT. Probably should be patched
 automatically if GWT cannot be fixed.
 
-scala/MathCommon.scala
-----------------------
-See above.
-
 scala/package.scala
 -------------------
 Depends on java.lang.AbstractMethodError. Maybe we could create it in GWT?
@@ -60,6 +56,16 @@ Goes without the comment. We need to reimplement this stuff to the extent
 that is really needed. The only reason why we need Manifests is to support
 Arrays. Once we figure this out, we should have a very simple implementation
 of Manifests that doesn't provide any reflective functionality at all.
+
+scala/reflect/api/Modifier.scala
+--------------------------------
+Depends on Enumeration. Rewritten to be source-compatible stub object.
+
+scala/reflect/package.scala
+---------------------------
+Depends on ReflectionUtils. Replaced by stub-implementation that always
+fails to provide an access to Scala reflection API. We don't support
+Scala reflection in GWT.
 
 scala/runtime/RichChar.scala
 ----------------------------
@@ -93,10 +99,14 @@ Depends on JVM specific exception types that are not supported by GWT. Those inc
   * InvocationTargetException
   * ControlThrowable
   * InterruptedException
-  
+
 Also, depends on reflection. I believe this stuff should be refactored or not referenced
 from the rest of library.
-  
+
+scala/xml/Atom.scala
+--------------------
+Depends on Class.getSimpleName that GWT doesn't support. Rewritten it.
+
 scala/xml/parsing/TokenTests.scala
 ----------------------------------
 The whole XML stuff is a mess. We shouldn't support scala.xml.parsing in GWT at all.

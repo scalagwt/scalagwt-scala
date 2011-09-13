@@ -284,9 +284,9 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
         for (member <- mixinClass.info.decls) {
           if (isConcreteAccessor(member)) {
             if (isOverriddenAccessor(member, clazz.info.baseClasses)) {
-              if (settings.debug.value)
-                println("!!! is overridden val: "+member)
-            } else {
+              debugwarn("!!! is overridden val: "+member.fullLocationString)
+            }
+            else {
               // mixin field accessors
               val member1 = addMember(
                 clazz,
@@ -856,7 +856,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
        */
       def addCheckedGetters(clazz: Symbol, stats: List[Tree]): List[Tree] = {
 
-        val stats1 = for (stat <- stats; val sym = stat.symbol) yield stat match {
+        val stats1 = for (stat <- stats; sym = stat.symbol) yield stat match {
           case DefDef(mods, name, tp, vp, tpt, rhs)
             if sym.isLazy && rhs != EmptyTree && !clazz.isImplClass =>
               assert(fieldOffset.isDefinedAt(sym))

@@ -205,7 +205,7 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
    */
   override def signalDone(context: Context, old: Tree, result: Tree) {
     if (interruptsEnabled && analyzer.lockedCount == 0) { 
-      if (context.unit != null && 
+      if (context.unit.exists &&
           result.pos.isOpaqueRange && 
           (result.pos includes context.unit.targetPos)) {
         var located = new TypedLocator(context.unit.targetPos) locateIn result
@@ -320,6 +320,22 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
           newTyperRun()
           minRunId = currentRunId
           demandNewCompilerRun()
+          
+        case Some(ShutdownReq) =>
+          scheduler.synchronized { // lock the work queue so no more items are posted while we clean it up
+            val units = scheduler.dequeueAll {
+              case item: WorkItem => Some(item.raiseMissing())
+              case _ => Some(())
+            }
+            debugLog("ShutdownReq: cleaning work queue (%d items)".format(units.size))
+            debugLog("Cleanup up responses (%d loadedType pending, %d parsedEntered pending)"
+                .format(waitLoadedTypeResponses.size, getParsedEnteredResponses.size))
+            checkNoResponsesOutstanding()
+  
+            log.flush(); 
+            throw ShutdownReq
+          }
+          
         case Some(ex: Throwable) => log.flush(); throw ex
         case _ =>
       }
@@ -589,7 +605,7 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
     }
     sources foreach (removeUnitOf(_))
     minRunId = currentRunId
-    respond(response) ()
+    respond(response)(())
     demandNewCompilerRun()
   }
 
@@ -601,7 +617,7 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
       val result = typedTreeAt(pos)
       removeUnitOf(pos.source)
       result
-    case Some(unit) =>  
+    case Some(unit) =>
       informIDE("typedTreeAt " + pos)
       parseAndEnter(unit)
       val tree = locateTree(pos)
@@ -797,17 +813,24 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
   private def typeMembers(pos: Position): Stream[List[TypeMember]] = {
     var tree = typedTreeAt(pos)
 
+    val context = doLocateContext(pos)
+    
     // if tree consists of just x. or x.fo where fo is not yet a full member name
     // ignore the selection and look in just x.
     tree match {
       case Select(qual, name) if tree.tpe == ErrorType => tree = qual
+      case ierr: analyzer.InteractiveErrorTree => 
+        ierr.emit(context)
+        ierr.retrieveEmitted match {
+          case Select(qual, name) => tree = qual
+          case _ =>
+        }
       case _ => 
     }
 
-    val context = doLocateContext(pos)
+    
 
     if (tree.tpe == null)
-      // TODO: guard with try/catch to deal with ill-typed qualifiers.
       tree = analyzer.newTyper(context).typedQualifier(tree)
       
     debugLog("typeMembers at "+tree+" "+tree.tpe)
@@ -835,9 +858,11 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
     }
     
     val pre = stabilizedType(tree)
+     
     val ownerTpe = tree.tpe match {
       case analyzer.ImportType(expr) => expr.tpe
       case null => pre
+      case MethodType(List(), rtpe) => rtpe
       case _ => tree.tpe
     }
 

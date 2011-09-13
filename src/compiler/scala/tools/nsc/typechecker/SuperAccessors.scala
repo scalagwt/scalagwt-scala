@@ -52,10 +52,11 @@ abstract class SuperAccessors extends transform.Transform with transform.TypingT
     private def checkPackedConforms(tree: Tree, pt: Type): Tree = {
       if (tree.tpe exists (_.typeSymbol.isExistentialSkolem)) {
         val packed = localTyper.packedType(tree, NoSymbol)
-        if (!(packed <:< pt)) {
+        packed._2.foreach(_.emit())
+        if (!(packed._1 <:< pt)) {
           val errorContext = localTyper.context.make(localTyper.context.tree)
           errorContext.reportGeneralErrors = true
-          analyzer.newTyper(errorContext).infer.typeError(tree.pos, packed, pt)
+          analyzer.newTyper(errorContext).infer.typeError(tree.pos, packed._1, pt)
         }
       }
       tree
@@ -284,7 +285,7 @@ abstract class SuperAccessors extends transform.Transform with transform.TypingT
 
       val accName = nme.protName(sym.originalName)
       val hasArgs = sym.tpe.paramTypes != Nil
-      val memberType = refchecks.toScalaRepeatedParam(sym.tpe) // fix for #2413
+      val memberType = refChecks.toScalaRepeatedParam(sym.tpe) // fix for #2413
       
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general

@@ -25,7 +25,7 @@ import java.lang.reflect.{ Modifier, Method => JMethod }
 object ScalaRunTime {
   def isArray(x: AnyRef): Boolean = isArray(x, 1)
   def isArray(x: Any, atLevel: Int): Boolean = 
-    x != null && isArrayClass(x.asInstanceOf[AnyRef].getClass, atLevel)
+    x != null && isArrayClass(x.getClass, atLevel)
 
   private def isArrayClass(clazz: Class[_], atLevel: Int): Boolean =
     clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
@@ -174,31 +174,8 @@ object ScalaRunTime {
   def _toString(x: Product): String =
     x.productIterator.mkString(x.productPrefix + "(", ",", ")")
 
-  def _hashCode(x: Product): Int = {
-    import scala.util.MurmurHash._
-    val arr =  x.productArity
-    // Case objects have the hashCode inlined directly into the
-    // synthetic hashCode method, but this method should still give
-    // a correct result if passed a case object.
-    if (arr == 0) {
-      x.productPrefix.hashCode
-    }
-    else {
-      var h = startHash(arr)
-      var c = startMagicA
-      var k = startMagicB
-      var i = 0
-      while (i < arr) {
-        val elem = x.productElement(i)
-        h = extendHash(h, elem.##, c, k)
-        c = nextMagicA(c)
-        k = nextMagicB(k)
-        i += 1
-      }
-      finalizeHash(h)
-    }
-  }
-  
+  def _hashCode(x: Product): Int = scala.util.MurmurHash3.productHash(x)
+
   /** A helper for case classes. */
   def typedProductIterator[T](x: Product): Iterator[T] = {
     new Iterator[T] {

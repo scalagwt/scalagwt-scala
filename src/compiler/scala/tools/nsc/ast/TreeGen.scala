@@ -32,7 +32,20 @@ abstract class TreeGen extends reflect.internal.TreeGen {
   }
 
   // wrap the given expression in a SoftReference so it can be gc-ed
-  def mkSoftRef(expr: Tree): Tree = New(TypeTree(SoftReferenceClass.tpe), List(List(expr)))
+  def mkSoftRef(expr: Tree): Tree = atPos(expr.pos) {
+    New(SoftReferenceClass, expr)
+  }
+  // annotate the expression with @unchecked
+  def mkUnchecked(expr: Tree): Tree = atPos(expr.pos) {
+    // This can't be "Annotated(New(UncheckedClass), expr)" because annotations
+    // are very pick about things and it crashes the compiler with "unexpected new".
+    Annotated(New(scalaDot(UncheckedClass.name), List(Nil)), expr)
+  }
+  // if it's a Match, mark the selector unchecked; otherwise nothing.
+  def mkUncheckedMatch(tree: Tree) = tree match {
+    case Match(selector, cases) => atPos(tree.pos)(Match(mkUnchecked(selector), cases))
+    case _                      => tree
+  }
 
   def mkCached(cvar: Symbol, expr: Tree): Tree = {
     val cvarRef = mkUnattributedRef(cvar)
@@ -90,7 +103,7 @@ abstract class TreeGen extends reflect.internal.TreeGen {
     mkMethodCall(ScalaRunTimeModule, meth, targs, args)
   
   def mkSysErrorCall(message: String): Tree =
-    mkMethodCall(Sys_error, List(Literal(message)))
+    mkMethodCall(Sys_error, List(Literal(Constant(message))))
 
   /** A creator for a call to a scala.reflect.Manifest or ClassManifest factory method.
    * 
@@ -178,15 +191,21 @@ abstract class TreeGen extends reflect.internal.TreeGen {
    *  symbol to its packed type, and an function for creating Idents
    *  which refer to it.
    */
-  private def mkPackedValDef(expr: Tree, owner: Symbol, name: Name): (ValDef, () => Ident) = {
-    val packedType = typer.packedType(expr, owner)
+  private def mkPackedValDef(expr: Tree, owner: Symbol, name: Name): (Tree, () => Ident) = {
+    val (packedType, errs) = typer.packedType(expr, owner)
+    // TODO ensure that they don't throw errors?
+    errs.foreach(_.emit(typer.context))
     val sym = (
       owner.newValue(expr.pos.makeTransparent, name)
       setFlag SYNTHETIC
       setInfo packedType
     )
 
-    (ValDef(sym, expr), () => Ident(sym) setPos sym.pos.focus setType expr.tpe)
+    val identFn = () => Ident(sym) setPos sym.pos.focus setType expr.tpe
+    if (errs.isEmpty)
+      (ValDef(sym, expr), identFn)
+    else
+      (analyzer.PendingErrors(errs), identFn)
   }
 
   /** Used in situations where you need to access value of an expression several times
@@ -205,7 +224,7 @@ abstract class TreeGen extends reflect.internal.TreeGen {
   }
 
   def evalOnceAll(exprs: List[Tree], owner: Symbol, unit: CompilationUnit)(within: (List[() => Tree]) => Tree): Tree = {
-    val vdefs = new ListBuffer[ValDef]
+    val vdefs = new ListBuffer[Tree]
     val exprs1 = new ListBuffer[() => Tree]
     val used = new Array[Boolean](exprs.length)
     var i = 0

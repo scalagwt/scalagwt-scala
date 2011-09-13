@@ -5,7 +5,6 @@
 
 package scala.tools.nsc
 
-import java.io.IOException
 import java.net.URL
 import scala.tools.util.PathResolver
 
@@ -25,7 +24,7 @@ class MainGenericRunner {
     false
   }
   def errorFn(str: String): Boolean = {
-    Console println str
+    Console.err println str
     false
   }
 
@@ -62,6 +61,8 @@ class MainGenericRunner {
           new io.Jar(thingToRun).mainClass getOrElse sys.error("Cannot find main class for jar: " + thingToRun),
           command.arguments
         )
+      case Error =>
+        Right(false)
       case _  =>
         // We start the repl when no arguments are given.
         Right(new ILoop process settings)

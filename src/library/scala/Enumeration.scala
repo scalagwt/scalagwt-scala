@@ -26,7 +26,7 @@ import java.util.regex.Pattern
  *  identifier path of the enumeration instance).
  *
  * @example {{{
- *  object Main extends Application {
+ *  object Main extends App {
  *
  *    object WeekDay extends Enumeration {
  *      type WeekDay = Value
@@ -61,7 +61,7 @@ abstract class Enumeration(initial: Int, names: String*) extends Serializable {
 
   /* Note that `readResolve` cannot be private, since otherwise
      the JVM does not invoke it when deserializing subclasses. */
-  protected def readResolve(): AnyRef = thisenum.getClass.getField(MODULE_INSTANCE_NAME).get()
+  protected def readResolve(): AnyRef = thisenum.getClass.getField(MODULE_INSTANCE_NAME).get(null)
 
   /** The name of this enumeration.  
    */

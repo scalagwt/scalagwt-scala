@@ -53,6 +53,13 @@ class MutableSettings(val errorFn: String => Unit)
             errorFn("bad option: '" + x + "'")
             (false, args)
           }
+          // discard empties, sometimes they appear because of ant or etc.
+          // but discard carefully, because an empty string is valid as an argument
+          // to an option, e.g. -cp "" .  So we discard them only when they appear
+          // in option position.
+          else if (x == "") {
+            loop(xs, residualArgs)
+          }
           else lookupSetting(x) match {
             case Some(s) if s.shouldStopProcessing  => (checkDependencies, newArgs)
             case _                                  => loop(newArgs, residualArgs)
@@ -63,7 +70,7 @@ class MutableSettings(val errorFn: String => Unit)
           else (checkDependencies, args)
         }
     }
-    loop(arguments filterNot (_ == ""), Nil)
+    loop(arguments, Nil)
   }
   def processArgumentString(params: String) = processArguments(splitParams(params), true)
 
@@ -195,7 +202,7 @@ class MutableSettings(val errorFn: String => Unit)
   def IntSetting(name: String, descr: String, default: Int, range: Option[(Int, Int)], parser: String => Option[Int]) = add(new IntSetting(name, descr, default, range, parser))
   def MultiStringSetting(name: String, arg: String, descr: String) = add(new MultiStringSetting(name, arg, descr))
   def OutputSetting(outputDirs: OutputDirs, default: String) = add(new OutputSetting(outputDirs, default))
-  def PhasesSetting(name: String, descr: String) = add(new PhasesSetting(name, descr))
+  def PhasesSetting(name: String, descr: String, default: String = "") = add(new PhasesSetting(name, descr, default))
   def StringSetting(name: String, arg: String, descr: String, default: String) = add(new StringSetting(name, arg, descr, default))
   def PathSetting(name: String, descr: String, default: String): PathSetting = {
     val prepend = StringSetting(name + "/p", "", "", "").internalOnly()
@@ -256,7 +263,7 @@ class MutableSettings(val errorFn: String => Unit)
 
     def add(src: AbstractFile, dst: AbstractFile) {
       singleOutDir = None
-      outputDirs ::= (src, dst)
+      outputDirs ::= ((src, dst))
     }
 
     /** Return the list of source-destination directory pairs. */
@@ -547,6 +554,12 @@ class MutableSettings(val errorFn: String => Unit)
     withHelpSyntax(name + ":<" + helpArg + ">")
   }
 
+  private def mkPhasesHelp(descr: String, default: String) = {
+    descr + " <phases>" + (
+      if (default == "") "" else " (default: " + default + ")"
+    )
+  }
+
   /** A setting represented by a list of strings which should be prefixes of
    *  phase names. This is not checked here, however.  Alternatively the string
    *  `"all"` can be used to represent all phases.
@@ -554,8 +567,11 @@ class MutableSettings(val errorFn: String => Unit)
    */
   class PhasesSetting private[nsc](
     name: String,
-    descr: String)
-  extends Setting(name, descr + " <phase>.") {
+    descr: String,
+    default: String
+  ) extends Setting(name, mkPhasesHelp(descr, default)) {
+    private[nsc] def this(name: String, descr: String) = this(name, descr, "")
+
     type T = List[String]
     v = Nil
     override def value = if (v contains "all") List("all") else super.value
@@ -583,9 +599,12 @@ class MutableSettings(val errorFn: String => Unit)
         case fns    => fns.reduceLeft((f1, f2) => id => f1(id) || f2(id))
       }
     
-    def tryToSet(args: List[String]) = errorAndValue("missing phase", None)
+    def tryToSet(args: List[String]) =
+      if (default == "") errorAndValue("missing phase", None)
+      else { tryToSetColon(List(default)) ; Some(args) }
+
     override def tryToSetColon(args: List[String]) = args match {
-      case Nil  => errorAndValue("missing phase", None)
+      case Nil  => if (default == "") errorAndValue("missing phase", None) else tryToSetColon(List(default))
       case xs   => value = (value ++ xs).distinct.sorted ; Some(Nil)
     }
     // we slightly abuse the usual meaning of "contains" here by returning
@@ -598,6 +617,9 @@ class MutableSettings(val errorFn: String => Unit)
     def doAllPhases = stringValues contains "all"
     def unparse: List[String] = value map (name + ":" + _)
 
-    withHelpSyntax(name + ":<phase>")
+    withHelpSyntax(
+      if (default == "") name + ":<phases>"
+      else name + "[:phases]"
+    )
   }
 }

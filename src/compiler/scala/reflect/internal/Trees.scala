@@ -22,8 +22,13 @@ trait Trees extends api.Trees { self: SymbolTable =>
    */  
   case class Modifiers(flags: Long, 
                        privateWithin: Name, 
-                       annotations: List[Tree], 
-                       positions: Map[Long, Position]) extends AbsModifiers with HasFlags {
+                       annotations: List[Tree]) extends AbsModifiers with HasFlags {
+    
+    var positions: Map[Long, Position] = Map()
+    
+    def setPositions(poss: Map[Long, Position]): this.type = {
+      positions = poss; this
+    }
  
     /* Abstract types from HasFlags. */
     type FlagsType          = Long
@@ -40,42 +45,43 @@ trait Trees extends api.Trees { self: SymbolTable =>
     def & (flag: Long): Modifiers = {
       val flags1 = flags & flag
       if (flags1 == flags) this
-      else Modifiers(flags1, privateWithin, annotations, positions)
+      else Modifiers(flags1, privateWithin, annotations) setPositions positions
     }
     def &~ (flag: Long): Modifiers = {
       val flags1 = flags & (~flag)
       if (flags1 == flags) this
-      else Modifiers(flags1, privateWithin, annotations, positions)
+      else Modifiers(flags1, privateWithin, annotations) setPositions positions
     }
     def | (flag: Long): Modifiers = {
       val flags1 = flags | flag
       if (flags1 == flags) this
-      else Modifiers(flags1, privateWithin, annotations, positions)
+      else Modifiers(flags1, privateWithin, annotations) setPositions positions
     }
     def withAnnotations(annots: List[Tree]) =
       if (annots.isEmpty) this
-      else copy(annotations = annotations ::: annots)
-    def withPosition(flag: Long, position: Position) =
-      copy(positions = positions + (flag -> position))
+      else copy(annotations = annotations ::: annots) setPositions positions
+ 
+    def withPosition(flag: Long, position: Position) = 
+      copy() setPositions positions + (flag -> position)
       
     override def hasModifier(mod: Modifier.Value) = 
       hasFlag(flagOfModifier(mod))
     override def allModifiers: Set[Modifier.Value] = 
       Modifier.values filter hasModifier
     override def mapAnnotations(f: List[Tree] => List[Tree]): Modifiers = 
-      Modifiers(flags, privateWithin, f(annotations), positions)
+      Modifiers(flags, privateWithin, f(annotations)) setPositions positions
     
     override def toString = "Modifiers(%s, %s, %s)".format(hasFlagsToString(-1L), annotations mkString ", ", positions)
   }
 
-  def Modifiers(flags: Long, privateWithin: Name): Modifiers = Modifiers(flags, privateWithin, List(), Map.empty)
+  def Modifiers(flags: Long, privateWithin: Name): Modifiers = Modifiers(flags, privateWithin, List())
   def Modifiers(flags: Long): Modifiers = Modifiers(flags, tpnme.EMPTY)
  
   def Modifiers(mods: Set[Modifier.Value], 
                 privateWithin: Name,
                 annotations: List[Tree]): Modifiers = {
     val flagSet = mods map flagOfModifier
-    Modifiers((0L /: flagSet)(_ | _), privateWithin, annotations, Map.empty)
+    Modifiers((0L /: flagSet)(_ | _), privateWithin, annotations)
   }
 
   lazy val NoMods = Modifiers(0)
@@ -102,7 +108,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
     def foreachPartial(pf: PartialFunction[Tree, Tree]) { 
       new ForeachPartialTreeTraverser(pf).traverse(tree) 
     }
-   
+
     def changeOwner(pairs: (Symbol, Symbol)*): Tree = {
       pairs.foldLeft(tree) { case (t, (oldOwner, newOwner)) =>
         new ChangeOwnerTraverser(oldOwner, newOwner) apply t
@@ -110,8 +116,20 @@ trait Trees extends api.Trees { self: SymbolTable =>
     }
 
     def shallowDuplicate: Tree = new ShallowDuplicator(tree) transform tree
-    def shortClass: String = this.getClass.getName split "[.$]" last
-    
+    def shortClass: String = tree.getClass.getName split "[.$]" last
+
+    def containsErrorOrIsErrorTyped() = tree.containsError() || ((tree.tpe ne null) && tree.tpe.isError)
+
+    /** When you want to know a little more than the class, but a lot
+     *  less than the whole tree.
+     */
+    def summaryString: String = tree match {
+      case Select(qual, name) => qual.summaryString + "." + name
+      case Ident(name)        => name.longString
+      case t: DefTree         => t.shortClass + " " + t.name
+      case t: RefTree         => t.shortClass + " " + t.name.longString
+      case t                  => t.shortClass
+    }
   }
 
   // ---- values and creators ---------------------------------------
@@ -255,6 +273,8 @@ trait Trees extends api.Trees { self: SymbolTable =>
       }
     }
   }
+
+  trait ErrorTreeWithPrettyPrinter extends AbsErrorTree
 
   def atPos[T <: Tree](pos: Position)(tree: T): T = {
     posAssigner.pos = pos

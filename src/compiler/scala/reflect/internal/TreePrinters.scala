@@ -406,7 +406,8 @@ trait TreePrinters { self: SymbolTable =>
 // SelectFromArray.
 //          case SelectFromArray(qualifier, name, _) =>
 //          print(qualifier); print(".<arr>"); print(symName(tree, name))
-
+        case err: ErrorTreeWithPrettyPrinter =>
+          print(err.toString())
 
         case tree => 
           xprintRaw(this, tree)
@@ -436,7 +437,8 @@ trait TreePrinters { self: SymbolTable =>
     }
   }
 
-  def xprintRaw(treePrinter: TreePrinter, tree: Tree) = print("<unknown tree of class "+tree.getClass+">")
+  def xprintRaw(treePrinter: TreePrinter, tree: Tree) = 
+    treePrinter.print(tree.productPrefix+tree.productIterator.mkString("(", ", ", ")"))
   
   def newTreePrinter(writer: PrintWriter): TreePrinter = new TreePrinter(writer)
   def newTreePrinter(stream: OutputStream): TreePrinter = newTreePrinter(new PrintWriter(stream))

@@ -59,7 +59,7 @@ abstract class Pickler extends SubComponent {
         }
       }
       // If there are any erroneous types in the tree, then we will crash
-      // when we pickle it: so let's report an erorr instead.  We know next
+      // when we pickle it: so let's report an error instead.  We know next
       // to nothing about what happened, but our supposition is a lot better
       // than "bad type: <error>" in terms of explanatory power.
       for (t <- unit.body ; if t.isErroneous) {
@@ -422,7 +422,7 @@ abstract class Pickler extends SubComponent {
      *  argument of some Annotation */
     private def putMods(mods: Modifiers) = if (putEntry(mods)) {
       // annotations in Modifiers are removed by the typechecker
-      val Modifiers(flags, privateWithin, Nil, _) = mods
+      val Modifiers(flags, privateWithin, Nil) = mods
       putEntry(privateWithin)
     }
 
@@ -966,7 +966,7 @@ abstract class Pickler extends SubComponent {
           writeRefs(whereClauses)
           TREE
 
-        case Modifiers(flags, privateWithin, _, _) =>
+        case Modifiers(flags, privateWithin, _) =>
           val pflags = rawFlagsToPickled(flags)
           writeNat((pflags >> 32).toInt)
           writeNat((pflags & 0xFFFFFFFF).toInt)

@@ -51,7 +51,6 @@ object Responder {
   def loopWhile[A](cond: => Boolean)(r: Responder[Unit]): Responder[Unit] = 
     if (cond) for (_ <- r; y <- loopWhile(cond)(r)) yield y
     else constant(())
-
 }
 
 /** Instances of responder are the building blocks of small programs

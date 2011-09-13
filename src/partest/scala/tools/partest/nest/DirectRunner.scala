@@ -11,7 +11,6 @@ package nest
 import java.io.{ File }
 import java.util.StringTokenizer
 import scala.util.Properties.{ setProp }
-import scala.tools.util.Signallable
 import scala.tools.nsc.util.ScalaClassLoader
 import scala.tools.nsc.io.Path
 import scala.collection.{ mutable, immutable }
@@ -46,7 +45,7 @@ trait DirectRunner {
 
     if (PartestDefaults.poolSize.isEmpty) {
       scala.actors.Debug.info("actors.corePoolSize not defined")
-      setProp("actors.corePoolSize", "16")
+      setProp("actors.corePoolSize", "12")
     }
   }
 

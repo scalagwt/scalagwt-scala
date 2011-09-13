@@ -37,15 +37,9 @@ trait TypeDiagnostics {
 
   import global._
   import definitions._
-  import global.typer.infer
+  import global.typer.{ infer, context }
   
   private def currentUnit = currentRun.currentUnit
-  
-  /** It can be quite difficult to know which of the many functions called "error"
-   *  is being called at any given point in the compiler.  To alleviate this I am
-   *  renaming such functions inside this trait based on where it originated.
-   */
-  def inferError(pos: Position, msg: String) = infer.error(pos, msg)
   
   /** The common situation of making sure nothing is erroneous could be
    *  nicer if Symbols, Types, and Trees all implemented some common interface
@@ -85,9 +79,10 @@ trait TypeDiagnostics {
   
   /** Does the positioned line assigned to t1 precede that of t2?
    */
-  def linePrecedes(t1: Tree, t2: Tree) = t1.pos.isDefined && t1.pos.isDefined && t1.pos.line < t2.pos.line
+  def posPrecedes(p1: Position, p2: Position) = p1.isDefined && p2.isDefined && p1.line < p2.line
+  def linePrecedes(t1: Tree, t2: Tree) = posPrecedes(t1.pos, t2.pos)
   
-  def notAMember(sel: Tree, qual: Tree, name: Name) = {
+  def notAMemberMessage(pos: Position, qual: Tree, name: Name) = {
     val owner            = qual.tpe.typeSymbol
     val target           = qual.tpe.widen
     def targetKindString = if (owner.isTypeParameterOrSkolem) "type parameter " else ""
@@ -104,7 +99,7 @@ trait TypeDiagnostics {
         else ""
       }
       val semicolon = (
-        if (linePrecedes(qual, sel))
+        if (posPrecedes(qual.pos, pos))
           "\npossible cause: maybe a semicolon is missing before `"+nameString+"'?"
         else
           ""
@@ -112,14 +107,13 @@ trait TypeDiagnostics {
       companion + semicolon
     }
 
-    inferError(
-      sel.pos,
-      withAddendum(qual.pos)(
-        if (name == nme.CONSTRUCTOR) target + " does not have a constructor"
-        else nameString + " is not a member of " + targetKindString + target + addendum
-      )
+    withAddendum(qual.pos)(
+      if (name == nme.CONSTRUCTOR) target + " does not have a constructor"
+      else nameString + " is not a member of " + targetKindString + target + addendum
     )
   }
+  def notAMemberError(pos: Position, qual: Tree, name: Name) =
+    context.error(pos, notAMemberMessage(pos, qual, name))
   
   /** Only prints the parameter names if they're not synthetic,
    *  since "x$1: Int" does not offer any more information than "Int".
@@ -140,21 +134,6 @@ trait TypeDiagnostics {
   }
   def alternativesString(tree: Tree) =
     alternatives(tree) map (x => "  " + methodTypeErrorString(x)) mkString ("", " <and>\n", "\n")
-
-  def missingParameterTypeMsg(fun: Tree, vparam: ValDef, pt: Type) = {
-    def anonMessage = (
-      "\nThe argument types of an anonymous function must be fully known. (SLS 8.5)" +
-      "\nExpected type was: " + pt.toLongString
-    )
-    val suffix =
-      if (!vparam.mods.isSynthetic) ""
-      else " for expanded function" + (fun match {
-        case Function(_, Match(_, _)) => anonMessage
-        case _                        => " " + fun
-      })
-
-    "missing parameter type" + suffix
-  }
   
   def treeSymTypeMsg(tree: Tree): String = {
     val sym               = tree.symbol
@@ -174,34 +153,6 @@ trait TypeDiagnostics {
     else defaultMessage
   }
   
-  def notEnoughArgumentsMsg(fun: Tree, missing: List[Symbol]): String = {
-    val suffix = {
-      if (missing.isEmpty) ""
-      else {
-        val keep = missing take 3 map (_.name)
-        ".\nUnspecified value parameter%s %s".format(
-          if (missing.tail.isEmpty) "" else "s",
-          if (missing drop 3 nonEmpty) (keep :+ "...").mkString(", ")
-          else keep.mkString("", ", ", ".")
-        )
-      }
-    }
-
-    "not enough arguments for " + treeSymTypeMsg(fun) + suffix
-  }
-  
-  def applyErrorMsg(tree: Tree, msg: String, argtpes: List[Type], pt: Type) = {
-    def asParams(xs: List[Any]) = xs.mkString("(", ", ", ")")
-
-    def resType   = if (pt isWildcard) "" else " with expected result type " + pt
-    def allTypes  = (alternatives(tree) flatMap (_.paramTypes)) ++ argtpes :+ pt
-    def locals    = alternatives(tree) flatMap (_.typeParams)
-
-    withDisambiguation(locals, allTypes: _*) {
-      treeSymTypeMsg(tree) + msg + asParams(argtpes) + resType
-    }
-  }
-  
   def disambiguate(ss: List[String]) = ss match {
     case Nil      => Nil
     case s :: ss  => s :: (ss map { case `s` => "(some other)"+s ; case x => x })
@@ -217,6 +168,13 @@ trait TypeDiagnostics {
     if (sym.variance == 1) "covariant"
     else if (sym.variance == -1) "contravariant"
     else "invariant"
+
+  // I think this should definitely be on by default, but I need to
+  // play with it a bit longer.  For now it's behind -Xlint.
+  def explainAlias(tp: Type) = (
+    if (!settings.lint.value || (tp eq tp.normalize)) ""
+    else "    (which expands to)\n             " + tp.normalize
+  )
   
   /** Look through the base types of the found type for any which
    *  might have been valid subtypes if given conformant type arguments.
@@ -292,12 +250,12 @@ trait TypeDiagnostics {
     ""    // no elaborable variance situation found
   }
   
-  def foundReqMsg(found: Type, req: Type): String = {
-    (withDisambiguation(List(), found, req) {
-      ";\n found   : " + found.toLongString + existentialContext(found) +
-       "\n required: " + req + existentialContext(req)
-    }) + explainVariance(found, req)
-  }
+  def foundReqMsg(found: Type, req: Type): String = (
+    withDisambiguation(Nil, found, req)(
+      ";\n found   : " + found.toLongString + existentialContext(found) + explainAlias(found) +
+       "\n required: " + req + existentialContext(req) + explainAlias(req)
+    ) + explainVariance(found, req)
+  )
   
   case class TypeDiag(tp: Type, sym: Symbol) extends Ordered[TypeDiag] {
     // save the name because it will be mutated until it has been
@@ -404,8 +362,10 @@ trait TypeDiagnostics {
   trait TyperDiagnostics {
     self: Typer =>
 
-    private def contextError(pos: Position, msg: String) = context.error(pos, msg)
-    private def contextError(pos: Position, err: Throwable) = context.error(pos, err)
+    private def contextError(pos: Position, msg: String) { contextError(context, pos, msg) }
+    private def contextError(context0: Analyzer#Context, pos: Position, msg: String) { context0.error(pos, msg) }
+    private def contextError(pos: Position, err: Throwable) { contextError(context, pos, err) }
+    private def contextError(context0: Analyzer#Context, pos: Position, err: Throwable) { context0.error(pos, err) }
     
     object checkDead {
       private var expr: Symbol = NoSymbol
@@ -420,7 +380,7 @@ trait TypeDiagnostics {
         // Error suppression will squash some of these warnings unless we circumvent it.
         // It is presumed if you are using a -Y option you would really like to hear
         // the warnings you've requested.
-        if (settings.warnDeadCode.value && context.unit != null && treeOK(tree) && exprOK) {
+        if (settings.warnDeadCode.value && context.unit.exists && treeOK(tree) && exprOK) {
           val saved = context.reportGeneralErrors
           try {
             context.reportGeneralErrors = true
@@ -439,36 +399,46 @@ trait TypeDiagnostics {
       }
     }
     
-    def symWasOverloaded(sym: Symbol) = sym.owner.isClass && sym.owner.info.member(sym.name).isOverloaded
-    def cyclicAdjective(sym: Symbol)  = if (symWasOverloaded(sym)) "overloaded" else "recursive"
+    private def symWasOverloaded(sym: Symbol) = sym.owner.isClass && sym.owner.info.member(sym.name).isOverloaded
+    private def cyclicAdjective(sym: Symbol)  = if (symWasOverloaded(sym)) "overloaded" else "recursive"
     
     /** Returns Some(msg) if the given tree is untyped apparently due
      *  to a cyclic reference, and None otherwise.
      */
-    def cyclicReferenceMessage(sym: Symbol, tree: Tree) = condOpt(tree) {      
+    private def cyclicReferenceMessage(sym: Symbol, tree: Tree) = condOpt(tree) {      
       case ValDef(_, _, tpt, _) if tpt.tpe == null        => "recursive "+sym+" needs type"
       case DefDef(_, _, _, _, tpt, _) if tpt.tpe == null  => List(cyclicAdjective(sym), sym, "needs result type") mkString " "
     }
   
+    def reportTypeError(pos: Position, ex: TypeError) {
+      reportTypeError(context, pos, ex)
+    }
+    
     /** Report a type error.
      *
      *  @param pos0   The position where to report the error
      *  @param ex     The exception that caused the error
      */
-    def reportTypeError(pos: Position, ex: TypeError) {
+    def reportTypeError(context0: Analyzer#Context, pos: Position, ex: TypeError) {
       if (ex.pos == NoPosition) ex.pos = pos
-      if (!context.reportGeneralErrors) throw ex
+      if (!context0.reportGeneralErrors) throw ex
       if (settings.debug.value) ex.printStackTrace()
 
       ex match {
         case CyclicReference(sym, info: TypeCompleter) =>
-          contextError(ex.pos, cyclicReferenceMessage(sym, info.tree) getOrElse ex.getMessage())
+          contextError(context0, ex.pos, cyclicReferenceMessage(sym, info.tree) getOrElse ex.getMessage())
           
           if (sym == ObjectClass) 
             throw new FatalError("cannot redefine root "+sym)
         case _ =>
-          contextError(ex.pos, ex)
+          contextError(context0, ex.pos, ex)
       }
     }
+    
+    def emitAllErrorTrees(tree: Tree, context: Context) =
+      errorTreesFinder(tree).foreach(_.emit(context))
+      
+    def findAllNestedErrors(trees: List[Tree]): List[ErrorTree] =
+      trees.map(errorTreesFinder(_)).flatten
   }
 }

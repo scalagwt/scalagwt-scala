@@ -66,9 +66,10 @@ class ILoop(in0: Option[BufferedReader], protected val out: JPrintWriter)
 
   // Install a signal handler so we can be prodded.
   private val signallable =
-    if (isReplDebug) Signallable("Dump repl state.")(dumpCommand())
+    if (isReplDebug)
+      Signallable("Dump repl state.")(dumpCommand())
     else null
-    
+
   // classpath entries added via :cp
   var addedClasspath: String = ""
 
@@ -86,6 +87,7 @@ class ILoop(in0: Option[BufferedReader], protected val out: JPrintWriter)
     if (intp ne null) {
       intp.close
       intp = null
+      removeSigIntHandler()
       Thread.currentThread.setContextClassLoader(originalClassLoader)
     }
   }
@@ -94,19 +96,21 @@ class ILoop(in0: Option[BufferedReader], protected val out: JPrintWriter)
     override lazy val formatting = new Formatting {
       def prompt = ILoop.this.prompt
     }
-    override protected def createLineManager() = new Line.Manager {
-      override def onRunaway(line: Line[_]): Unit = {
-        val template = """
-          |// She's gone rogue, captain! Have to take her out!
-          |// Calling Thread.stop on runaway %s with offending code:
-          |// scala> %s""".stripMargin
+    override protected def createLineManager(): Line.Manager =
+      if (ReplPropsKludge.noThreadCreation(settings)) null else new Line.Manager {
+        override def onRunaway(line: Line[_]): Unit = {
+          val template = """
+            |// She's gone rogue, captain! Have to take her out!
+            |// Calling Thread.stop on runaway %s with offending code:
+            |// scala> %s""".stripMargin
         
-        echo(template.format(line.thread, line.code))
-        // XXX no way to suppress the deprecation warning
-        line.thread.stop()
-        in.redrawLine()
+          echo(template.format(line.thread, line.code))
+          // XXX no way to suppress the deprecation warning
+          line.thread.stop()
+          in.redrawLine()
+        }
       }
-    }
+
     override protected def parentClassLoader =
       settings.explicitParentLoader.getOrElse( classOf[ILoop].getClassLoader )
   }
@@ -224,7 +228,8 @@ class ILoop(in0: Option[BufferedReader], protected val out: JPrintWriter)
     nullary("replay", "reset execution and replay all previous commands", replay),
     shCommand,
     nullary("silent", "disable/enable automatic printing of results", verbosity),
-    cmd("type", "<expr>", "display the type of an expression without evaluating it", typeCommand)
+    cmd("type", "<expr>", "display the type of an expression without evaluating it", typeCommand),
+    nullary("warnings", "show the suppressed warnings from the most recent line which had any", warningsCommand)
   )
   
   /** Power user commands */
@@ -391,6 +396,9 @@ class ILoop(in0: Option[BufferedReader], protected val out: JPrintWriter)
       case Some(tp) => intp.afterTyper(tp.toString)
       case _        => "" // the error message was already printed
     }
+  }
+  private def warningsCommand(): Result = {
+    intp.lastWarnings foreach { case (pos, msg) => intp.reporter.warning(pos, msg) }
   }
   
   private def javapCommand(line: String): Result = {

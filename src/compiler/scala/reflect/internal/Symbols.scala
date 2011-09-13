@@ -54,6 +54,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     
     private var rawpos = initPos
     val id = { ids += 1; ids } // identity displayed when -uniqid
+    //assert(id != 3204, initName)
 
     var validTo: Period = NoPeriod
 
@@ -89,20 +90,31 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       newMethod(pos, name).setFlag(LABEL)
     final def newConstructor(pos: Position) =
       newMethod(pos, nme.CONSTRUCTOR)
-    final def newModule(pos: Position, name: TermName, clazz: ClassSymbol) =
-      new ModuleSymbol(this, pos, name).setFlag(MODULE | FINAL)
-        .setModuleClass(clazz)
-    final def newModule(name: TermName, clazz: Symbol, pos: Position = NoPosition) =
-      new ModuleSymbol(this, pos, name).setFlag(MODULE | FINAL)
-        .setModuleClass(clazz.asInstanceOf[ClassSymbol])
-    final def newModule(pos: Position, name: TermName) = {
-      val m = new ModuleSymbol(this, pos, name).setFlag(MODULE | FINAL)
-      m.setModuleClass(new ModuleClassSymbol(m))
-    } 
-    final def newPackage(pos: Position, name: TermName) = {
+
+    private def finishModule(m: ModuleSymbol, clazz: ClassSymbol): ModuleSymbol = {
+      // Top-level objects can be automatically marked final, but others
+      // must be explicitly marked final if overridable objects are enabled.
+      val flags = if (isPackage || !settings.overrideObjects.value) MODULE | FINAL else MODULE
+      m setFlag flags
+      m setModuleClass clazz
+      m
+    }
+    private def finishModule(m: ModuleSymbol): ModuleSymbol =
+      finishModule(m, new ModuleClassSymbol(m))
+
+    final def newModule(pos: Position, name: TermName, clazz: ClassSymbol): ModuleSymbol =
+      finishModule(new ModuleSymbol(this, pos, name), clazz)
+
+    final def newModule(name: TermName, clazz: Symbol, pos: Position = NoPosition): ModuleSymbol =
+      newModule(pos, name, clazz.asInstanceOf[ClassSymbol])
+
+    final def newModule(pos: Position, name: TermName): ModuleSymbol =
+      finishModule(new ModuleSymbol(this, pos, name))
+
+    final def newPackage(pos: Position, name: TermName): ModuleSymbol = {
       assert(name == nme.ROOT || isPackageClass)
       val m = newModule(pos, name).setFlag(JAVA | PACKAGE)
-      m.moduleClass.setFlag(JAVA | PACKAGE)
+      m.moduleClass setFlag (JAVA | PACKAGE)
       m
     }
     final def newThisSym(pos: Position) =
@@ -437,13 +449,17 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def hasBridgeAnnotation = hasAnnotation(BridgeClass)
     def deprecationMessage  = getAnnotation(DeprecatedAttr) flatMap (_ stringArg 0)
     def deprecationVersion  = getAnnotation(DeprecatedAttr) flatMap (_ stringArg 1)
+    def deprecatedParamName = getAnnotation(DeprecatedNameAttr) flatMap (_ symbolArg 0)
+
     // !!! when annotation arguments are not literal strings, but any sort of 
     // assembly of strings, there is a fair chance they will turn up here not as
     // Literal(const) but some arbitrary AST.  However nothing in the compiler
     // prevents someone from writing a @migration annotation with a calculated
     // string.  So this needs attention.  For now the fact that migration is
     // private[scala] ought to provide enough protection.
+    def hasMigrationAnnotation = hasAnnotation(MigrationAnnotationClass)
     def migrationMessage    = getAnnotation(MigrationAnnotationClass) flatMap { _.stringArg(2) }
+    def migrationVersion    = getAnnotation(MigrationAnnotationClass) map { version => version.intArg(0).get + "." + version.intArg(1).get }
     def elisionLevel        = getAnnotation(ElidableMethodClass) flatMap { _.intArg(0) }
     def implicitNotFoundMsg = getAnnotation(ImplicitNotFoundClass) flatMap { _.stringArg(0) }
 
@@ -517,8 +533,15 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       isPackageClass || isModuleClass && isStatic
 
     /** Is this symbol effectively final? I.e, it cannot be overridden */
-    final def isEffectivelyFinal: Boolean = isFinal || isTerm && (
-      hasFlag(PRIVATE) || isLocal || owner.isClass && owner.hasFlag(FINAL | MODULE))
+    final def isEffectivelyFinal: Boolean = (
+         isFinal 
+      || hasModuleFlag && !settings.overrideObjects.value
+      || isTerm && (
+             isPrivate
+          || isLocal
+          || owner.isClass && owner.isEffectivelyFinal
+      )
+    )
 
     /** Is this symbol locally defined? I.e. not accessed from outside `this` instance */
     final def isLocal: Boolean = owner.isTerm
@@ -595,6 +618,27 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       if (isCovariant) 1
       else if (isContravariant) -1
       else 0
+      
+    
+    /** The sequence number of this parameter symbol among all type
+     *  and value parameters of symbol's owner. -1 if symbol does not
+     *  appear among the parameters of its owner.
+     */
+    def paramPos: Int = {
+      def searchIn(tpe: Type, base: Int): Int = {
+        def searchList(params: List[Symbol], fallback: Type): Int = {
+          val idx = params indexOf this
+          if (idx >= 0) idx + base
+          else searchIn(fallback, base + params.length)
+        }
+        tpe match {
+          case PolyType(tparams, res) => searchList(tparams, res)
+          case MethodType(params, res) => searchList(params, res)
+          case _ => -1
+        }
+      }
+      searchIn(owner.info, 0)
+    }
 
 // ------ owner attribute --------------------------------------------------------------
 
@@ -611,11 +655,13 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       rawowner = owner
     }
     private[Symbols] def flattenName(): Name = {
-      // TODO: this assertion causes me a lot of trouble in the interpeter in situations
+      // This assertion caused me no end of trouble in the interpeter in situations
       // where everything proceeds smoothly if there's no assert.  I don't think calling "name"
       // on a symbol is the right place to throw fatal exceptions if things don't look right.
-      // It really hampers exploration.
-      assert(rawowner.isClass, "fatal: %s has non-class owner %s after flatten.".format(rawname + idString, rawowner))
+      // It really hampers exploration.  Finally I gave up and disabled it, and tickets like
+      // SI-4874 instantly start working.
+      // assert(rawowner.isClass, "fatal: %s has non-class owner %s after flatten.".format(rawname + idString, rawowner))
+
       nme.flattenedName(rawowner.name, rawname)
     }
 
@@ -812,6 +858,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
           phase = phaseOf(infos.validFrom)
           tp.complete(this)
         } finally {
+          // if (id == 431) println("completer ran "+tp.getClass+" for "+fullName)
           unlock()
           phase = current
         }
@@ -820,11 +867,11 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         //   one: sourceCompleter to LazyType, two: LazyType to completed type
         if (cnt == 3) abort("no progress in completing " + this + ":" + tp)
       }
-      val result = rawInfo
-      result
-    } catch {
+      rawInfo
+    }
+    catch {
       case ex: CyclicReference =>
-        if (settings.debug.value) println("... trying to complete "+this)
+        debugwarn("... hit cycle trying to complete " + this.fullLocationString)
         throw ex
     }
 
@@ -904,12 +951,15 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         val prev1 = adaptInfos(infos.prev)
         if (prev1 ne infos.prev) prev1
         else {
-          def adaptToNewRun(info: Type): Type = 
-            if (isPackageClass) info else adaptToNewRunMap(info)
           val pid = phaseId(infos.validFrom)
+
           validTo = period(currentRunId, pid)
-          phase = phaseWithId(pid)
-          val info1 = adaptToNewRun(infos.info)
+          phase   = phaseWithId(pid)
+
+          val info1 = (
+            if (isPackageClass) infos.info
+            else adaptToNewRunMap(infos.info)
+          )
           if (info1 eq infos.info) {
             infos.validFrom = validTo
             infos
@@ -1639,9 +1689,15 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *  term symbol rename it by expanding its name to avoid name clashes
      */
     final def makeNotPrivate(base: Symbol) {
-      if (this hasFlag PRIVATE) {
+      if (this.isPrivate) {
         setFlag(notPRIVATE)
-        if (isMethod && !isDeferred) setFlag(lateFINAL)
+        // Marking these methods final causes problems for proxies which use subclassing. If people
+        // write their code with no usage of final, we probably shouldn't introduce it ourselves
+        // unless we know it is safe. ... Unfortunately if they aren't marked final the inliner
+        // thinks it can't inline them. So once again marking lateFINAL, and in genjvm we no longer
+        // generate ACC_FINAL on "final" methods which are actually lateFINAL.
+        if (isMethod && !isDeferred)
+          setFlag(lateFINAL)
         if (!isStaticModule && !isClassConstructor) {
           expandName(base)
           if (isModule) moduleClass.makeNotPrivate(base)
@@ -1779,7 +1835,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      */
     override def toString = compose(
       kindString,
-      if (hasMeaninglessName) owner.nameString else nameString
+      if (hasMeaninglessName) owner.decodedName + idString else nameString
     )
 
     /** String representation of location.
@@ -1798,6 +1854,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       case s    => " in " + s
     }
     def fullLocationString = toString + locationString
+    def signatureString = if (hasRawInfo) infoString(rawInfo) else "<_>"
 
     /** String representation of symbol's definition following its name */
     final def infoString(tp: Type): String = {
@@ -1860,9 +1917,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def defString = compose(
       defaultFlagString,
       keyString,
-      varianceString + nameString + (
-        if (hasRawInfo) infoString(rawInfo) else "<_>"
-      )
+      varianceString + nameString + signatureString
     )
 
     /** Concatenate strings separated by spaces */
@@ -2079,7 +2134,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *
      * If typeParams is nonEmpty, calling tpe may hide errors or
      * introduce spurious ones. (For example, when deriving a type from
-     * the symbol of a type argument that must be higher-kinded.) As far
+     * the symbol of a type argument that may be higher-kinded.) As far
      * as I can tell, it only makes sense to call tpe in conjunction
      * with a substitution that replaces the generated dummy type
      * arguments by their actual types.
@@ -2277,7 +2332,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     private var module: Symbol = null
     def this(module: TermSymbol) = {
       this(module.owner, module.pos, module.name.toTypeName)
-      setFlag(module.getFlag(ModuleToClassFlags) | MODULE | FINAL)
+      setFlag(module.getFlag(ModuleToClassFlags) | MODULE)
       sourceModule = module
     }
     override def sourceModule = module

@@ -408,10 +408,10 @@ abstract class Erasure extends AddInterfaces
       case LabelDef(name, params, Boxed(rhs)) =>
         Some(treeCopy.LabelDef(tree, name, params, rhs) setType rhs.tpe)
       case Select(_, _) if tree.symbol == BoxedUnit_UNIT =>
-        Some(Literal(()) setPos tree.pos setType UnitClass.tpe)
+        Some(Literal(Constant()) setPos tree.pos setType UnitClass.tpe)
       case Block(List(unboxed), ret @ Select(_, _)) if ret.symbol == BoxedUnit_UNIT =>
         Some(if (unboxed.tpe.typeSymbol == UnitClass) tree
-             else Block(List(unboxed), Literal(()) setPos tree.pos setType UnitClass.tpe))
+             else Block(List(unboxed), Literal(Constant()) setPos tree.pos setType UnitClass.tpe))
       case Apply(fn, List(unboxed)) if isBox(fn.symbol) =>
         Some(unboxed)
       case _ =>
@@ -604,7 +604,8 @@ abstract class Erasure extends AddInterfaces
           abort()
         case ex: Exception =>
           //if (settings.debug.value) 
-          Console.println("exception when typing " + tree);
+          try Console.println("exception when typing " + tree)
+          finally throw ex
           throw ex
       }
       def adaptCase(cdef: CaseDef): CaseDef = {

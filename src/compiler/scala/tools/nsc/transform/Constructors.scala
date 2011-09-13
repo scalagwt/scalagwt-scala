@@ -215,7 +215,7 @@ abstract class Constructors extends Transform with ast.TreeDSL {
       //   the symbol is an outer accessor of a final class which does not override another outer accessor. )
       def maybeOmittable(sym: Symbol) = sym.owner == clazz && (
         sym.isParamAccessor && sym.isPrivateLocal ||
-        sym.isOuterAccessor && sym.owner.isFinal && !sym.isOverridingSymbol &&
+        sym.isOuterAccessor && sym.owner.isEffectivelyFinal && !sym.isOverridingSymbol &&
         !(clazz isSubClass DelayedInitClass)
       )
 
@@ -228,9 +228,9 @@ abstract class Constructors extends Transform with ast.TreeDSL {
         override def traverse(tree: Tree) = {
           tree match {
             case DefDef(_, _, _, _, _, body) 
-            if (tree.symbol.isOuterAccessor && tree.symbol.owner == clazz && clazz.isFinal) =>
+            if (tree.symbol.isOuterAccessor && tree.symbol.owner == clazz && clazz.isEffectivelyFinal) =>
               log("outerAccessors += " + tree.symbol.fullName)
-              outerAccessors ::= (tree.symbol, body)
+              outerAccessors ::= ((tree.symbol, body))
             case Select(_, _) =>
               if (!mustbeKept(tree.symbol)) {
                 log("accessedSyms += " + tree.symbol.fullName)
@@ -310,7 +310,7 @@ abstract class Constructors extends Transform with ast.TreeDSL {
         }
 
         log("merging: " + originalStats.mkString("\n") + "\nwith\n" + specializedStats.mkString("\n"))
-        val res = for (s <- originalStats; val stat = s.duplicate) yield {
+        val res = for (s <- originalStats; stat = s.duplicate) yield {
           log("merge: looking at " + stat)
           val stat1 = stat match {
             case Assign(sel @ Select(This(_), field), _) =>
@@ -374,7 +374,7 @@ abstract class Constructors extends Transform with ast.TreeDSL {
                   Apply(gen.mkAttributedRef(specializedFlag), List()),
                   definitions.getMember(definitions.BooleanClass, nme.UNARY_!)),
                 List()),
-              Block(stats, Literal(())),
+              Block(stats, Literal(Constant())),
               EmptyTree)
 
           List(localTyper.typed(tree))

@@ -6,7 +6,7 @@ import java.lang.reflect.{
   Method => jMethod, Constructor => jConstructor, Modifier => jModifier, Field => jField, 
   Member => jMember, Type => jType, Array => jArray, GenericDeclaration}
 
-trait ScalaToJava extends ConversionUtil { self: Universe =>
+trait ScalaToJava extends ConversionUtil { self: SymbolTable =>
   
   import definitions._
   
@@ -27,7 +27,7 @@ trait ScalaToJava extends ConversionUtil { self: Universe =>
   @throws(classOf[ClassNotFoundException])
   def classToJava(clazz: Symbol): jClass[_] = classCache.toJava(clazz) { 
     def noClass = throw new ClassNotFoundException("no Java class corresponding to "+clazz+" found")
-    println("classToJava "+clazz+" "+clazz.owner+" "+clazz.owner.isPackageClass)
+    //println("classToJava "+clazz+" "+clazz.owner+" "+clazz.owner.isPackageClass)//debug
     if (clazz.isValueClass)
       clazz match {
         case UnitClass => java.lang.Void.TYPE

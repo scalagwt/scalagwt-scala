@@ -494,7 +494,7 @@ abstract class GenMSIL extends SubComponent {
 
       if (isTopLevelModule(sym)) {
         if (sym.companionClass == NoSymbol)
-          dumpMirrorClass(sym)
+          generateMirrorClass(sym)
         else
           log("No mirror class for module with linked class: " +
               sym.fullName)
@@ -1263,7 +1263,7 @@ abstract class GenMSIL extends SubComponent {
               i += 1
             }
             val defaultTarget = labels(branches(i))
-            if (next != defaultTarget)
+            if (next != branches(i))
               mcode.Emit(OpCodes.Br, defaultTarget)
 
           case JUMP(whereto) =>
@@ -2048,7 +2048,7 @@ abstract class GenMSIL extends SubComponent {
       sicode.Emit(OpCodes.Ret)
     }
 
-    private def dumpMirrorClass(sym: Symbol) {
+    private def generateMirrorClass(sym: Symbol) {
       val tBuilder = getType(sym)
       assert(sym.isModuleClass, "Can't generate Mirror-Class for the Non-Module class " + sym)
       debuglog("Dumping mirror class for object: " + sym)

@@ -128,12 +128,24 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
     }
     def deprecation =
       if (sym.isDeprecated)
-        Some(sym.deprecationMessage match {
-          case Some(msg) => parseWiki(msg, NoPosition)
-          case None =>Body(Nil)
+        Some((sym.deprecationMessage, sym.deprecationVersion) match {
+          case (Some(msg), Some(ver)) => parseWiki("''(Since version " + ver + ")'' " + msg, NoPosition)
+          case (Some(msg), None) => parseWiki(msg, NoPosition)
+          case (None, Some(ver)) =>  parseWiki("''(Since version " + ver + ")''", NoPosition)
+          case (None, None) => Body(Nil)
         })
       else
         comment flatMap { _.deprecated }
+    def migration =
+      if(sym.hasMigrationAnnotation)
+        Some((sym.migrationMessage, sym.migrationVersion) match {
+          case (Some(msg), Some(ver)) => parseWiki("''(Changed in version " + ver + ")'' " + msg, NoPosition)
+          case (Some(msg), None) => parseWiki(msg, NoPosition)
+          case (None, Some(ver)) =>  parseWiki("''(Changed in version " + ver + ")''", NoPosition)
+          case (None, None) => Body(Nil)
+        })
+      else
+        None
     def inheritedFrom =
       if (inTemplate.sym == this.sym.owner || inTemplate.sym.isPackage) Nil else
         makeTemplate(this.sym.owner) :: (sym.allOverriddenSymbols map { os => makeTemplate(os.owner) })
@@ -187,12 +199,12 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
           val tplOwner = this.inTemplate.qualifiedName
           val tplName = this.name
           val patches = new Regex("""€\{(FILE_PATH|TPL_OWNER|TPL_NAME)\}""")
-          val patchedString = patches.replaceAllIn(settings.docsourceurl.value, { m => m.group(1) match {
-              case "FILE_PATH" => filePath
-              case "TPL_OWNER" => tplOwner
-              case "TPL_NAME" => tplName
-            }
-          })
+          def substitute(name: String): String = name match {
+            case "FILE_PATH" => filePath
+            case "TPL_OWNER" => tplOwner
+            case "TPL_NAME" => tplName
+          }
+          val patchedString = patches.replaceAllIn(settings.docsourceurl.value, m => java.util.regex.Matcher.quoteReplacement(substitute(m.group(1))) )
           new java.net.URL(patchedString)
         }
       else None
@@ -577,8 +589,9 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
           nameBuffer append "⇒ "
           appendType0(tp.args.head)
         case tp: TypeRef if definitions.isTupleTypeOrSubtype(tp) =>
+          val args = tp.normalize.typeArgs
           nameBuffer append '('
-          appendTypes0(tp.args, ", ")
+          appendTypes0(args, ", ")
           nameBuffer append ')'
         case TypeRef(pre, aSym, targs) =>
           val preSym = pre.widen.typeSymbol

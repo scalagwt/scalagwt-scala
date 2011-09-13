@@ -204,6 +204,10 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
      *     overrides some other member.
      */
     private def checkAllOverrides(clazz: Symbol, typesOnly: Boolean = false) {
+      val self = clazz.thisType
+      def classBoundAsSeen(tp: Type) = {
+        tp.typeSymbol.classBound.asSeenFrom(self, tp.typeSymbol.owner)
+      }
 
       case class MixinOverrideError(member: Symbol, msg: String)
 
@@ -223,8 +227,17 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         }
       }
 
-      val self = clazz.thisType
- 
+      def isConformingObjectOverride(tp1: Type, tp2: Type) = {
+        tp1.typeSymbol.isModuleClass && tp2.typeSymbol.isModuleClass && {
+          val cb1 = classBoundAsSeen(tp1)
+          val cb2 = classBoundAsSeen(tp2)
+
+          (cb1 <:< cb2) && {
+            log("Allowing %s to override %s because %s <:< %s".format(tp1, tp2, cb1, cb2))
+            true
+          }
+        }
+      }
       def isAbstractTypeWithoutFBound(sym: Symbol) = // (part of DEVIRTUALIZE) 
         sym.isAbstractType && !sym.isFBounded
 
@@ -248,10 +261,10 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           rtp1 <:< rtp2
         case (NullaryMethodType(rtp1), MethodType(List(), rtp2)) => 
           rtp1 <:< rtp2
-        case (TypeRef(_, sym, _),  _) if (sym.isModuleClass) => 
+        case (TypeRef(_, sym, _),  _) if sym.isModuleClass =>
           overridesType(NullaryMethodType(tp1), tp2)
         case _ => 
-          tp1 <:< tp2
+          (tp1 <:< tp2) || isConformingObjectOverride(tp1, tp2)
       }
 
       /** Check that all conditions for overriding `other` by `member`
@@ -260,24 +273,43 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       def checkOverride(clazz: Symbol, member: Symbol, other: Symbol) {
         def noErrorType = other.tpe != ErrorType && member.tpe != ErrorType
         def isRootOrNone(sym: Symbol) = sym == RootClass || sym == NoSymbol
+        def objectOverrideErrorMsg = (
+          "overriding " + other.fullLocationString + " with " + member.fullLocationString + ":\n" +
+          "an overriding object must conform to the overridden object's class bound" +
+          analyzer.foundReqMsg(classBoundAsSeen(member.tpe), classBoundAsSeen(other.tpe))
+        )
+        
+        def overrideErrorMsg(msg: String): String = {
+          val isConcreteOverAbstract = 
+            (other.owner isSubClass member.owner) && other.isDeferred && !member.isDeferred
+          val addendum =
+            if (isConcreteOverAbstract)
+              ";\n (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
+                infoStringWithLocation(other),
+                infoStringWithLocation(member)
+              )
+            else ""
+          
+          "overriding %s;\n %s %s%s".format(
+            infoStringWithLocation(other), infoString(member), msg, addendum
+          )
+        }
+        def emitOverrideError(fullmsg: String) {
+          if (member.owner == clazz) unit.error(member.pos, fullmsg)
+          else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
+        }
 
         def overrideError(msg: String) {
-          if (noErrorType) {
-            val fullmsg = 
-              "overriding "+infoStringWithLocation(other)+";\n "+
-              infoString(member)+" "+msg+
-              (if ((other.owner isSubClass member.owner) && other.isDeferred && !member.isDeferred) 
-                ";\n (Note that "+infoStringWithLocation(other)+" is abstract,"+
-               "\n  and is therefore overridden by concrete "+infoStringWithLocation(member)+")"
-               else "")
-            if (member.owner == clazz) unit.error(member.pos, fullmsg)
-            else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
-          }
+          if (noErrorType)
+            emitOverrideError(overrideErrorMsg(msg))
         }
 
         def overrideTypeError() {
           if (noErrorType) {
-            overrideError("has incompatible type")
+            emitOverrideError(
+              if (member.isModule && other.isModule) objectOverrideErrorMsg
+              else overrideErrorMsg("has incompatible type")
+            )
           }
         }
 
@@ -331,11 +363,11 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           }
           if (!isOverrideAccessOK) {
             overrideAccessError()
-          } else if (other.isClass || other.isModule) {
-            overrideError("cannot be used here - classes and objects cannot be overridden");
-          } else if (!other.isDeferred && (member.isClass || member.isModule)) {
-            overrideError("cannot be used here - classes and objects can only override abstract types");
-          } else if (other hasFlag FINAL) { // (1.2)
+          } else if (other.isClass) {
+            overrideError("cannot be used here - class definitions cannot be overridden");
+          } else if (!other.isDeferred && member.isClass) {
+            overrideError("cannot be used here - classes can only override abstract types");
+          } else if (other.isFinal) { // (1.2)
             overrideError("cannot override final member");
           } else if (!other.isDeferred && !(member hasFlag (OVERRIDE | ABSOVERRIDE | SYNTHETIC))) { // (1.3), SYNTHETIC because of DEVIRTUALIZE
             overrideError("needs `override' modifier");
@@ -533,19 +565,30 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
                   mismatches match {
                     // Only one mismatched parameter: say something useful.
                     case (pa, pc) :: Nil  =>
-                      val addendum =
-                        if (pa.typeSymbol == pc.typeSymbol) {
+                      val abstractSym = pa.typeSymbol
+                      val concreteSym = pc.typeSymbol
+                      def subclassMsg(c1: Symbol, c2: Symbol) = (
+                        ": %s is a subclass of %s, but method parameter types must match exactly.".format(
+                          c1.fullLocationString, c2.fullLocationString)
+                      )
+                      val addendum = (
+                        if (abstractSym == concreteSym) {
                           // TODO: what is the optimal way to test for a raw type at this point?
                           // Compilation has already failed so we shouldn't have to worry overmuch
                           // about forcing types.
-                          if (underlying.isJavaDefined && pa.typeArgs.isEmpty && pa.typeSymbol.typeParams.nonEmpty)
+                          if (underlying.isJavaDefined && pa.typeArgs.isEmpty && abstractSym.typeParams.nonEmpty)
                             ". To implement a raw type, use %s[_]".format(pa)
                           else if (pa.prefix =:= pc.prefix)
                             ": their type parameters differ"
                           else
                             ": their prefixes (i.e. enclosing instances) differ"
                         }
+                        else if (abstractSym isSubClass concreteSym)
+                          subclassMsg(abstractSym, concreteSym)
+                        else if (concreteSym isSubClass abstractSym)
+                          subclassMsg(concreteSym, abstractSym)
                         else ""
+                      )
 
                       undefined("\n(Note that %s does not match %s%s)".format(pa, pc, addendum))
                     case xs =>
@@ -913,7 +956,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
     object normalizeAll extends TypeMap {
       def apply(tp: Type) = mapOver(tp).normalize
     }
-    
+
     def checkSensible(pos: Position, fn: Tree, args: List[Tree]) = fn match {
       case Select(qual, name @ (nme.EQ | nme.NE | nme.eq | nme.ne)) if args.length == 1 =>
         def isReferenceOp = name == nme.eq || name == nme.ne
@@ -923,10 +966,9 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           case _ => false
         }
         def underlyingClass(tp: Type): Symbol = {
-          var sym = tp.widen.typeSymbol
-          while (sym.isAbstractType)
-            sym = sym.info.bounds.hi.widen.typeSymbol
-          sym
+          val sym = tp.widen.typeSymbol
+          if (sym.isAbstractType) underlyingClass(sym.info.bounds.hi)
+          else sym
         }
         val actual   = underlyingClass(args.head.tpe)
         val receiver = underlyingClass(qual.tpe)
@@ -966,8 +1008,11 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         def nonSensible(pre: String, alwaysEqual: Boolean) = 
           nonSensibleWarning(pre+"values of types "+typesString, alwaysEqual)
          
-        def unrelatedTypes() = 
-          unit.warning(pos, typesString + " are unrelated: should not compare equal")
+        def unrelatedTypes() = {
+          val msg = if (name == nme.EQ || name == nme.eq)
+                      "never compare equal" else "always compare unequal"
+          unit.warning(pos, typesString + " are unrelated: they will most likely " + msg)
+        }
         
         if (nullCount == 2)
           nonSensible("", true)  // null == null
@@ -995,22 +1040,26 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         else if (isWarnable) {
           if (isNew(qual)) // new X == y
             nonSensibleWarning("a fresh object", false)
-          else if (isNew(args.head) && (receiver.isFinal || isReferenceOp))   // object X ; X == new Y
+          else if (isNew(args.head) && (receiver.isEffectivelyFinal || isReferenceOp))   // object X ; X == new Y
             nonSensibleWarning("a fresh object", false)
-          else if (receiver.isFinal && !(receiver isSubClass actual)) {  // object X, Y; X == Y
+          else if (receiver.isEffectivelyFinal && !(receiver isSubClass actual)) {  // object X, Y; X == Y
             if (isEitherNullable)
               nonSensible("non-null ", false)
             else
               nonSensible("", false)            
           }
         }
-        // Warning on types without a parental relationship.  Uncovers a lot of
-        // bugs, but not always right to warn.
-        if (false) {
-          if (nullCount == 0 && possibleNumericCount < 2 && !(receiver isSubClass actual) && !(actual isSubClass receiver))
-            unrelatedTypes()
+
+        if (nullCount == 0 && possibleNumericCount < 2) {
+          if (actual isSubClass receiver) ()
+          else if (receiver isSubClass actual) ()
+          // warn only if they have no common supertype below Object
+          else {
+            val common = global.lub(List(actual.tpe, receiver.tpe))
+            if (common.typeSymbol == ScalaObjectClass || (ObjectClass.tpe <:< common))
+              unrelatedTypes()
+          }
         }
-        
       case _ =>
     }
 
@@ -1139,10 +1188,15 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
 
     /* Check whether argument types conform to bounds of type parameters */
     private def checkBounds(pre: Type, owner: Symbol, tparams: List[Symbol], argtps: List[Type], pos: Position): Unit =
-      try typer.infer.checkBounds(pos, pre, owner, tparams, argtps, "")
+      try typer.infer.checkBounds(pos, pre, owner, tparams, argtps, "") match {
+        case Some(err) => err.emit(typer.context)
+        case _ => ()
+      }
       catch {
-        case ex: TypeError => 
-          unit.error(pos, ex.getMessage());
+        case ex: TypeError =>
+          // checkBounds no longer throws errors (apart from Cyclic ones)
+          // so maybe it is safe to remove/simplify this catch?
+          unit.error(pos, ex.getMessage())
           if (settings.explaintypes.value) {
             val bounds = tparams map (tp => tp.info.instantiateTypeParams(tparams, argtps).bounds)
             (argtps, bounds).zipped map ((targ, bound) => explainTypes(bound.lo, targ))
@@ -1221,22 +1275,27 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           otherSym.decodedName, cannot, memberSym.decodedName)
       )
     }
+    
     /** Warn about situations where a method signature will include a type which
      *  has more restrictive access than the method itself.
      */
     private def checkAccessibilityOfReferencedTypes(tree: Tree) {
       val member = tree.symbol
+
+      def checkAccessibilityOfType(tpe: Type) {
+        val inaccessible = lessAccessibleSymsInType(tpe, member)
+        // if the unnormalized type is accessible, that's good enough
+        if (inaccessible.isEmpty) ()
+        // or if the normalized type is, that's good too
+        else if ((tpe ne tpe.normalize) && lessAccessibleSymsInType(tpe.normalize, member).isEmpty) ()
+        // otherwise warn about the inaccessible syms in the unnormalized type
+        else inaccessible foreach (sym => warnLessAccessible(sym, member))
+      }
       
       // types of the value parameters
-      member.paramss.flatten foreach { p =>
-        val normalized = p.tpe.normalize 
-        if ((normalized ne p.tpe) && lessAccessibleSymsInType(normalized, member).isEmpty) ()
-        else lessAccessibleSymsInType(p.tpe, member) foreach (sym => warnLessAccessible(sym, member))
-      }
+      member.paramss.flatten foreach (p => checkAccessibilityOfType(p.tpe))
       // upper bounds of type parameters
-      member.typeParams.map(_.info.bounds.hi.widen) foreach { tp =>
-        lessAccessibleSymsInType(tp, member) foreach (sym => warnLessAccessible(sym, member))
-      }
+      member.typeParams.map(_.info.bounds.hi.widen) foreach checkAccessibilityOfType
     }
     
     /** Check that a deprecated val or def does not override a
@@ -1294,7 +1353,13 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         case tpt@TypeTree() =>
           if(tpt.original != null) {
             tpt.original foreach {
-              case dc@TypeTreeWithDeferredRefCheck() => applyRefchecksToAnnotations(dc.check()) // #2416
+              case dc@TypeTreeWithDeferredRefCheck() =>
+                dc.check() match {
+                  case Left(err) =>
+                    err.emit()
+                  case Right(t) =>
+                    applyRefchecksToAnnotations(t) // #2416
+                }
               case _ =>
             }
           }
@@ -1392,7 +1457,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
     private def transformIf(tree: If): Tree = {
       val If(cond, thenpart, elsepart) = tree
       def unitIfEmpty(t: Tree): Tree =
-        if (t == EmptyTree) Literal(()).setPos(tree.pos).setType(UnitClass.tpe) else t
+        if (t == EmptyTree) Literal(Constant()).setPos(tree.pos).setType(UnitClass.tpe) else t
       
       cond.tpe match {
         case ConstantType(value) =>
@@ -1458,8 +1523,11 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
             if(tpt.original != null) {
               tpt.original foreach {
                 case dc@TypeTreeWithDeferredRefCheck() =>
-                  transform(dc.check()) // #2416 -- only call transform to do refchecks, but discard results
-                  // tpt has the right type if the deferred checks are ok
+                  dc.check() match {
+                    case Left(err) => err.emit()
+                    case Right(tree) => transform(tree) // #2416 -- only call transform to do refchecks, but discard results
+                      // tpt has the right type if the deferred checks are ok
+                  }
                 case _ =>
               }
             }
@@ -1535,7 +1603,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         result
       } catch {
         case ex: TypeError =>
-          if (settings.debug.value) ex.printStackTrace();
+          if (settings.debug.value) ex.printStackTrace()
           unit.error(tree.pos, ex.getMessage())
           tree
       } finally {

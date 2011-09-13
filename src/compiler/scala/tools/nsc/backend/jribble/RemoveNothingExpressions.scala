@@ -47,7 +47,7 @@ with JribbleAnalysis
           }
           
         case Block(stats, expr) =>
-          val nothingIndex = stats findIndexOf isNothing
+          val nothingIndex = stats indexWhere isNothing
           if (nothingIndex >= 0) {
             (Block(stats take (nothingIndex + 1), expr)
               copyAttrs tree)
@@ -87,7 +87,7 @@ with JribbleAnalysis
           if (isNothing(rcvr)) {
             rcvr
           } else {
-            val indexOfNothing = args findIndexOf isNothing
+            val indexOfNothing = args indexWhere isNothing
             if (indexOfNothing < 0) {
               tree
             } else {

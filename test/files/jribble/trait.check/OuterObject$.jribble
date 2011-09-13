@@ -1,4 +1,4 @@
-public final class LOuterObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+public class LOuterObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   public static LOuterObject$; MODULE$ = new (LOuterObject$;::this()V;)();
   
   public this() {

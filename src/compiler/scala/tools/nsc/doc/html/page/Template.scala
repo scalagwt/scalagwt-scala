@@ -80,34 +80,34 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
       { signature(tpl, true) }
       { memberToCommentHtml(tpl, true) }
 
-      <div id="template">
-
-        <div id="mbrsel">
-          <div id='textfilter'><span class='pre'/><span class='input'><input type='text' accesskey='/'/></span><span class='post'/></div>
-          { if (tpl.linearizationTemplates.isEmpty) NodeSeq.Empty else
-              <div id="order">
-                <span class="filtertype">Ordering</span>
-                <ol><li class="alpha in"><span>Alphabetic</span></li><li class="inherit out"><span>By inheritance</span></li></ol>
-              </div>
-          }
-          { if (tpl.linearizationTemplates.isEmpty) NodeSeq.Empty else
-              <div id="ancestors">
-                <span class="filtertype">Inherited</span>
-                <ol><li class="hideall out"><span>Hide All</span></li>
-                <li class="showall in"><span>Show all</span></li></ol>
-                <ol id="linearization">{ 
-                  (tpl :: tpl.linearizationTemplates) map { wte => <li class="in" name={ wte.qualifiedName }><span>{ wte.name }</span></li> } 
-                }</ol>
-              </div>
-          }
-          {
-            <div id="visbl">
-              <span class="filtertype">Visibility</span>
-              <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+      <div id="mbrsel">
+        <div id='textfilter'><span class='pre'/><span class='input'><input type='text' accesskey='/'/></span><span class='post'/></div>
+        { if (tpl.linearizationTemplates.isEmpty) NodeSeq.Empty else
+            <div id="order">
+              <span class="filtertype">Ordering</span>
+              <ol><li class="alpha in"><span>Alphabetic</span></li><li class="inherit out"><span>By inheritance</span></li></ol>
             </div>
-          }
-        </div>
+        }
+        { if (tpl.linearizationTemplates.isEmpty) NodeSeq.Empty else
+            <div id="ancestors">
+              <span class="filtertype">Inherited</span>
+              <ol><li class="hideall out"><span>Hide All</span></li>
+              <li class="showall in"><span>Show all</span></li></ol>
+              <ol id="linearization">{ 
+                (tpl :: tpl.linearizationTemplates) map { wte => <li class="in" name={ wte.qualifiedName }><span>{ wte.name }</span></li> } 
+              }</ol>
+            </div>
+        }
+        {
+          <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+        }
+      </div>
 
+      <div id="template">
+        <div id="allMembers">
         { if (constructors.isEmpty) NodeSeq.Empty else
             <div id="constructors" class="members">
               <h3>Instance Constructors</h3>
@@ -142,7 +142,9 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
               <ol>{ deprValueMembers map (memberToHtml(_)) }</ol>
             </div>
         }
+        </div>
 
+        <div id="inheritedMembers">
         {
           NodeSeq fromSeq (for ((superTpl, superType) <- (tpl.linearizationTemplates zip tpl.linearizationTypes)) yield
             <div class="parent" name={ superTpl.qualifiedName }>
@@ -161,10 +163,19 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
             </div>
           )
         }
+        </div>
 
       </div>
 
       <div id="tooltip" ></div>
+ 
+      { 
+        if (Set("epfl", "EPFL").contains(tpl.universe.settings.docfooter.value))
+          <div id="footer">Scala programming documentation. Copyright (c) 2003-2011 <a href="http://www.epfl.ch" target="_top">EPFL</a>, with contributions from <a href="http://typesafe.com" target="_top">Typesafe</a>.</div>
+        else     
+          <div id="footer"> { tpl.universe.settings.docfooter.value } </div>
+      } 
+
 
     </body>
   }
@@ -311,7 +322,7 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
 
     // --- start attributes block vals
     val attributes: Seq[scala.xml.Node] = { 
-      val fvs: List[comment.Paragraph] = visibility(mbr).toList ::: mbr.flags
+      val fvs: List[comment.Paragraph] = visibility(mbr).toList
       if (fvs.isEmpty || isReduced) NodeSeq.Empty 
       else {
         <dt>Attributes</dt>
@@ -372,15 +383,12 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
         <dd class="cmt">{ bodyToHtml(mbr.deprecation.get) }</dd>
       }
 
-    val migration: Seq[scala.xml.Node] = {
-      mbr.annotations.find(_.qualifiedName == "migration") match {
-        case None => NodeSeq.Empty
-        case Some(mig) => {
+    val migration: Seq[scala.xml.Node] =
+      if(mbr.migration.isEmpty || isReduced) NodeSeq.Empty
+      else {
           <dt>Migration</dt>
-          <dd class="cmt"><p>{mig.arguments.view.map(_.value).drop(2).mkString(" ")}</p></dd>
-        }
+          <dd class="cmt">{ bodyToHtml(mbr.migration.get) }</dd>
       }
-    }
 
     val mainComment: Seq[scala.xml.Node] = mbr.comment match {
       case Some(comment) if (! isReduced) =>
@@ -435,7 +443,16 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
             }</dd>
           } else NodeSeq.Empty
 
-        example ++ version ++ sinceVersion ++ exceptions ++ note ++ seeAlso
+        val todo: Seq[scala.xml.Node] =
+          if(!comment.todo.isEmpty) {
+            <dt>To do</dt>
+            <dd>{
+              val todoXml: List[scala.xml.NodeSeq] = (for(todo <- comment.todo ) yield <span class="cmt">{bodyToHtml(todo)}</span> )
+              todoXml.reduceLeft(_ ++ Text(", ") ++ _)
+            }</dd>
+          } else NodeSeq.Empty
+
+        example ++ version ++ sinceVersion ++ exceptions ++ todo ++ note ++ seeAlso
 
       case _ => NodeSeq.Empty
     } 
@@ -478,7 +495,6 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
       case tpl: DocTemplateEntity => docEntityKindToString(tpl)
       case ctor: Constructor => "new"
       case tme: MemberEntity =>
-        ( if (tme.isImplicit) "implicit " else "" ) +
         ( if (tme.isDef) "def"
           else if (tme.isVal) "val"
           else if (tme.isLazyVal) "lazy val"
@@ -520,7 +536,10 @@ class Template(tpl: DocTemplateEntity) extends HtmlPage {
   def signature(mbr: MemberEntity, isSelf: Boolean, isReduced: Boolean = false): NodeSeq = {
     def inside(hasLinks: Boolean, nameLink: String = ""): NodeSeq =
       <xml:group>
-      <span class="kind">{ kindToString(mbr) }</span>
+      <span class="modifier_kind">
+        <span class="modifier">{ mbr.flags.map(flag => inlineToHtml(flag.text) ++ xml.Text(" ")) }</span>
+        <span class="kind">{ kindToString(mbr) }</span>
+      </span>
       <span class="symbol">
         {
           val nameHtml = {

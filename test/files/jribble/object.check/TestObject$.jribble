@@ -1,4 +1,4 @@
-public final class LTestObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+public class LTestObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   public static LTestObject$; MODULE$ = new (LTestObject$;::this()V;)();
   
   private I; field$u0020;

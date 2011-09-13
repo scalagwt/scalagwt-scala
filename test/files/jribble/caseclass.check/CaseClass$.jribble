@@ -1,4 +1,4 @@
-public final class LCaseClass$; extends Lscala/runtime/AbstractFunction1; implements Lscala/ScalaObject;, Lscala/Serializable; {
+public class LCaseClass$; extends Lscala/runtime/AbstractFunction1; implements Lscala/ScalaObject;, Lscala/Serializable; {
   public static LCaseClass$; MODULE$ = new (LCaseClass$;::this()V;)();
 
   public final Ljava/lang/String; toString() {

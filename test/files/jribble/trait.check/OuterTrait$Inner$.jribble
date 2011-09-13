@@ -1,4 +1,4 @@
-public final class LOuterTrait$Inner$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+public class LOuterTrait$Inner$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   
   public this(LOuterTrait; $outer) {
     (Ljava/lang/Object;::super()V;)();

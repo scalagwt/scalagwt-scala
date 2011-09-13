@@ -1,4 +1,4 @@
-public final class LValDef$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
+public class LValDef$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
   public static LValDef$; MODULE$ = new (LValDef$;::this()V;)();
   
   private I; b$u0020;

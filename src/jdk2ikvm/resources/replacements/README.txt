@@ -9,7 +9,7 @@ We need those replacements for two reasons:
   * original files are very much platform-dependent and we
     really have to provide our own implementation from scratch
     examples include: Console.scala, ScalaRunTime.scala, etc.
-    
+
 Below is a more detailed description of every file found in this directory.
 
 scala/Array.scala
@@ -99,17 +99,26 @@ Depends on JVM specific exception types that are not supported by GWT. Those inc
   * InvocationTargetException
   * ControlThrowable
   * InterruptedException
-  
+
 Also, depends on reflection. I believe this stuff should be refactored or not referenced
 from the rest of library.
 
 scala/xml/Atom.scala
 --------------------
 Depends on Class.getSimpleName that GWT doesn't support. Rewritten it.
-  
+
 scala/xml/parsing/TokenTests.scala
 ----------------------------------
 The whole XML stuff is a mess. We shouldn't support scala.xml.parsing in GWT at all.
 However, this object is being referenced from other places in xml package.
 This object has to be rewritten because of dependencies on methods in RichChar
 that are removed. Check scala/runtime/RichChar for details.
+
+scala/util/continuations/package.scala
+--------------------------------------
+Change NoSuchMethodException to RuntimeException as GWT doesn't support former.
+See https://github.com/scalagwt/scalagwt-scala/issues/22
+
+scala/util/continuations/ControlContext.scala
+---------------------------------------------
+Work-arounds (rewrites) for pattern matcher shortcomings.

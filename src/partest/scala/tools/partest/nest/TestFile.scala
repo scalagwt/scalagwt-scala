@@ -73,6 +73,8 @@ case class JribbleTestFile(file: JFile, fileManager: FileManager) extends TestFi
       //factorymanifests plugin is required by jribble backend
       val pluginPath = File(PathSettings.buildDir / "quick/misc/scala-devel/plugins/factorymanifests.jar").path
       settings.plugin.tryToSetColon(pluginPath :: Nil).isDefined
-    }
+    } &&
+    //we skip jvm backend to not generate class files, we are interested in jribble output only
+    settings.skip.tryToSetColon("jvm" :: Nil).isDefined
   }
 }

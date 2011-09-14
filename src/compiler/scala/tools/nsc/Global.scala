@@ -549,7 +549,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
   // phaseName = "nothingexps"
   object removeNothingExpressions extends {
     val global: Global.this.type = Global.this
-    val runsAfter = List[String]("cleanup")
+    val runsAfter = List[String]("jvm", "cleanup")
     val runsRightAfter = None
   } with RemoveNothingExpressions
 
@@ -586,7 +586,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
   object terminal extends {
     val global: Global.this.type = Global.this
     val phaseName = "terminal"
-    val runsAfter = List[String]("jvm","msil", "jrrible")
+    val runsAfter = List[String]("jvm","msil", "genjribble")
     val runsRightAfter = None
   } with SubComponent {
     private var cache: Option[GlobalPhase] = None

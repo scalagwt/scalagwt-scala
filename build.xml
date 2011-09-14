@@ -465,7 +465,7 @@ QUICK BUILD (QUICK)
   </target>
 
   <target name="quick.pre-lib-jribble" depends="quick.lib-jdk2ikvm, quick.plugins">
-    <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-jribble.complete">
+    <uptodate property="quick.lib-jribble.available" targetfile="${build-quick.dir}/library-gwt.complete">
       <srcfiles dir="${build-quick.dir}/jdk2ikvm">
         <include name="library/**"/>
         <include name="factorymanifests/**"/>
@@ -556,9 +556,9 @@ QUICK BUILD (QUICK)
   
   <target name="quick.lib-jribble" depends="quick.pre-lib-jribble" unless="quick.lib-jribble.available">
     <stopwatch name="quick.lib-jribble.timer"/>
-    <mkdir dir="${build-quick.dir}/jribble/library"/>
+    <mkdir dir="${build-quick.dir}/gwt/library"/>
     <scalacfork
-      destdir="${build-quick.dir}/jribble/library"
+      destdir="${build-quick.dir}/gwt/library"
       compilerpathref="quick.classpath"
       srcpath="${build-quick.dir}/jdk2ikvm/library"
       params="${scalac.args.jribble} -Xplugin:${build-quick.dir}/misc/scala-devel/plugins/factorymanifests.jar"
@@ -573,7 +573,7 @@ QUICK BUILD (QUICK)
          primitive types are broken and would cause parsing error. Those classes are stubs
          and are never referenced so we can safely exclude them. -->
     <delete>
-      <fileset dir="${build-quick.dir}/jribble/library/scala">
+      <fileset dir="${build-quick.dir}/gwt/library/scala">
         <include name="Boolean.jribble"/>
         <include name="Byte.jribble"/>
         <include name="Char.jribble"/>
@@ -586,7 +586,7 @@ QUICK BUILD (QUICK)
       </fileset>
     </delete>
     <scalacfork
-      destdir="${build-quick.dir}/jribble/library"
+      destdir="${build-quick.dir}/gwt/library"
       compilerpathref="quick.classpath"
       params="${scalac.args.quick} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
       srcdir="${build-quick.dir}/jdk2ikvm/library"
@@ -595,49 +595,29 @@ QUICK BUILD (QUICK)
       <include name="scala/util/continuations/**"/>
       <compilationpath refid="quick.compilation.path"/>
     </scalacfork>
-    <mkdir dir="${build-quick.dir}/classes/library-gwt"/>
-    <scalacfork
-      destdir="${build-quick.dir}/classes/library-gwt"
-      compilerpathref="quick.classpath"
-      srcpath="${build-quick.dir}/jdk2ikvm/library"
-      params="${scalac.args.jribble}"
-      srcdir="${build-quick.dir}/jdk2ikvm/library"
-      jvmargs="${scalacfork.jvmargs}">
-      <include name="scala/**/*.scala"/>
-      <include name="scala/**/*.java"/>
-    </scalacfork>
-    <scalacfork
-      destdir="${build-quick.dir}/classes/library-gwt"
-      compilerpathref="quick.classpath"
-      params="${scalac.args.quick} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
-      srcdir="${build-quick.dir}/jdk2ikvm/library"
-      jvmargs="${scalacfork.jvmargs}">
-      <include name="scala/util/continuations/**"/>
-      <compilationpath refid="quick.compilation.path"/>
-    </scalacfork>
     <javac
       srcdir="${build-quick.dir}/jdk2ikvm/library"
-      destdir="${build-quick.dir}/classes/library-gwt"
-      classpath="${build-quick.dir}/classes/library"
+      destdir="${build-quick.dir}/gwt/library"
+      classpath="${build-quick.dir}/gwt/library"
       includes="**/*.java"
       target="1.5" source="1.5">
       <compilerarg line="${javac.args}"/> 
     </javac>
-    <propertyfile file="${build-quick.dir}/jribble/library/library.properties">
+    <propertyfile file="${build-quick.dir}/gwt/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
-    <copy todir="${build-quick.dir}/jribble/library">
+    <copy todir="${build-quick.dir}/gwt/library">
       <fileset dir="${src.dir}/library">
         <include name="**/*.xml"/>
       </fileset>
     </copy>
-    <copy todir="${build-quick.dir}/jribble/library">
+    <copy todir="${build-quick.dir}/gwt/library">
       <fileset dir="${build-quick.dir}/jdk2ikvm/library">
         <include name="**/*.java"/>
       </fileset>
     </copy>
-    <touch file="${build-quick.dir}/library-jribble.complete" verbose="no"/>
+    <touch file="${build-quick.dir}/library-gwt.complete" verbose="no"/>
     <stopwatch name="quick.lib-jribble.timer" action="total"/>
   </target>
 
@@ -1096,17 +1076,14 @@ PACKED QUICK BUILD (PACK)
   <target name="pack.pre-lib-jribble" depends="pack.start">
     <uptodate
       property="pack.lib-jribble.available"
-      targetfile="${build-pack.dir}/lib/scala-library-jribble.jar"
-      srcfile="${build-quick.dir}/library-jribble.complete"/>
+      targetfile="${build-pack.dir}/lib/scala-library-gwt.jar"
+      srcfile="${build-quick.dir}/library-gwt.complete"/>
   </target>
 
   <target name="pack.lib-jribble" depends="pack.pre-lib-jribble" unless="pack.lib-jribble.available">
     <mkdir dir="${build-pack.dir}/lib"/>
-    <jar destfile="${build-pack.dir}/lib/scala-library-jribble.jar">
-      <fileset dir="${build-quick.dir}/jribble/library"/>
-    </jar>
     <jar destfile="${build-pack.dir}/lib/scala-library-gwt.jar">
-      <fileset dir="${build-quick.dir}/classes/library-gwt"/>
+      <fileset dir="${build-quick.dir}/gwt/library"/>
     </jar>
   </target>
 

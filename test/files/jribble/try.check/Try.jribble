@@ -1,63 +1,661 @@
-public class LTry; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public V; simpleTry() {
-    try {
-      
-    } catch(Ljava/lang/Throwable; ex$1) {
-      Ljava/lang/Throwable; temp1 = ex$1;
-      if (temp1.<instanceof>(Ljava/lang/Exception;))
-        {
-          Ljava/lang/Exception; temp2 = temp1.<cast>(Ljava/lang/Exception;);
-          Ljava/lang/Exception; x = temp2;
-          if (this.(LTry;::gd1$1(Ljava/lang/Exception;)Z;)(x))
-            {
-              Ljava/lang/Exception; $1$;
-              body$percent01: while(true) {
-                Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)(("first case " + x));
-                break;
+name {
+  name: "Try"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "simpleTry"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Try
+          tryStat {
+            block {
+              type: Block
+              block {
               }
             }
-          else
-            {
-              Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)(("second case " + temp2));
+            catch {
+              tpe {
+                pkg: "java.lang"
+                name: "Throwable"
+              }
+              param: "ex$1"
+              body {
+                type: Block
+                block {
+                  statement {
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Throwable"
+                        }
+                      }
+                      name: "temp1"
+                      initializer {
+                        type: VarRef
+                        varRef {
+                          name: "ex$1"
+                        }
+                      }
+                    }
+                  }
+                  statement {
+                    type: If
+                    ifStat {
+                      condition {
+                        type: InstanceOf
+                        instanceOf {
+                          expr {
+                            type: VarRef
+                            varRef {
+                              name: "temp1"
+                            }
+                          }
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "Exception"
+                            }
+                          }
+                        }
+                      }
+                      then {
+                        type: Block
+                        block {
+                          statement {
+                            type: VarDef
+                            varDef {
+                              tpe {
+                                type: Named
+                                namedType {
+                                  pkg: "java.lang"
+                                  name: "Exception"
+                                }
+                              }
+                              name: "temp2"
+                              initializer {
+                                type: Cast
+                                cast {
+                                  expr {
+                                    type: VarRef
+                                    varRef {
+                                      name: "temp1"
+                                    }
+                                  }
+                                  tpe {
+                                    type: Named
+                                    namedType {
+                                      pkg: "java.lang"
+                                      name: "Exception"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          statement {
+                            type: VarDef
+                            varDef {
+                              tpe {
+                                type: Named
+                                namedType {
+                                  pkg: "java.lang"
+                                  name: "Exception"
+                                }
+                              }
+                              name: "x"
+                              initializer {
+                                type: VarRef
+                                varRef {
+                                  name: "temp2"
+                                }
+                              }
+                            }
+                          }
+                          statement {
+                            type: If
+                            ifStat {
+                              condition {
+                                type: MethodCall
+                                methodCall {
+                                  receiver {
+                                    type: ThisRef
+                                  }
+                                  signature {
+                                    name: "gd1$1"
+                                    owner {
+                                      name: "Try"
+                                    }
+                                    paramType {
+                                      type: Named
+                                      namedType {
+                                        pkg: "java.lang"
+                                        name: "Exception"
+                                      }
+                                    }
+                                    returnType {
+                                      type: Primitive
+                                      primitiveType: Boolean
+                                    }
+                                  }
+                                  argument {
+                                    type: VarRef
+                                    varRef {
+                                      name: "x"
+                                    }
+                                  }
+                                }
+                              }
+                              then {
+                                type: Block
+                                block {
+                                  statement {
+                                    type: VarDef
+                                    varDef {
+                                      tpe {
+                                        type: Named
+                                        namedType {
+                                          pkg: "java.lang"
+                                          name: "Exception"
+                                        }
+                                      }
+                                      name: "$1$"
+                                    }
+                                  }
+                                  statement {
+                                    type: LabelledStat
+                                    labelledStat {
+                                      label: "body$percent01"
+                                      statement {
+                                        type: While
+                                        whileStat {
+                                          condition {
+                                            type: Literal
+                                            literal {
+                                              type: Boolean
+                                              boolValue: true
+                                            }
+                                          }
+                                          body {
+                                            type: Block
+                                            block {
+                                              statement {
+                                                type: Block
+                                                block {
+                                                  statement {
+                                                    type: Expr
+                                                    expr {
+                                                      type: MethodCall
+                                                      methodCall {
+                                                        receiver {
+                                                          type: FieldRef
+                                                          fieldRef {
+                                                            enclosingType {
+                                                              pkg: "scala"
+                                                              name: "Predef$"
+                                                            }
+                                                            name: "MODULE$"
+                                                          }
+                                                        }
+                                                        signature {
+                                                          name: "println"
+                                                          owner {
+                                                            pkg: "scala"
+                                                            name: "Predef$"
+                                                          }
+                                                          paramType {
+                                                            type: Named
+                                                            namedType {
+                                                              pkg: "java.lang"
+                                                              name: "Object"
+                                                            }
+                                                          }
+                                                          returnType {
+                                                            type: Void
+                                                          }
+                                                        }
+                                                        argument {
+                                                          type: Binary
+                                                          binary {
+                                                            op: Concat
+                                                            lhs {
+                                                              type: Literal
+                                                              literal {
+                                                                type: String
+                                                                stringValue: "first case "
+                                                              }
+                                                            }
+                                                            rhs {
+                                                              type: VarRef
+                                                              varRef {
+                                                                name: "x"
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                              statement {
+                                                type: Break
+                                                break {
+                                                  label: "body$percent01"
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              elsee {
+                                type: Block
+                                block {
+                                  statement {
+                                    type: Expr
+                                    expr {
+                                      type: MethodCall
+                                      methodCall {
+                                        receiver {
+                                          type: FieldRef
+                                          fieldRef {
+                                            enclosingType {
+                                              pkg: "scala"
+                                              name: "Predef$"
+                                            }
+                                            name: "MODULE$"
+                                          }
+                                        }
+                                        signature {
+                                          name: "println"
+                                          owner {
+                                            pkg: "scala"
+                                            name: "Predef$"
+                                          }
+                                          paramType {
+                                            type: Named
+                                            namedType {
+                                              pkg: "java.lang"
+                                              name: "Object"
+                                            }
+                                          }
+                                          returnType {
+                                            type: Void
+                                          }
+                                        }
+                                        argument {
+                                          type: Binary
+                                          binary {
+                                            op: Concat
+                                            lhs {
+                                              type: Literal
+                                              literal {
+                                                type: String
+                                                stringValue: "second case "
+                                              }
+                                            }
+                                            rhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "temp2"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      elsee {
+                        type: Block
+                        block {
+                          statement {
+                            type: Throw
+                            throwStat {
+                              expression {
+                                type: VarRef
+                                varRef {
+                                  name: "ex$1"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
+          }
         }
-      else
-        {
-          throw ex$1;
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "typedWildcardTry"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Try
+          tryStat {
+            block {
+              type: Block
+              block {
+              }
+            }
+            catch {
+              tpe {
+                pkg: "java.lang"
+                name: "ClassCastException"
+              }
+              param: "$2$"
+              body {
+                type: Block
+                block {
+                }
+              }
+            }
+          }
         }
+      }
     }
   }
-  
-  public V; typedWildcardTry() {
-    try {
-      
-    } catch(Ljava/lang/ClassCastException; $WILDCARD) {
-      
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "wildcardTry"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Try
+          tryStat {
+            block {
+              type: Block
+              block {
+              }
+            }
+            catch {
+              tpe {
+                pkg: "java.lang"
+                name: "Throwable"
+              }
+              param: "$3$"
+              body {
+                type: Block
+                block {
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
-  
-  public V; wildcardTry() {
-    try {
-      
-    } catch(Ljava/lang/Throwable; $WILDCARD) {
-      
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "tryPlusFinally"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Try
+          tryStat {
+            block {
+              type: Block
+              block {
+              }
+            }
+            finalizer {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "Predef$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "println"
+                        owner {
+                          pkg: "scala"
+                          name: "Predef$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "Object"
+                          }
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                      argument {
+                        type: Literal
+                        literal {
+                          type: String
+                          stringValue: "finally"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
-  
-  public V; tryPlusFinally() {
-    try {
-      
-    } finally {
-      Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("finally");
+}
+member {
+  type: Method
+  modifiers {
+    isPrivate: true
+    isFinal: true
+  }
+  method {
+    name: "gd1$1"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Exception"
+        }
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: VarRef
+                      varRef {
+                        name: "x$1"
+                      }
+                    }
+                    signature {
+                      name: "getMessage"
+                      owner {
+                        pkg: "java.lang"
+                        name: "Throwable"
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "String"
+                        }
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: String
+                    stringValue: "test"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
-  
-  private final Z; gd1$1(Ljava/lang/Exception; x$1) {
-    return Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(x$1.(Ljava/lang/Throwable;::getMessage()Ljava/lang/String;)(), "test");
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Try"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,10 +1,90 @@
-public class LExtendsTraitThatExtendsClass; extends LParentForTrait; implements LExtendsClassTrait;, Lscala/ScalaObject; {
-  
-  public I; z() {
-    return 0;
+name {
+  name: "ExtendsTraitThatExtendsClass"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  name: "ParentForTrait"
+}
+implements {
+  name: "ExtendsClassTrait"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this() {
-    (LParentForTrait;::super()V;)();
+  method {
+    name: "z"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "ExtendsTraitThatExtendsClass"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  name: "ParentForTrait"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    name: "ParentForTrait"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,0 +1,363 @@
+/* Jribble format of abstract syntax trees. These trees closely
+ * match the execution model of Java bytecode, but they are
+ * trees rather than bytecodes.
+ */
+
+option optimize_for = SPEED;
+
+package jribble;
+
+option java_package = "scala.tools.nsc.backend.jribble";
+option java_outer_classname = "JribbleProtos";
+
+
+message DeclaredType {
+  required GlobalName name = 1;
+  optional bool isInterface = 2;
+  required Modifiers modifiers = 3;
+  optional GlobalName ext = 4;
+  repeated GlobalName implements = 5;
+  repeated Declaration member = 6;
+}
+
+
+message GlobalName {
+  optional string pkg = 1;
+  required string name = 2;
+}
+
+message Modifiers {
+  optional bool isPublic = 1;
+  optional bool isPrivate = 2;
+  optional bool isProtected = 3;
+  optional bool isFinal = 4;
+  optional bool isAbstract = 5;
+  optional bool isStatic = 6;
+  optional bool isVolatile = 7;
+  optional bool isNative = 8;
+}
+
+message Declaration {
+  enum DeclarationType {
+    Field = 1;
+    Method = 2;
+  }
+  required DeclarationType type = 1;
+  required Modifiers modifiers = 2;
+  optional FieldDef fieldDef = 3;
+  optional Method method = 4;
+}
+
+message FieldDef {
+  required Type tpe = 1;
+  required string name = 2;
+  optional Expr initializer = 3;
+}
+
+message Method {
+  optional bool isConstructor = 1;
+  required string name = 2;
+  repeated ParamDef paramDef = 3;
+  required Type returnType = 4;
+  optional Statement body = 5;
+}
+
+message ParamDef {
+  required string name = 1;
+  required Type tpe = 2;
+}
+
+message VarDef {
+  required Type tpe = 1;
+  required string name = 2;
+  optional Expr initializer = 3;
+}
+
+message Type {
+  enum TypeType {
+    Array = 1;
+    Named = 2;
+    Primitive = 3;
+    Void = 4;
+  }
+  required TypeType type = 1;
+  optional Type arrayElementType = 2;
+  optional GlobalName namedType = 3;
+  optional PrimitiveType primitiveType = 4;
+}
+
+enum PrimitiveType {
+  Boolean = 1;
+  Byte = 2;
+  Char = 3;
+  Double = 4;
+  Float = 5;
+  Int = 6;
+  Long = 7;
+  Short = 8;
+}
+
+message Statement {
+  enum StatementType {
+    Block = 1;    
+    Break = 2;
+    Continue = 3;
+    Expr = 4;
+    If = 5 ;
+    LabelledStat = 6;
+    Nop = 7;
+    Return = 8;
+    Switch = 9;
+    Throw = 10;
+    Try = 11;
+    VarDef = 12;
+    While = 13;
+  }
+  required StatementType type = 1;
+
+  optional Block block = 2;
+  optional Break break = 3;
+  optional Continue continueStat = 4;
+  optional Expr expr = 5;
+  optional If ifStat = 6;
+  optional LabelledStat labelledStat = 7;
+  optional Return returnStat = 8;
+  optional Switch switchStat = 9;
+  optional Throw throwStat = 10;
+  optional Try tryStat = 11;
+  optional VarDef varDef = 12;
+  optional While whileStat = 13;
+}
+
+message Expr {
+  enum ExprType {
+    ArrayLength = 1;
+    ArrayRef = 2;
+    Assignment = 3;
+    Binary = 4;
+    Cast = 5;
+    ClassLiteral = 6;
+    Conditional = 7;
+    FieldRef = 8;
+    InstanceOf = 9;
+    Literal = 10;
+    MethodCall = 11;
+    NewArray = 12;
+    NewObject = 13;
+    ThisRef = 14;
+    SuperRef = 15;
+    Unary = 16;
+    VarRef = 17;
+  }
+  required ExprType type = 1;
+  optional ArrayLength arrayLength = 2;
+  optional ArrayRef arrayRef = 3;
+  optional Assignment assignment = 4;
+  optional Binary binary = 5;
+  optional Cast cast = 6;
+  optional ClassLiteral classLiteral = 7;
+  optional Conditional conditional = 8;
+  optional FieldRef fieldRef = 9;
+  optional InstanceOf instanceOf = 10;
+  optional Literal literal = 11;
+  optional MethodCall methodCall = 12;
+  optional NewArray newArray = 13;
+  optional NewObject newObject = 14;
+  optional Unary unary = 15;
+  optional VarRef varRef = 16;
+}
+
+message ArrayLength {
+  required Expr array = 1;
+}
+
+message ArrayRef {
+  required Expr array = 1;
+  required Expr index = 2;
+}
+
+message Assignment {
+  required Expr lhs = 1;
+  required Expr rhs = 2;
+}
+
+message Binary {
+  enum BinaryOp {
+    And = 1;
+    BitAnd = 2;
+    BitLeftShift = 3;
+    BitOr = 4;
+    BitRightShift = 5;
+    BitUnsignedRightShift = 6;
+    BitXor = 7;
+    Concat = 8;
+    Divide = 9;
+    Equal = 10;
+    Greater = 11;
+    GreaterOrEqual = 12;
+    Lesser = 13;
+    LesserOrEqual = 14;
+    Minus = 15;
+    Modulus = 16;
+    Multiply = 17;
+    NotEqual = 18;
+    Or = 19;
+    Plus = 20;
+  }
+  required BinaryOp op = 1;
+  required Expr lhs = 2;
+  required Expr rhs = 3;
+}
+
+message Cast {
+  required Expr expr = 1;
+  required Type tpe = 2;
+}
+
+message ClassLiteral {
+  required Type tpe = 1;
+}
+
+message Conditional {
+  required Expr condition = 1;
+  required Type tpe = 2;
+  required Expr then = 3;
+  required Expr elsee = 4;
+}
+
+message FieldRef {
+  optional Expr qualifier = 1;
+  required GlobalName enclosingType  = 2;
+  required string name = 3;
+}
+
+message InstanceOf {
+  required Expr expr = 1;
+  required Type tpe = 2;
+}
+
+message Literal {
+  enum LiteralType {
+    Boolean = 1;
+    Byte = 2;
+    Char = 3;
+    Double = 4;
+    Float = 5;
+    Int = 6;
+    Long = 7;
+    Null = 8;
+    Short = 9;
+    String = 10;
+  }
+  required LiteralType type = 1;
+  optional bool boolValue = 2;
+  optional int32 byteValue = 3;
+  optional int32 charValue = 4;
+  optional double doubleValue = 5;
+  optional float floatValue = 6;
+  optional int32 intValue = 7;
+  optional int64 longValue = 8;
+  optional int32 shortValue = 9;
+  optional string stringValue = 10;
+}
+
+message MethodCall {
+  optional Expr receiver = 1;
+  required MethodSignature signature = 2;
+  repeated Expr argument = 3;
+}
+
+message MethodSignature {
+  required string name = 1;
+  required GlobalName owner = 2;
+  repeated Type paramType = 3;
+  required Type returnType = 4;
+}
+
+message NewArray {
+  required Type elementType = 1;
+  required int32 dimensions = 2;
+  repeated Expr dimensionExpr = 3;
+  repeated Expr initExpr = 4;
+}
+
+message NewObject {
+  required GlobalName clazz = 1;
+  // the name in the signature is "new"
+  required MethodSignature signature = 2;
+  repeated Expr argument = 3;
+}
+
+message Unary {
+  enum UnaryOp {
+    BitNot = 1;
+    Neg = 2;
+    Not = 3;
+    Pos = 4;
+  }
+  required UnaryOp op = 1;
+  required Expr expr = 2;
+}
+
+message VarRef {
+  required string name = 1;
+}
+
+message Block {
+  repeated Statement statement = 1;
+}
+
+message Break {
+  optional string label = 1;
+}
+
+message Continue {
+  optional string label = 1;
+}
+
+message If {
+  required Expr condition = 1;
+  required Statement then = 2;
+  optional Statement elsee = 3;
+}
+
+message LabelledStat {
+  required string label = 1;
+  required Statement statement = 2;
+}
+
+message Return {
+  optional Expr expression = 1;
+}
+
+message Switch {
+  required Expr expression = 1;
+  repeated Case case = 2;
+  optional Statement defaultCase = 3;
+}
+
+message Case {
+  required Literal constant = 1;
+  required Statement statement = 2;
+}
+
+message Throw {
+  required Expr expression = 1;
+}
+
+message Try {
+  required Statement block = 1;
+  repeated Catch catch = 2;
+  optional Statement finalizer = 3;
+}
+
+message Catch {
+  required GlobalName tpe = 1;
+  required string param = 2;
+  required Statement body = 3;
+}
+
+message While {
+  required Expr condition = 1;
+  required Statement body = 2;
+}

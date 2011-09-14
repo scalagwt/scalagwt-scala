@@ -1,27 +1,518 @@
-public class LCast; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public V; isInstanceOfCheckOnAnyRef() {
-    Ljava/lang/Object; x = (new (Ljava/lang/Object;::this()V;)());
-    Z; isString = x.<instanceof>(Ljava/lang/String;);
-    Z; isByte = x.<instanceof>(Ljava/lang/Byte;);
-    Z; isUnit = x.<instanceof>(Lscala/runtime/BoxedUnit;);
+name {
+  name: "Cast"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; asInstanceOfCastFromAny() {
-    Ljava/lang/Object; x = (new (Ljava/lang/Object;::this()V;)());
-    Ljava/lang/String; y = x.<cast>(Ljava/lang/String;);
-    B; b = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToByte(Ljava/lang/Object;)B;)(x);
-    Lscala/runtime/BoxedUnit; u = x.<cast>(Lscala/runtime/BoxedUnit;);
+  method {
+    name: "isInstanceOfCheckOnAnyRef"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "Object"
+              }
+            }
+            name: "x"
+            initializer {
+              type: NewObject
+              newObject {
+                clazz {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                signature {
+                  name: "new"
+                  owner {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "isString"
+            initializer {
+              type: InstanceOf
+              instanceOf {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "isByte"
+            initializer {
+              type: InstanceOf
+              instanceOf {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Byte"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "isUnit"
+            initializer {
+              type: InstanceOf
+              instanceOf {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "BoxedUnit"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public V; asInstanceOfCastFromInt() {
-    I; x = 0;
-    Ljava/lang/String; y = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x).<cast>(Ljava/lang/String;);
-    B; b = x.<cast>(B;);
-    Lscala/runtime/BoxedUnit; u = Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x).<cast>(Lscala/runtime/BoxedUnit;);
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+  method {
+    name: "asInstanceOfCastFromAny"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "Object"
+              }
+            }
+            name: "x"
+            initializer {
+              type: NewObject
+              newObject {
+                clazz {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                signature {
+                  name: "new"
+                  owner {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "y"
+            initializer {
+              type: Cast
+              cast {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Byte
+            }
+            name: "b"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "unboxToByte"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Byte
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "scala.runtime"
+                name: "BoxedUnit"
+              }
+            }
+            name: "u"
+            initializer {
+              type: Cast
+              cast {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "BoxedUnit"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "asInstanceOfCastFromInt"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "x"
+            initializer {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "y"
+            initializer {
+              type: Cast
+              cast {
+                expr {
+                  type: MethodCall
+                  methodCall {
+                    signature {
+                      name: "boxToInteger"
+                      owner {
+                        pkg: "scala.runtime"
+                        name: "BoxesRunTime"
+                      }
+                      paramType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Integer"
+                        }
+                      }
+                    }
+                    argument {
+                      type: VarRef
+                      varRef {
+                        name: "x"
+                      }
+                    }
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Byte
+            }
+            name: "b"
+            initializer {
+              type: Cast
+              cast {
+                expr {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Byte
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "scala.runtime"
+                name: "BoxedUnit"
+              }
+            }
+            name: "u"
+            initializer {
+              type: Cast
+              cast {
+                expr {
+                  type: MethodCall
+                  methodCall {
+                    signature {
+                      name: "boxToInteger"
+                      owner {
+                        pkg: "scala.runtime"
+                        name: "BoxesRunTime"
+                      }
+                      paramType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Integer"
+                        }
+                      }
+                    }
+                    argument {
+                      type: VarRef
+                      varRef {
+                        name: "x"
+                      }
+                    }
+                  }
+                }
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "BoxedUnit"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Cast"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

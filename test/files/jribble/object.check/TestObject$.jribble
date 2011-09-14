@@ -1,30 +1,352 @@
-public class LTestObject$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LTestObject$; MODULE$ = new (LTestObject$;::this()V;)();
-  
-  private I; field$u0020;
-  
-  public I; field() {
-    return this.(LTestObject$;)field$u0020;
+name {
+  name: "TestObject$"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  private I; mutableField$u0020;
-  
-  public I; mutableField() {
-    return this.(LTestObject$;)mutableField$u0020;
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "field$u0020"
   }
-  
-  public V; mutableField_$eq(I; x$1) {
-    this.(LTestObject$;)mutableField$u0020 = x$1;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public I; method(I; x) {
-    return x;
+  method {
+    name: "field"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "TestObject$"
+                }
+                name: "field$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    LTestObject$;.MODULE$ = this;
-    this.(LTestObject$;)field$u0020 = 0;
-    this.(LTestObject$;)mutableField$u0020 = 0;
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "mutableField$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "mutableField"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "TestObject$"
+                }
+                name: "mutableField$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "mutableField_$eq"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "TestObject$"
+                  }
+                  name: "mutableField$u0020"
+                }
+              }
+              rhs {
+                type: VarRef
+                varRef {
+                  name: "x$1"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "method"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "x"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "TestObject$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    name: "TestObject$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              rhs {
+                type: ThisRef
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "TestObject$"
+                  }
+                  name: "field$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 0
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "TestObject$"
+                  }
+                  name: "mutableField$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 0
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "TestObject$"
+      }
+    }
+    name: "MODULE$"
+    initializer {
+      type: NewObject
+      newObject {
+        clazz {
+          name: "TestObject$"
+        }
+        signature {
+          name: "new"
+          owner {
+            name: "TestObject$"
+          }
+          returnType {
+            type: Named
+            namedType {
+              name: "TestObject$"
+            }
+          }
+        }
+      }
+    }
   }
 }

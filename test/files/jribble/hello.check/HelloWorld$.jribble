@@ -1,12 +1,188 @@
-public class LHelloWorld$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LHelloWorld$; MODULE$ = new (LHelloWorld$;::this()V;)();
-  
-  public V; main(Ljava/lang/String;[ args) {
-    Lscala/Predef$;.MODULE$.(Lscala/Predef$;::println(Ljava/lang/Object;)V;)("Hello, world!");
+name {
+  name: "HelloWorld$"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    LHelloWorld$;.MODULE$ = this;
+  method {
+    name: "main"
+    paramDef {
+      name: "args"
+      tpe {
+        type: Array
+        arrayElementType {
+          type: Named
+          namedType {
+            pkg: "java.lang"
+            name: "String"
+          }
+        }
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    pkg: "scala"
+                    name: "Predef$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              signature {
+                name: "println"
+                owner {
+                  pkg: "scala"
+                  name: "Predef$"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+                returnType {
+                  type: Void
+                }
+              }
+              argument {
+                type: Literal
+                literal {
+                  type: String
+                  stringValue: "Hello, world!"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "HelloWorld$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    name: "HelloWorld$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              rhs {
+                type: ThisRef
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "HelloWorld$"
+      }
+    }
+    name: "MODULE$"
+    initializer {
+      type: NewObject
+      newObject {
+        clazz {
+          name: "HelloWorld$"
+        }
+        signature {
+          name: "new"
+          owner {
+            name: "HelloWorld$"
+          }
+          returnType {
+            type: Named
+            namedType {
+              name: "HelloWorld$"
+            }
+          }
+        }
+      }
+    }
   }
 }

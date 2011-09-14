@@ -1,4 +1,76 @@
-public final class LHelloWorld; {
-  public final static V; main(Ljava/lang/String;[ x_0) { LHelloWorld$;.MODULE$.(LHelloWorld$;::main(Ljava/lang/String;[)V;)(x_0); }
-  
+name {
+  name: "HelloWorld"
+}
+modifiers {
+  isPublic: true
+  isFinal: true
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isFinal: true
+    isStatic: true
+  }
+  method {
+    name: "main"
+    paramDef {
+      name: "x_0"
+      tpe {
+        type: Array
+        arrayElementType {
+          type: Named
+          namedType {
+            pkg: "java.lang"
+            name: "String"
+          }
+        }
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Expr
+      expr {
+        type: MethodCall
+        methodCall {
+          receiver {
+            type: FieldRef
+            fieldRef {
+              enclosingType {
+                name: "HelloWorld$"
+              }
+              name: "MODULE$"
+            }
+          }
+          signature {
+            name: "main"
+            owner {
+              name: "HelloWorld$"
+            }
+            paramType {
+              type: Array
+              arrayElementType {
+                type: Named
+                namedType {
+                  pkg: "java.lang"
+                  name: "String"
+                }
+              }
+            }
+            returnType {
+              type: Void
+            }
+          }
+          argument {
+            type: VarRef
+            varRef {
+              name: "x_0"
+            }
+          }
+        }
+      }
+    }
+  }
 }

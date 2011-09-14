@@ -1,10 +1,115 @@
-public class LEnclosing$Inner2; extends LEnclosing$Inner1; implements Lscala/ScalaObject; {
-  
-  public LEnclosing; Enclosing$Inner2$$$outer() {
-    return this.(LEnclosing$Inner1;)$outer$u0020;
+name {
+  name: "Enclosing$Inner2"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  name: "Enclosing$Inner1"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this(LEnclosing; $outer) {
-    (LEnclosing$Inner1;::super(LEnclosing;)V;)($outer);
+  method {
+    name: "Enclosing$Inner2$$$outer"
+    returnType {
+      type: Named
+      namedType {
+        name: "Enclosing"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Enclosing$Inner1"
+                }
+                name: "$outer$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    paramDef {
+      name: "$outer"
+      tpe {
+        type: Named
+        namedType {
+          name: "Enclosing"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "Enclosing$Inner2"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  name: "Enclosing$Inner1"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    name: "Enclosing"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    name: "Enclosing$Inner1"
+                  }
+                }
+              }
+              argument {
+                type: VarRef
+                varRef {
+                  name: "$outer"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

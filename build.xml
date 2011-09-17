@@ -593,16 +593,6 @@ QUICK BUILD (QUICK)
         <include name="Unit.jribble"/>
       </fileset>
     </delete>
-    <scalacfork
-      destdir="${build-quick.dir}/gwt/library"
-      compilerpathref="quick.classpath"
-      params="${scalac.args.quick} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
-      srcdir="${build-quick.dir}/jdk2ikvm/library"
-      target="jribble"
-      jvmargs="${scalacfork.jvmargs}">
-      <include name="scala/util/continuations/**"/>
-      <compilationpath refid="quick.compilation.path"/>
-    </scalacfork>
     <javac
       srcdir="${build-quick.dir}/jdk2ikvm/library"
       destdir="${build-quick.dir}/gwt/library"
@@ -611,6 +601,18 @@ QUICK BUILD (QUICK)
       target="1.5" source="1.5">
       <compilerarg line="${javac.args}"/>
     </javac>
+    <scalacfork
+      destdir="${build-quick.dir}/gwt/library"
+      compilerpathref="quick.classpath"
+      params="${scalac.args.jribble} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      target="jribble"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/util/continuations/**"/>
+      <compilationpath>
+        <pathelement location="${build-quick.dir}/gwt/library"/>
+      </compilationpath>
+    </scalacfork>
     <propertyfile file="${build-quick.dir}/gwt/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>

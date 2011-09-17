@@ -213,7 +213,7 @@ INITIALISATION
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
 	<!-- Define gwt.classpath in build.properties file, it must include gwt-dev.jar, gwt-user.jar, gwt-lang.jar and gwt-java_lang.jar
 	     Last two jars has to be built as described here: https://groups.google.com/d/topic/scalagwt/AUp4r9Qu9Zg/discussion -->
-	<property name="scalac.args.jribble" value="${scalac.args.quick} -javabootclasspath ${gwt.classpath} -g:notailcalls -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar"/>
+	<property name="scalac.args.jribble" value="${scalac.args.quick} -javabootclasspath ${gwt.classpath} -g:notailcalls -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar -Yjribble-text"/>
   <!-- Setting-up Ant contrib tasks -->
     <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${lib.dir}/ant/ant-contrib.jar"/>
     <!-- This is the start time for the distribution -->

@@ -165,7 +165,7 @@ PROPERTIES
   <property name="jline.jar" value="${lib.dir}/jline.jar"/>
   <property name="ant.jar" value="${ant.home}/lib/ant.jar"/>
   <property name="scalacheck.jar" value="${lib.dir}/scalacheck.jar"/>
-  <property name="protobuf.jar" value="${lib.dir}/protobuf-java-2.2.0.jar"/>
+  <property name="protobuf.jar" value="${lib.dir}/protobuf-java-2.4.1.jar"/>
 	  
   <!-- Sets location of build folders -->
   <property name="build.dir" value="${basedir}/build"/>

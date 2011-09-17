@@ -86,7 +86,7 @@ class ConsoleFileManager extends FileManager {
       latestCompFile    = testClassesDir / "compiler"
       latestPartestFile = testClassesDir / "partest"
       latestFjbgFile    = testParent / "lib" / "fjbg.jar"
-      latestProtobufFile = testParent / "lib" / "protobuf-java-2.2.0.jar"
+      latestProtobufFile = testParent / "lib" / "protobuf-java-2.4.1.jar"
     }
     else if (testBuild.isDefined) {
       val dir = Path(testBuild.get)
@@ -155,7 +155,7 @@ class ConsoleFileManager extends FileManager {
       pairs(pairs.keys max)()
 
       latestFjbgFile = prefixFile("lib/fjbg.jar")
-      latestProtobufFile = prefixFile("lib/protobuf-java-2.2.0.jar")
+      latestProtobufFile = prefixFile("lib/protobuf-java-2.4.1.jar")
     }
 
     LATEST_LIB = latestLibFile.getAbsolutePath

@@ -423,6 +423,10 @@ member {
                         name: "x$1"
                       }
                     }
+                    tpe {
+                      type: Primitive
+                      primitiveType: Boolean
+                    }
                   }
                 }
                 rhs {
@@ -493,6 +497,10 @@ member {
                                 }
                               }
                             }
+                            tpe {
+                              type: Primitive
+                              primitiveType: Boolean
+                            }
                           }
                         }
                         rhs {
@@ -527,9 +535,21 @@ member {
                             }
                           }
                         }
+                        tpe {
+                          type: Primitive
+                          primitiveType: Boolean
+                        }
                       }
                     }
+                    tpe {
+                      type: Primitive
+                      primitiveType: Boolean
+                    }
                   }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
                 }
               }
             }
@@ -674,6 +694,10 @@ member {
                     type: Int
                     intValue: 0
                   }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
                 }
               }
             }

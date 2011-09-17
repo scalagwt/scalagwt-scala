@@ -89,6 +89,10 @@ member {
                         intValue: 1
                       }
                     }
+                    tpe {
+                      type: Primitive
+                      primitiveType: Int
+                    }
                   }
                 }
                 rhs {
@@ -97,6 +101,10 @@ member {
                     type: Int
                     intValue: 0
                   }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
                 }
               }
             }
@@ -133,6 +141,10 @@ member {
                                 intValue: 1
                               }
                             }
+                            tpe {
+                              type: Primitive
+                              primitiveType: Int
+                            }
                           }
                         }
                         rhs {
@@ -141,6 +153,10 @@ member {
                             type: Int
                             intValue: 0
                           }
+                        }
+                        tpe {
+                          type: Primitive
+                          primitiveType: Boolean
                         }
                       }
                     }
@@ -224,6 +240,10 @@ member {
                                       type: Int
                                       intValue: 1
                                     }
+                                  }
+                                  tpe {
+                                    type: Primitive
+                                    primitiveType: Int
                                   }
                                 }
                               }

@@ -225,6 +225,10 @@ member {
                     }
                   }
                 }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
               }
             }
           }
@@ -913,6 +917,10 @@ member {
                     name: "s2"
                   }
                 }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
               }
             }
           }
@@ -940,6 +948,10 @@ member {
                   varRef {
                     name: "s2"
                   }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
                 }
               }
             }

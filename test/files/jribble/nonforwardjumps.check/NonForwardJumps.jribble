@@ -217,6 +217,10 @@ member {
                                     intValue: 0
                                   }
                                 }
+                                tpe {
+                                  type: Primitive
+                                  primitiveType: Boolean
+                                }
                               }
                             }
                             then {
@@ -292,6 +296,10 @@ member {
                                               intValue: 1
                                             }
                                           }
+                                          tpe {
+                                            type: Primitive
+                                            primitiveType: Int
+                                          }
                                         }
                                       }
                                     }
@@ -323,6 +331,10 @@ member {
                                             varRef {
                                               name: "n"
                                             }
+                                          }
+                                          tpe {
+                                            type: Primitive
+                                            primitiveType: Int
                                           }
                                         }
                                       }

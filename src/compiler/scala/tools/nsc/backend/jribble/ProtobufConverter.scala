@@ -304,6 +304,7 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
           binary.setOp(binaryOp(prim).get)
           binary.setLhs(cvt(receiver))
           binary.setRhs(cvt(args.head))
+          binary.setTpe(convert(tree.tpe))
           proto.setBinary(binary.build)
         } else if (prim == APPLY) {
           proto.setType(P.Expr.ExprType.ArrayRef)

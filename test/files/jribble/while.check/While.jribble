@@ -73,6 +73,10 @@ member {
                     intValue: 0
                   }
                 }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
               }
             }
             then {
@@ -117,6 +121,10 @@ member {
                                             type: Int
                                             intValue: 0
                                           }
+                                        }
+                                        tpe {
+                                          type: Primitive
+                                          primitiveType: Boolean
                                         }
                                       }
                                     }
@@ -329,6 +337,10 @@ member {
                                     type: Int
                                     intValue: 0
                                   }
+                                }
+                                tpe {
+                                  type: Primitive
+                                  primitiveType: Boolean
                                 }
                               }
                             }

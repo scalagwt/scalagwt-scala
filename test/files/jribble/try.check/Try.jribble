@@ -254,6 +254,13 @@ member {
                                                                 name: "x"
                                                               }
                                                             }
+                                                            tpe {
+                                                              type: Named
+                                                              namedType {
+                                                                pkg: "java.lang"
+                                                                name: "String"
+                                                              }
+                                                            }
                                                           }
                                                         }
                                                       }
@@ -325,6 +332,13 @@ member {
                                               type: VarRef
                                               varRef {
                                                 name: "temp2"
+                                              }
+                                            }
+                                            tpe {
+                                              type: Named
+                                              namedType {
+                                                pkg: "java.lang"
+                                                name: "String"
                                               }
                                             }
                                           }

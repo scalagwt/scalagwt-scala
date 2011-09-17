@@ -105,7 +105,6 @@ message Statement {
     Expr = 4;
     If = 5 ;
     LabelledStat = 6;
-    Nop = 7;
     Return = 8;
     Switch = 9;
     Throw = 10;
@@ -207,6 +206,7 @@ message Binary {
   required BinaryOp op = 1;
   required Expr lhs = 2;
   required Expr rhs = 3;
+  required Type tpe = 4;
 }
 
 message Cast {

@@ -110,6 +110,10 @@ member {
                     type: Null
                   }
                 }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
               }
             }
             then {

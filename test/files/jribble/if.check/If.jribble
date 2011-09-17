@@ -604,6 +604,10 @@ member {
                     intValue: 0
                   }
                 }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
               }
             }
             then {
@@ -653,6 +657,10 @@ member {
                             type: Int
                             intValue: 1
                           }
+                        }
+                        tpe {
+                          type: Primitive
+                          primitiveType: Boolean
                         }
                       }
                     }
@@ -704,6 +712,10 @@ member {
                                     intValue: 2
                                   }
                                 }
+                                tpe {
+                                  type: Primitive
+                                  primitiveType: Boolean
+                                }
                               }
                             }
                             then {
@@ -753,6 +765,10 @@ member {
                                             type: Int
                                             intValue: 3
                                           }
+                                        }
+                                        tpe {
+                                          type: Primitive
+                                          primitiveType: Boolean
                                         }
                                       }
                                     }
@@ -804,6 +820,10 @@ member {
                                                     intValue: 4
                                                   }
                                                 }
+                                                tpe {
+                                                  type: Primitive
+                                                  primitiveType: Boolean
+                                                }
                                               }
                                             }
                                             then {
@@ -853,6 +873,10 @@ member {
                                                             type: Int
                                                             intValue: 5
                                                           }
+                                                        }
+                                                        tpe {
+                                                          type: Primitive
+                                                          primitiveType: Boolean
                                                         }
                                                       }
                                                     }
@@ -904,6 +928,10 @@ member {
                                                                     intValue: 6
                                                                   }
                                                                 }
+                                                                tpe {
+                                                                  type: Primitive
+                                                                  primitiveType: Boolean
+                                                                }
                                                               }
                                                             }
                                                             then {
@@ -953,6 +981,10 @@ member {
                                                                             type: Int
                                                                             intValue: 7
                                                                           }
+                                                                        }
+                                                                        tpe {
+                                                                          type: Primitive
+                                                                          primitiveType: Boolean
                                                                         }
                                                                       }
                                                                     }
@@ -1004,6 +1036,10 @@ member {
                                                                                     intValue: 8
                                                                                   }
                                                                                 }
+                                                                                tpe {
+                                                                                  type: Primitive
+                                                                                  primitiveType: Boolean
+                                                                                }
                                                                               }
                                                                             }
                                                                             then {
@@ -1053,6 +1089,10 @@ member {
                                                                                             type: Int
                                                                                             intValue: 9
                                                                                           }
+                                                                                        }
+                                                                                        tpe {
+                                                                                          type: Primitive
+                                                                                          primitiveType: Boolean
                                                                                         }
                                                                                       }
                                                                                     }
@@ -1104,6 +1144,10 @@ member {
                                                                                                     intValue: 10
                                                                                                   }
                                                                                                 }
+                                                                                                tpe {
+                                                                                                  type: Primitive
+                                                                                                  primitiveType: Boolean
+                                                                                                }
                                                                                               }
                                                                                             }
                                                                                             then {
@@ -1153,6 +1197,10 @@ member {
                                                                                                             type: Int
                                                                                                             intValue: 11
                                                                                                           }
+                                                                                                        }
+                                                                                                        tpe {
+                                                                                                          type: Primitive
+                                                                                                          primitiveType: Boolean
                                                                                                         }
                                                                                                       }
                                                                                                     }
@@ -1204,6 +1252,10 @@ member {
                                                                                                                     intValue: 12
                                                                                                                   }
                                                                                                                 }
+                                                                                                                tpe {
+                                                                                                                  type: Primitive
+                                                                                                                  primitiveType: Boolean
+                                                                                                                }
                                                                                                               }
                                                                                                             }
                                                                                                             then {
@@ -1253,6 +1305,10 @@ member {
                                                                                                                             type: Int
                                                                                                                             intValue: 13
                                                                                                                           }
+                                                                                                                        }
+                                                                                                                        tpe {
+                                                                                                                          type: Primitive
+                                                                                                                          primitiveType: Boolean
                                                                                                                         }
                                                                                                                       }
                                                                                                                     }

@@ -1,6 +1,34 @@
-public abstract class LOuterTrait$class; {
-  
-  public static V; $init$(LOuterTrait; $this) {
-    
+name {
+  name: "OuterTrait$class"
+}
+modifiers {
+  isPublic: true
+  isAbstract: true
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  method {
+    name: "$init$"
+    paramDef {
+      name: "$this"
+      tpe {
+        type: Named
+        namedType {
+          name: "OuterTrait"
+        }
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
   }
 }

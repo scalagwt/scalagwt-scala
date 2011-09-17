@@ -1,5 +1,8 @@
+*~
 /build
-/src/intellij
+/build.properties
+/gwtlib
 /sandbox/
+/src/intellij
 /test/files/jribble/*.log
 /test/files/jribble/*.obj

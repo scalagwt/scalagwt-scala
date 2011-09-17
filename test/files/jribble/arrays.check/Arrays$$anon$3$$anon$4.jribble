@@ -1,18 +1,265 @@
-public final class LArrays$$anon$3$$anon$4; extends Ljava/lang/Object; implements Lscala/reflect/FactoryClassManifest$Factory; {
-  
-  public Ljava/lang/String;[[ newInstance(I; len) {
-    return new Ljava/lang/String;[len][];
+name {
+  name: "Arrays$$anon$3$$anon$4"
+}
+modifiers {
+  isPublic: true
+  isFinal: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala.reflect"
+  name: "FactoryClassManifest$Factory"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public Lscala/reflect/FactoryClassManifest$Factory; forArrayOf() {
-    Lscala/sys/package$;.MODULE$.(Lscala/sys/package$;::error(Ljava/lang/String;)Lscala/runtime/Nothing$;)("FactoryManifests support limited depth of generic Array nesting.");
+  method {
+    name: "newInstance"
+    paramDef {
+      name: "len"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Array
+      arrayElementType {
+        type: Array
+        arrayElementType {
+          type: Named
+          namedType {
+            pkg: "java.lang"
+            name: "String"
+          }
+        }
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: NewArray
+              newArray {
+                elementType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "String"
+                  }
+                }
+                dimensions: 2
+                dimensionExpr {
+                  type: VarRef
+                  varRef {
+                    name: "len"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public Ljava/lang/Object; newInstance(I; len) {
-    return this.(LArrays$$anon$3$$anon$4;::newInstance(I;)Ljava/lang/String;[[)(len);
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this(LArrays$$anon$3; $outer) {
-    (Ljava/lang/Object;::super()V;)();
+  method {
+    name: "forArrayOf"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala.reflect"
+        name: "FactoryClassManifest$Factory"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    pkg: "scala.sys"
+                    name: "package$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              signature {
+                name: "error"
+                owner {
+                  pkg: "scala.sys"
+                  name: "package$"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "String"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "Nothing$"
+                  }
+                }
+              }
+              argument {
+                type: Literal
+                literal {
+                  type: String
+                  stringValue: "FactoryManifests support limited depth of generic Array nesting."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "newInstance"
+    paramDef {
+      name: "len"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "newInstance"
+                  owner {
+                    name: "Arrays$$anon$3$$anon$4"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  returnType {
+                    type: Array
+                    arrayElementType {
+                      type: Array
+                      arrayElementType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "String"
+                        }
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "len"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    paramDef {
+      name: "$outer"
+      tpe {
+        type: Named
+        namedType {
+          name: "Arrays$$anon$3"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "Arrays$$anon$3$$anon$4"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,19 +1,221 @@
-public class LFoo$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public static LFoo$; MODULE$ = new (LFoo$;::this()V;)();
-  
-  private I; x$u0020;
-  
-  public I; x() {
-    return this.(LFoo$;)x$u0020;
+name {
+  name: "Foo$"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  public I; y() {
-    return 2;
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "x$u0020"
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    LFoo$;.MODULE$ = this;
-    this.(LFoo$;)x$u0020 = 1;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Foo$"
+                }
+                name: "x$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "y"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 2
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Foo$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    name: "Foo$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              rhs {
+                type: ThisRef
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "Foo$"
+                  }
+                  name: "x$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "Foo$"
+      }
+    }
+    name: "MODULE$"
+    initializer {
+      type: NewObject
+      newObject {
+        clazz {
+          name: "Foo$"
+        }
+        signature {
+          name: "new"
+          owner {
+            name: "Foo$"
+          }
+          returnType {
+            type: Named
+            namedType {
+              name: "Foo$"
+            }
+          }
+        }
+      }
+    }
   }
 }

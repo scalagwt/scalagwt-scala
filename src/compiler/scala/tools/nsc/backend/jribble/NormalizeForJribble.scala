@@ -40,6 +40,8 @@ import scala.tools.nsc.symtab.SymbolTable
  *      side effects.
  * <li> Replace box and unbox operations by calls into the Scala
  *      runtime.
+ * <li> The constructor of a static module class also fills in
+ *      the MODULE field.
  * </ul>
  * 
  * TODO(spoon): in constructor calls within a constructor, the extracted
@@ -247,7 +249,6 @@ with JribbleNormalization
       case tree@DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         val savedMethodSym = currentMethodSym
         currentMethodSym = tree.symbol
-        // TODO(spoon): handle constructors
         val res = treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt,
                                 transformStatement(explicitBlockWithReturn(rhs)))
         currentMethodSym = savedMethodSym
@@ -257,7 +258,8 @@ with JribbleNormalization
         newStats ++= paramLocals map (ValDef)
         recordLabelDefDuring(tree.symbol, paramLocals) {
           if (isUnitOrNothing(rhs)) {
-            treeCopy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
+            newStats += treeCopy.LabelDef(tree, name, params, transformStatement(explicitBlock(rhs)))
+            unitLiteral
           } else {
             val resultLocal = allocLocal(rhs.tpe, tree.pos)
             newStats += ValDef(resultLocal)
@@ -355,7 +357,7 @@ with JribbleNormalization
             unitLiteral
           case None =>
             cunit.error(tree.pos, "Jump to LabelDef that is not enclosing jump instruction are not supported in jribble.")
-            tree
+            unitLiteral
         }
       case tree@Apply(fun @ Select(receiver, name), args) if isEqOnAnyRef(fun) => {
         assert(args.size == 1)

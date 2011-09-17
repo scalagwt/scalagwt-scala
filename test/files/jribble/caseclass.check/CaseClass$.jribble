@@ -1,37 +1,563 @@
-public class LCaseClass$; extends Lscala/runtime/AbstractFunction1; implements Lscala/ScalaObject;, Lscala/Serializable; {
-  public static LCaseClass$; MODULE$ = new (LCaseClass$;::this()V;)();
-  
-  public final Ljava/lang/String; toString() {
-    return "CaseClass";
+name {
+  name: "CaseClass$"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "scala.runtime"
+  name: "AbstractFunction1"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+implements {
+  pkg: "scala"
+  name: "Serializable"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isFinal: true
   }
-  
-  public Lscala/Option; unapply(LCaseClass; x$0) {
-    Lscala/Option; $2$;
-    if (Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::equals(Ljava/lang/Object;Ljava/lang/Object;)Z;)(x$0, null))
-      {
-        $2$ = Lscala/None$;.MODULE$;
+  method {
+    name: "toString"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "String"
       }
-    else
-      {
-        $2$ = (new (Lscala/Some;::this(Ljava/lang/Object;)V;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::boxToInteger(I;)Ljava/lang/Integer;)(x$0.(LCaseClass;::x()I;)())));
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "CaseClass"
+              }
+            }
+          }
+        }
       }
-    return $2$;
+    }
   }
-  
-  public LCaseClass; apply(I; x) {
-    return (new (LCaseClass;::this(I;)V;)(x));
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  protected Ljava/lang/Object; readResolve() {
-    return LCaseClass$;.MODULE$;
+  method {
+    name: "unapply"
+    paramDef {
+      name: "x$0"
+      tpe {
+        type: Named
+        namedType {
+          name: "CaseClass"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala"
+        name: "Option"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "scala"
+                name: "Option"
+              }
+            }
+            name: "$2$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "x$0"
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Null
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                      rhs {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "None$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                      rhs {
+                        type: NewObject
+                        newObject {
+                          clazz {
+                            pkg: "scala"
+                            name: "Some"
+                          }
+                          signature {
+                            name: "new"
+                            owner {
+                              pkg: "scala"
+                              name: "Some"
+                            }
+                            paramType {
+                              type: Named
+                              namedType {
+                                pkg: "java.lang"
+                                name: "Object"
+                              }
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                pkg: "scala"
+                                name: "Some"
+                              }
+                            }
+                          }
+                          argument {
+                            type: MethodCall
+                            methodCall {
+                              signature {
+                                name: "boxToInteger"
+                                owner {
+                                  pkg: "scala.runtime"
+                                  name: "BoxesRunTime"
+                                }
+                                paramType {
+                                  type: Primitive
+                                  primitiveType: Int
+                                }
+                                returnType {
+                                  type: Named
+                                  namedType {
+                                    pkg: "java.lang"
+                                    name: "Integer"
+                                  }
+                                }
+                              }
+                              argument {
+                                type: MethodCall
+                                methodCall {
+                                  receiver {
+                                    type: VarRef
+                                    varRef {
+                                      name: "x$0"
+                                    }
+                                  }
+                                  signature {
+                                    name: "x"
+                                    owner {
+                                      name: "CaseClass"
+                                    }
+                                    returnType {
+                                      type: Primitive
+                                      primitiveType: Int
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$2$"
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public Ljava/lang/Object; apply(Ljava/lang/Object; v1) {
-    return this.(LCaseClass$;::apply(I;)LCaseClass;)(Lscala/runtime/BoxesRunTime;.(Lscala/runtime/BoxesRunTime;::unboxToInt(Ljava/lang/Object;)I;)(v1));
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public this() {
-    (Lscala/runtime/AbstractFunction1;::super()V;)();
-    LCaseClass$;.MODULE$ = this;
+  method {
+    name: "apply"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "CaseClass"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: NewObject
+              newObject {
+                clazz {
+                  name: "CaseClass"
+                }
+                signature {
+                  name: "new"
+                  owner {
+                    name: "CaseClass"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      name: "CaseClass"
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isProtected: true
+  }
+  method {
+    name: "readResolve"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  name: "CaseClass$"
+                }
+                name: "MODULE$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "apply"
+    paramDef {
+      name: "v1"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Object"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "apply"
+                  owner {
+                    name: "CaseClass$"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      name: "CaseClass"
+                    }
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    signature {
+                      name: "unboxToInt"
+                      owner {
+                        pkg: "scala.runtime"
+                        name: "BoxesRunTime"
+                      }
+                      paramType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Object"
+                        }
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                    }
+                    argument {
+                      type: VarRef
+                      varRef {
+                        name: "v1"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "CaseClass$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "scala.runtime"
+                  name: "AbstractFunction1"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "AbstractFunction1"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  enclosingType {
+                    name: "CaseClass$"
+                  }
+                  name: "MODULE$"
+                }
+              }
+              rhs {
+                type: ThisRef
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  fieldDef {
+    tpe {
+      type: Named
+      namedType {
+        name: "CaseClass$"
+      }
+    }
+    name: "MODULE$"
+    initializer {
+      type: NewObject
+      newObject {
+        clazz {
+          name: "CaseClass$"
+        }
+        signature {
+          name: "new"
+          owner {
+            name: "CaseClass$"
+          }
+          returnType {
+            type: Named
+            namedType {
+              name: "CaseClass$"
+            }
+          }
+        }
+      }
+    }
   }
 }

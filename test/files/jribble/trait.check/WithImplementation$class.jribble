@@ -1,0 +1,74 @@
+name {
+  name: "WithImplementation$class"
+}
+modifiers {
+  isPublic: true
+  isAbstract: true
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  method {
+    name: "x"
+    paramDef {
+      name: "$this"
+      tpe {
+        type: Named
+        namedType {
+          name: "WithImplementation"
+        }
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  method {
+    name: "$init$"
+    paramDef {
+      name: "$this"
+      tpe {
+        type: Named
+        namedType {
+          name: "WithImplementation"
+        }
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}

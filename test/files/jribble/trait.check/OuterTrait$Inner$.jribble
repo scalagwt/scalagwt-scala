@@ -1,6 +1,69 @@
-public class LOuterTrait$Inner$; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public this(LOuterTrait; $outer) {
-    (Ljava/lang/Object;::super()V;)();
+name {
+  name: "OuterTrait$Inner$"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    paramDef {
+      name: "$outer"
+      tpe {
+        type: Named
+        namedType {
+          name: "OuterTrait"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "OuterTrait$Inner$"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

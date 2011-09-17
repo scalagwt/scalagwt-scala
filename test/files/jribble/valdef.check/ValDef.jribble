@@ -1,47 +1,544 @@
-public abstract class LValDef; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  public final static I; b() { return LValDef$;.MODULE$.(LValDef$;::b()I;)(); }
-  
-  
-  private I; x$u0020;
-  
-  public I; x() {
-    return this.(LValDef;)x$u0020;
+name {
+  name: "ValDef"
+}
+modifiers {
+  isPublic: true
+  isAbstract: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  private I; y$u0020;
-  
-  public I; y() {
-    return this.(LValDef;)y$u0020;
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "x$u0020"
   }
-  
-  public V; y_$eq(I; x$1) {
-    this.(LValDef;)y$u0020 = x$1;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public abstract I; z();
-  
-  public abstract V; z_$eq(I; x$1);
-  
-  private I; a$u0020;
-  
-  public I; a() {
-    return this.(LValDef;)a$u0020;
+  method {
+    name: "x"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "ValDef"
+                }
+                name: "x$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public V; defsInMethod() {
-    I; x = 0;
-    I; y = 0;
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  public V; valRefs() {
-    I; a1 = this.(LValDef;::a()I;)();
-    I; b1 = LValDef$;.MODULE$.(LValDef$;::b()I;)();
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "y$u0020"
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
-    this.(LValDef;)x$u0020 = 0;
-    this.(LValDef;)y$u0020 = 0;
-    this.(LValDef;)a$u0020 = 1;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "y"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "ValDef"
+                }
+                name: "y$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "y_$eq"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "ValDef"
+                  }
+                  name: "y$u0020"
+                }
+              }
+              rhs {
+                type: VarRef
+                varRef {
+                  name: "x$1"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isAbstract: true
+  }
+  method {
+    name: "z"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isAbstract: true
+  }
+  method {
+    name: "z_$eq"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Void
+    }
+  }
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "a$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "a"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "ValDef"
+                }
+                name: "a$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "defsInMethod"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "x"
+            initializer {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "y"
+            initializer {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "valRefs"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "a1"
+            initializer {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "a"
+                  owner {
+                    name: "ValDef"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "b1"
+            initializer {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      name: "ValDef$"
+                    }
+                    name: "MODULE$"
+                  }
+                }
+                signature {
+                  name: "b"
+                  owner {
+                    name: "ValDef$"
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "ValDef"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "ValDef"
+                  }
+                  name: "x$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 0
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "ValDef"
+                  }
+                  name: "y$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 0
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: Assignment
+            assignment {
+              lhs {
+                type: FieldRef
+                fieldRef {
+                  qualifier {
+                    type: ThisRef
+                  }
+                  enclosingType {
+                    name: "ValDef"
+                  }
+                  name: "a$u0020"
+                }
+              }
+              rhs {
+                type: Literal
+                literal {
+                  type: Int
+                  intValue: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isFinal: true
+    isStatic: true
+  }
+  method {
+    name: "b"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Return
+      returnStat {
+        expression {
+          type: MethodCall
+          methodCall {
+            receiver {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  name: "ValDef$"
+                }
+                name: "MODULE$"
+              }
+            }
+            signature {
+              name: "b"
+              owner {
+                name: "ValDef$"
+              }
+              returnType {
+                type: Primitive
+                primitiveType: Int
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,2 +1,11 @@
-public interface LOuterObject$Inner; {
+name {
+  name: "OuterObject$Inner"
+}
+isInterface: true
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
 }

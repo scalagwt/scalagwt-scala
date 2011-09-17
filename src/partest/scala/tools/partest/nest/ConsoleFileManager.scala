@@ -86,6 +86,7 @@ class ConsoleFileManager extends FileManager {
       latestCompFile    = testClassesDir / "compiler"
       latestPartestFile = testClassesDir / "partest"
       latestFjbgFile    = testParent / "lib" / "fjbg.jar"
+      latestProtobufFile = testParent / "lib" / "protobuf-java-2.4.1.jar"
     }
     else if (testBuild.isDefined) {
       val dir = Path(testBuild.get)
@@ -154,6 +155,7 @@ class ConsoleFileManager extends FileManager {
       pairs(pairs.keys max)()
       
       latestFjbgFile = prefixFile("lib/fjbg.jar")
+      latestProtobufFile = prefixFile("lib/protobuf-java-2.4.1.jar")
     }
     
     LATEST_LIB = latestLibFile.getAbsolutePath
@@ -166,6 +168,7 @@ class ConsoleFileManager extends FileManager {
   var latestCompFile: File = _
   var latestPartestFile: File = _
   var latestFjbgFile: File = _
+  var latestProtobufFile: File = _
   def latestScalapFile: File = (latestLibFile.parent / "scalap.jar").jfile
   var testClassesDir: Directory = _
   // initialize above fields

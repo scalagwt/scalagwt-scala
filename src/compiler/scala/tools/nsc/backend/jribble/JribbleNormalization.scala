@@ -15,6 +15,8 @@ import symtab.SymbolTable
 import typechecker.Typers
 import util.Position
 
+import scala.collection.mutable.ListBuffer
+
 /**
  * Miscellaneous methods that create and modify trees.
  * 

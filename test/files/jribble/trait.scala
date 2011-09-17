@@ -22,3 +22,11 @@ trait ExtendsClassTrait extends ParentForTrait {
 class ExtendsTraitThatExtendsClass extends ExtendsClassTrait {
   def z = 0
 }
+
+trait WithImplementation {
+  def x = 0
+}
+
+class InheritsImplementation extends WithImplementation {
+  def y = 0
+}

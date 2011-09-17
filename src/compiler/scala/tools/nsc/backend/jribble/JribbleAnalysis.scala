@@ -7,10 +7,14 @@
 \*                                                                      */
 
 // $Id$
-package scala.tools.nsc
-package backend.jribble
-import symtab.SymbolTable
+package scala.tools.nsc.backend.jribble
+
+import scala.tools.nsc._
+import scala.tools.nsc.symtab.SymbolTable
+import scala.tools.nsc.symtab.Flags._
+
 import scala.collection.mutable
+
 
 /**
  * Analyses that are used by {@link GenJribble}.
@@ -18,9 +22,6 @@ import scala.collection.mutable
 trait JribbleAnalysis {
   val global: Global
   import global._
-  
-  private lazy val remoteClass = definitions.getClass("scala.remote")
-  private lazy val remoteExceptionClass = definitions.getClass("java.rmi.RemoteException")
   
   /**
    * Return whether the argument, which must be a valid Scala expression, can
@@ -36,40 +37,6 @@ trait JribbleAnalysis {
       case _:Literal => false
       case _ => true
     }
-  
-  /**
-   * Return whether the given expression can ever complete and fall through
-   * to an expression that follows it in a block.
-   */
-  def canFallThrough(exp: Tree) = !isNothing(exp.tpe)
-
-  /**
-   * Analyze an expression and return the classes of the exceptions
-   * it can throw.
-   * 
-   * TODO(spoon): this is currently very sloppy.  It needs to deal with
-   * catch expressions, and it needs to combine expressions that overlap,
-   * and it needs to deal with declared Jribble exceptions.
-   */
-  def exceptionsThrown(exp: Tree): List[Symbol] = {
-    val exceptions = mutable.Set.empty[Symbol]
-    for (e <- exp)
-      e match {
-        case Throw(exc) => 	
-          val sym = exc.tpe.typeSymbol
-          if (sym != NoSymbol && sym.isClass)
-            exceptions += sym
-          
-        case Apply(fun, args) =>
-          if (fun.symbol.hasAnnotation(remoteClass))
-            exceptions += remoteExceptionClass
-          
-        case _ =>
-      }
-    
-    return exceptions.toList
-  }
-  
   
   def isConstructor(defDef: DefDef) = defDef.name == nme.CONSTRUCTOR
     
@@ -93,16 +60,6 @@ trait JribbleAnalysis {
       case _ => false
     }
 
-  def isReturnable(tree: Tree): Boolean = {
-    def treeTypeReturnable(tree: Tree) = tree match {
-      case _:Try => false
-      case _:Block => false
-      case _:Return => false
-      case _ => true
-    }
-    return treeTypeReturnable(tree) && typeReturnable(tree.tpe)
-  }
-
   def isEqOnAnyRef(fun: Select) = {
     import scalaPrimitives._
     val Select(receiver, _) = fun
@@ -122,4 +79,19 @@ trait JribbleAnalysis {
     import scalaPrimitives._
     isPrimitive(sym) && scalaPrimitives.isCoercion(getPrimitive(sym))
   }
+
+  
+  def isInterface(sym: Symbol): Boolean = sym.hasFlag(INTERFACE)
+ 
+  //copied from GenJVM
+  def isStaticModule(sym: Symbol): Boolean = {
+    import scala.reflect.generic.Flags
+    sym.isModuleClass && !sym.isImplClass && !sym.hasFlag(Flags.LIFTED)
+  }
+
+  //copied from GenJVM
+  def isTopLevelModule(sym: Symbol): Boolean =
+    atPhase (currentRun.picklerPhase.next) {
+      sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass
+    }
 }

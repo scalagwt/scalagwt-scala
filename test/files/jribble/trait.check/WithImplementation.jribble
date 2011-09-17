@@ -1,5 +1,5 @@
 name {
-  name: "OuterTrait"
+  name: "WithImplementation"
 }
 isInterface: true
 modifiers {
@@ -19,12 +19,10 @@ member {
     isPublic: true
   }
   method {
-    name: "OuterTrait$$Inner"
+    name: "x"
     returnType {
-      type: Named
-      namedType {
-        name: "OuterTrait$Inner$"
-      }
+      type: Primitive
+      primitiveType: Int
     }
   }
 }

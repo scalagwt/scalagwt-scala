@@ -1,4 +1,31 @@
-public interface LShouldBeInterface; {
-  
-  public I; test(I; x);
+name {
+  name: "ShouldBeInterface"
+}
+isInterface: true
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "test"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+  }
 }

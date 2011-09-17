@@ -1,3 +1,7 @@
-public final class LOuterObject; {
-  
+name {
+  name: "OuterObject"
+}
+modifiers {
+  isPublic: true
+  isFinal: true
 }

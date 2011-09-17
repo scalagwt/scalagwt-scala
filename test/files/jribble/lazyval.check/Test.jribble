@@ -1,26 +1,357 @@
-public class LTest; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  protected I; bitmap$0 = 0;
-  
-  private I; x$u0020;
-  
-  public I; x() {
-    if (((this.(LTest;)bitmap$0 & 1) == 0))
-      {
-        if (((this.(LTest;)bitmap$0 & 1) == 0))
-          {
-            this.(LTest;)x$u0020 = this.(LTest;::foo()I;)();
-            this.(LTest;)bitmap$0 = (this.(LTest;)bitmap$0 | 1);
-          }
+name {
+  name: "Test"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Field
+  modifiers {
+    isProtected: true
+  }
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "bitmap$0"
+    initializer {
+      type: Literal
+      literal {
+        type: Int
+        intValue: 0
       }
-    return this.(LTest;)x$u0020;
+    }
   }
-  
-  public I; foo() {
-    return 0;
+}
+member {
+  type: Field
+  modifiers {
+    isPrivate: true
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+  fieldDef {
+    tpe {
+      type: Primitive
+      primitiveType: Int
+    }
+    name: "x$u0020"
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: Binary
+                  binary {
+                    op: BitAnd
+                    lhs {
+                      type: FieldRef
+                      fieldRef {
+                        qualifier {
+                          type: ThisRef
+                        }
+                        enclosingType {
+                          name: "Test"
+                        }
+                        name: "bitmap$0"
+                      }
+                    }
+                    rhs {
+                      type: Literal
+                      literal {
+                        type: Int
+                        intValue: 1
+                      }
+                    }
+                    tpe {
+                      type: Primitive
+                      primitiveType: Int
+                    }
+                  }
+                }
+                rhs {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 0
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: If
+                  ifStat {
+                    condition {
+                      type: Binary
+                      binary {
+                        op: Equal
+                        lhs {
+                          type: Binary
+                          binary {
+                            op: BitAnd
+                            lhs {
+                              type: FieldRef
+                              fieldRef {
+                                qualifier {
+                                  type: ThisRef
+                                }
+                                enclosingType {
+                                  name: "Test"
+                                }
+                                name: "bitmap$0"
+                              }
+                            }
+                            rhs {
+                              type: Literal
+                              literal {
+                                type: Int
+                                intValue: 1
+                              }
+                            }
+                            tpe {
+                              type: Primitive
+                              primitiveType: Int
+                            }
+                          }
+                        }
+                        rhs {
+                          type: Literal
+                          literal {
+                            type: Int
+                            intValue: 0
+                          }
+                        }
+                        tpe {
+                          type: Primitive
+                          primitiveType: Boolean
+                        }
+                      }
+                    }
+                    then {
+                      type: Block
+                      block {
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: FieldRef
+                                fieldRef {
+                                  qualifier {
+                                    type: ThisRef
+                                  }
+                                  enclosingType {
+                                    name: "Test"
+                                  }
+                                  name: "x$u0020"
+                                }
+                              }
+                              rhs {
+                                type: MethodCall
+                                methodCall {
+                                  receiver {
+                                    type: ThisRef
+                                  }
+                                  signature {
+                                    name: "foo"
+                                    owner {
+                                      name: "Test"
+                                    }
+                                    returnType {
+                                      type: Primitive
+                                      primitiveType: Int
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: FieldRef
+                                fieldRef {
+                                  qualifier {
+                                    type: ThisRef
+                                  }
+                                  enclosingType {
+                                    name: "Test"
+                                  }
+                                  name: "bitmap$0"
+                                }
+                              }
+                              rhs {
+                                type: Binary
+                                binary {
+                                  op: BitOr
+                                  lhs {
+                                    type: FieldRef
+                                    fieldRef {
+                                      qualifier {
+                                        type: ThisRef
+                                      }
+                                      enclosingType {
+                                        name: "Test"
+                                      }
+                                      name: "bitmap$0"
+                                    }
+                                  }
+                                  rhs {
+                                    type: Literal
+                                    literal {
+                                      type: Int
+                                      intValue: 1
+                                    }
+                                  }
+                                  tpe {
+                                    type: Primitive
+                                    primitiveType: Int
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                qualifier {
+                  type: ThisRef
+                }
+                enclosingType {
+                  name: "Test"
+                }
+                name: "x$u0020"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "foo"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Test"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

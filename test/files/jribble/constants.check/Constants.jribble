@@ -1,38 +1,501 @@
-public class LConstants; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public V; chars() {
-    C; minChar = '\00';
-    C; maxChar = '￿';
-    C; tabChar = '\t';
+name {
+  name: "Constants"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; strings() {
-    Ljava/lang/String; string = "\t";
+  method {
+    name: "chars"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Char
+            }
+            name: "minChar"
+            initializer {
+              type: Literal
+              literal {
+                type: Char
+                charValue: 0
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Char
+            }
+            name: "maxChar"
+            initializer {
+              type: Literal
+              literal {
+                type: Char
+                charValue: 65535
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Char
+            }
+            name: "tabChar"
+            initializer {
+              type: Literal
+              literal {
+                type: Char
+                charValue: 9
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public V; doubles() {
-    D; min = -(1.7976931348623157E308D);
-    D; eps = 4.9E-324D;
-    D; max = 1.7976931348623157E308D;
-    D; nan = Ljava/lang/Double;.NaN;
-    D; negInf = Ljava/lang/Double;.NEGATIVE_INFINITY;
-    D; posInf = Ljava/lang/Double;.POSITIVE_INFINITY;
-    D; zero = 0.0D;
-    D; minusZero = -0.0D;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; floats() {
-    F; min = -(3.4028235E38F);
-    F; eps = 1.4E-45F;
-    F; max = 3.4028235E38F;
-    F; nan = Ljava/lang/Float;.NaN;
-    F; negInf = Ljava/lang/Float;.NEGATIVE_INFINITY;
-    F; posInf = Ljava/lang/Float;.POSITIVE_INFINITY;
-    F; zero = 0.0F;
-    F; minusZero = -0.0F;
+  method {
+    name: "strings"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "string"
+            initializer {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "\t"
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "doubles"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "min"
+            initializer {
+              type: Unary
+              unary {
+                op: Neg
+                expr {
+                  type: Literal
+                  literal {
+                    type: Double
+                    doubleValue: 1.7976931348623157E308
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "eps"
+            initializer {
+              type: Literal
+              literal {
+                type: Double
+                doubleValue: 4.9E-324
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "max"
+            initializer {
+              type: Literal
+              literal {
+                type: Double
+                doubleValue: 1.7976931348623157E308
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "nan"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "java.lang"
+                  name: "Double"
+                }
+                name: "NaN"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "negInf"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "java.lang"
+                  name: "Double"
+                }
+                name: "NEGATIVE_INFINITY"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "posInf"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "java.lang"
+                  name: "Double"
+                }
+                name: "POSITIVE_INFINITY"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "zero"
+            initializer {
+              type: Literal
+              literal {
+                type: Double
+                doubleValue: 0.0
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Double
+            }
+            name: "minusZero"
+            initializer {
+              type: Literal
+              literal {
+                type: Double
+                doubleValue: -0.0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "floats"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "min"
+            initializer {
+              type: Unary
+              unary {
+                op: Neg
+                expr {
+                  type: Literal
+                  literal {
+                    type: Float
+                    floatValue: 3.4028235E38
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "eps"
+            initializer {
+              type: Literal
+              literal {
+                type: Float
+                floatValue: 1.4E-45
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "max"
+            initializer {
+              type: Literal
+              literal {
+                type: Float
+                floatValue: 3.4028235E38
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "nan"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "java.lang"
+                  name: "Float"
+                }
+                name: "NaN"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "negInf"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "java.lang"
+                  name: "Float"
+                }
+                name: "NEGATIVE_INFINITY"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "posInf"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "java.lang"
+                  name: "Float"
+                }
+                name: "POSITIVE_INFINITY"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "zero"
+            initializer {
+              type: Literal
+              literal {
+                type: Float
+                floatValue: 0.0
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Float
+            }
+            name: "minusZero"
+            initializer {
+              type: Literal
+              literal {
+                type: Float
+                floatValue: -0.0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Constants"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

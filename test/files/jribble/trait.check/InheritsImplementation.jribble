@@ -1,5 +1,5 @@
 name {
-  name: "switch"
+  name: "InheritsImplementation"
 }
 modifiers {
   isPublic: true
@@ -9,29 +9,19 @@ ext {
   name: "Object"
 }
 implements {
+  name: "WithImplementation"
+}
+implements {
   pkg: "scala"
   name: "ScalaObject"
 }
 member {
-  type: Field
-  modifiers {
-    isPrivate: true
-  }
-  fieldDef {
-    tpe {
-      type: Primitive
-      primitiveType: Int
-    }
-    name: "cast$u0020"
-  }
-}
-member {
   type: Method
   modifiers {
     isPublic: true
   }
   method {
-    name: "cast"
+    name: "x"
     returnType {
       type: Primitive
       primitiveType: Int
@@ -43,15 +33,27 @@ member {
           type: Return
           returnStat {
             expression {
-              type: FieldRef
-              fieldRef {
-                qualifier {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "x"
+                  owner {
+                    name: "WithImplementation$class"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      name: "WithImplementation"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+                argument {
                   type: ThisRef
                 }
-                enclosingType {
-                  name: "switch"
-                }
-                name: "cast$u0020"
               }
             }
           }
@@ -66,14 +68,7 @@ member {
     isPublic: true
   }
   method {
-    name: "break"
-    paramDef {
-      name: "default"
-      tpe {
-        type: Primitive
-        primitiveType: Int
-      }
-    }
+    name: "y"
     returnType {
       type: Primitive
       primitiveType: Int
@@ -82,28 +77,13 @@ member {
       type: Block
       block {
         statement {
-          type: VarDef
-          varDef {
-            tpe {
-              type: Primitive
-              primitiveType: Int
-            }
-            name: "continue"
-            initializer {
-              type: VarRef
-              varRef {
-                name: "default"
-              }
-            }
-          }
-        }
-        statement {
           type: Return
           returnStat {
             expression {
-              type: VarRef
-              varRef {
-                name: "default"
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
               }
             }
           }
@@ -123,7 +103,7 @@ member {
     returnType {
       type: Named
       namedType {
-        name: "switch"
+        name: "InheritsImplementation"
       }
     }
     body {
@@ -157,26 +137,28 @@ member {
         statement {
           type: Expr
           expr {
-            type: Assignment
-            assignment {
-              lhs {
-                type: FieldRef
-                fieldRef {
-                  qualifier {
-                    type: ThisRef
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "$init$"
+                owner {
+                  name: "WithImplementation$class"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    name: "WithImplementation"
                   }
-                  enclosingType {
-                    name: "switch"
-                  }
-                  name: "cast$u0020"
+                }
+                returnType {
+                  type: Void
                 }
               }
-              rhs {
-                type: Literal
-                literal {
-                  type: Int
-                  intValue: 0
-                }
+              argument {
+                type: ThisRef
               }
             }
           }

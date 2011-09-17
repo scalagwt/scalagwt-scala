@@ -165,7 +165,8 @@ PROPERTIES
   <property name="jline.jar" value="${lib.dir}/jline.jar"/>
   <property name="ant.jar" value="${ant.home}/lib/ant.jar"/>
   <property name="scalacheck.jar" value="${lib.dir}/scalacheck.jar"/>
-
+  <property name="protobuf.jar" value="${lib.dir}/protobuf-java-2.4.1.jar"/>
+	  
   <!-- Sets location of build folders -->
   <property name="build.dir" value="${basedir}/build"/>
   <property name="build-locker.dir" value="${build.dir}/locker"/>
@@ -212,7 +213,7 @@ INITIALISATION
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
 	<!-- Define gwt.classpath in build.properties file, it must include gwt-dev.jar, gwt-user.jar, gwt-lang.jar and gwt-java_lang.jar
 	     Last two jars has to be built as described here: https://groups.google.com/d/topic/scalagwt/AUp4r9Qu9Zg/discussion -->
-	<property name="scalac.args.jribble" value="${scalac.args.quick} -javabootclasspath ${gwt.classpath} -g:notailcalls -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar"/>
+	<property name="scalac.args.jribble" value="${scalac.args.quick} -javabootclasspath ${gwt.classpath} -g:notailcalls -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar -Yjribble-text"/>
   <!-- Setting-up Ant contrib tasks -->
     <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${lib.dir}/ant/ant-contrib.jar"/>
     <!-- This is the start time for the distribution -->
@@ -350,6 +351,11 @@ LOCAL REFERENCE BUILD (LOCKER)
   <target name="locker.comp" depends="locker.pre-comp" if="locker.comp.needed">
     <stopwatch name="locker.comp.timer"/>
     <mkdir dir="${build-locker.dir}/classes/compiler"/>
+    <javac
+      destdir="${build-locker.dir}/classes/compiler"
+      srcdir="${src.dir}/compiler"
+      classpath="${protobuf.jar}">
+    </javac>
     <scalacfork
       destdir="${build-locker.dir}/classes/compiler"
       compilerpathref="starr.classpath"
@@ -362,6 +368,7 @@ LOCAL REFERENCE BUILD (LOCKER)
         <pathelement location="${build-locker.dir}/classes/compiler"/>
         <path refid="aux.libs"/>
         <pathelement location="${jline.jar}"/>
+        <pathelement location="${protobuf.jar}"/>
       </compilationpath>
     </scalacfork>
     <propertyfile file="${build-locker.dir}/classes/compiler/compiler.properties">
@@ -479,6 +486,7 @@ QUICK BUILD (QUICK)
       <pathelement location="${msil.jar}"/>
       <pathelement location="${forkjoin.jar}"/>
       <pathelement location="${ant.jar}"/>
+      <pathelement location="${protobuf.jar}"/>
     </path>
   </target>
 
@@ -585,16 +593,6 @@ QUICK BUILD (QUICK)
         <include name="Unit.jribble"/>
       </fileset>
     </delete>
-    <scalacfork
-      destdir="${build-quick.dir}/gwt/library"
-      compilerpathref="quick.classpath"
-      params="${scalac.args.quick} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
-      srcdir="${build-quick.dir}/jdk2ikvm/library"
-      target="jribble"
-      jvmargs="${scalacfork.jvmargs}">
-      <include name="scala/util/continuations/**"/>
-      <compilationpath refid="quick.compilation.path"/>
-    </scalacfork>
     <javac
       srcdir="${build-quick.dir}/jdk2ikvm/library"
       destdir="${build-quick.dir}/gwt/library"
@@ -603,6 +601,18 @@ QUICK BUILD (QUICK)
       target="1.5" source="1.5">
       <compilerarg line="${javac.args}"/> 
     </javac>
+    <scalacfork
+      destdir="${build-quick.dir}/gwt/library"
+      compilerpathref="quick.classpath"
+      params="${scalac.args.jribble} -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins -Xplugin-require:continuations -P:continuations:enable"
+      srcdir="${build-quick.dir}/jdk2ikvm/library"
+      target="jribble"
+      jvmargs="${scalacfork.jvmargs}">
+      <include name="scala/util/continuations/**"/>
+      <compilationpath>
+        <pathelement location="${build-quick.dir}/gwt/library"/>
+      </compilationpath>
+    </scalacfork>
     <propertyfile file="${build-quick.dir}/gwt/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
@@ -650,6 +660,11 @@ QUICK BUILD (QUICK)
   <target name="quick.comp" depends="quick.pre-comp" unless="quick.comp.available">
     <stopwatch name="quick.comp.timer"/>
     <mkdir dir="${build-quick.dir}/classes/compiler"/>
+    <javac
+      destdir="${build-quick.dir}/classes/compiler"
+      srcdir="${src.dir}/compiler"
+      classpath="${protobuf.jar}">
+    </javac>
     <scalacfork
       destdir="${build-quick.dir}/classes/compiler"
       compilerpathref="locker.classpath"
@@ -662,6 +677,7 @@ QUICK BUILD (QUICK)
         <pathelement location="${build-quick.dir}/classes/compiler"/>
         <path refid="aux.libs"/>
         <pathelement location="${jline.jar}"/>
+        <pathelement location="${protobuf.jar}"/>
       </compilationpath>
     </scalacfork>
     <propertyfile file="${build-quick.dir}/classes/compiler/compiler.properties">
@@ -988,6 +1004,7 @@ QUICK BUILD (QUICK)
       <pathelement location="${build-quick.dir}/classes/scalap"/>
       <path refid="aux.libs"/>
       <pathelement location="${jline.jar}"/>
+      <pathelement location="${protobuf.jar}"/>
     </path>
     <taskdef name="quick-bin" classname="scala.tools.ant.ScalaTool" classpathref="quick.bin.classpath"/>
     <mkdir dir="${build-quick.dir}/bin"/>
@@ -1108,6 +1125,8 @@ PACKED QUICK BUILD (PACK)
       <zipfileset dirmode="755" filemode="644" src="${msil.jar}"/>
     </jar>
     <copy file="${jline.jar}" toDir="${build-pack.dir}/lib"/>
+    <copy file="${protobuf.jar}" toDir="${build-pack.dir}/lib"/>
+
     <copy todir="${build-pack.dir}/lib">
       <fileset dir="${lib-extra.dir}">
         <include name="**/*.jar"/>
@@ -1324,6 +1343,11 @@ BOOTSTRAPPING BUILD (STRAP)
   <target name="strap.comp" depends="strap.pre-comp" unless="strap.comp.available">
     <stopwatch name="strap.comp.timer"/>
     <mkdir dir="${build-strap.dir}/classes/compiler"/>
+    <javac
+      destdir="${build-strap.dir}/classes/compiler"
+      srcdir="${src.dir}/compiler"
+      classpath="${protobuf.jar}">
+    </javac>
     <scalacfork
       destdir="${build-strap.dir}/classes/compiler"
       compilerpathref="pack.classpath"

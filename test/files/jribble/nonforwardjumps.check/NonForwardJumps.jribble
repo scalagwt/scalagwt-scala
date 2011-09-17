@@ -1,36 +1,469 @@
-public class LNonForwardJumps; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public I; fact(I; n) {
-    return this.(LNonForwardJumps;::tailfact$1(I;I;)I;)(n, 1);
+name {
+  name: "NonForwardJumps"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  private final I; tailfact$1(I; n, I; res) {
-    LNonForwardJumps; _$this = this;
-    LNonForwardJumps; $1$;
-    I; $2$;
-    I; $3$;
-    I; $4$;
-    _tailfact: while(true) {
-      I; $5$;
-      if ((n == 0))
-        {
-          $5$ = res;
-        }
-      else
-        {
-          $1$ = this;
-          $2$ = (n - 1);
-          $3$ = (res * n);
-          continue _tailfact;
-          $5$ = ();
-        }
-      $4$ = $5$;
-      break;
+  method {
+    name: "fact"
+    paramDef {
+      name: "n"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
     }
-    return $4$;
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "tailfact$1"
+                  owner {
+                    name: "NonForwardJumps"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "n"
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+}
+member {
+  type: Method
+  modifiers {
+    isPrivate: true
+    isFinal: true
+  }
+  method {
+    name: "tailfact$1"
+    paramDef {
+      name: "n"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    paramDef {
+      name: "res"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                name: "NonForwardJumps"
+              }
+            }
+            name: "_$this"
+            initializer {
+              type: ThisRef
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                name: "NonForwardJumps"
+              }
+            }
+            name: "$1$"
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$2$"
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$3$"
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$4$"
+          }
+        }
+        statement {
+          type: LabelledStat
+          labelledStat {
+            label: "_tailfact"
+            statement {
+              type: While
+              whileStat {
+                condition {
+                  type: Literal
+                  literal {
+                    type: Boolean
+                    boolValue: true
+                  }
+                }
+                body {
+                  type: Block
+                  block {
+                    statement {
+                      type: Block
+                      block {
+                        statement {
+                          type: VarDef
+                          varDef {
+                            tpe {
+                              type: Primitive
+                              primitiveType: Int
+                            }
+                            name: "$5$"
+                          }
+                        }
+                        statement {
+                          type: If
+                          ifStat {
+                            condition {
+                              type: Binary
+                              binary {
+                                op: Equal
+                                lhs {
+                                  type: VarRef
+                                  varRef {
+                                    name: "n"
+                                  }
+                                }
+                                rhs {
+                                  type: Literal
+                                  literal {
+                                    type: Int
+                                    intValue: 0
+                                  }
+                                }
+                                tpe {
+                                  type: Primitive
+                                  primitiveType: Boolean
+                                }
+                              }
+                            }
+                            then {
+                              type: Block
+                              block {
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: Assignment
+                                    assignment {
+                                      lhs {
+                                        type: VarRef
+                                        varRef {
+                                          name: "$5$"
+                                        }
+                                      }
+                                      rhs {
+                                        type: VarRef
+                                        varRef {
+                                          name: "res"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                            elsee {
+                              type: Block
+                              block {
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: Assignment
+                                    assignment {
+                                      lhs {
+                                        type: VarRef
+                                        varRef {
+                                          name: "$1$"
+                                        }
+                                      }
+                                      rhs {
+                                        type: ThisRef
+                                      }
+                                    }
+                                  }
+                                }
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: Assignment
+                                    assignment {
+                                      lhs {
+                                        type: VarRef
+                                        varRef {
+                                          name: "$2$"
+                                        }
+                                      }
+                                      rhs {
+                                        type: Binary
+                                        binary {
+                                          op: Minus
+                                          lhs {
+                                            type: VarRef
+                                            varRef {
+                                              name: "n"
+                                            }
+                                          }
+                                          rhs {
+                                            type: Literal
+                                            literal {
+                                              type: Int
+                                              intValue: 1
+                                            }
+                                          }
+                                          tpe {
+                                            type: Primitive
+                                            primitiveType: Int
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: Assignment
+                                    assignment {
+                                      lhs {
+                                        type: VarRef
+                                        varRef {
+                                          name: "$3$"
+                                        }
+                                      }
+                                      rhs {
+                                        type: Binary
+                                        binary {
+                                          op: Multiply
+                                          lhs {
+                                            type: VarRef
+                                            varRef {
+                                              name: "res"
+                                            }
+                                          }
+                                          rhs {
+                                            type: VarRef
+                                            varRef {
+                                              name: "n"
+                                            }
+                                          }
+                                          tpe {
+                                            type: Primitive
+                                            primitiveType: Int
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                                statement {
+                                  type: Continue
+                                  continueStat {
+                                    label: "_tailfact"
+                                  }
+                                }
+                                statement {
+                                  type: Expr
+                                  expr {
+                                    type: Assignment
+                                    assignment {
+                                      lhs {
+                                        type: VarRef
+                                        varRef {
+                                          name: "$5$"
+                                        }
+                                      }
+                                      rhs {
+                                        type: Literal
+                                        literal {
+                                          type: Boolean
+                                          boolValue: false
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$4$"
+                                }
+                              }
+                              rhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$5$"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    statement {
+                      type: Break
+                      break {
+                        label: "_tailfact"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$4$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "NonForwardJumps"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -1,0 +1,28 @@
+name {
+  name: "WithImplementation"
+}
+isInterface: true
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+  }
+}

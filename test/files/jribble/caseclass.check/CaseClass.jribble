@@ -1000,7 +1000,7 @@ member {
                 type: ThisRef
               }
               signature {
-                name: "new"
+                name: "$init$"
                 owner {
                   pkg: "scala"
                   name: "Product$class"

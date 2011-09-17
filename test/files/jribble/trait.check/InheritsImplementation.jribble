@@ -1,0 +1,169 @@
+name {
+  name: "InheritsImplementation"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  name: "WithImplementation"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "x"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "x"
+                  owner {
+                    name: "WithImplementation$class"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      name: "WithImplementation"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                }
+                argument {
+                  type: ThisRef
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "y"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "InheritsImplementation"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "$init$"
+                owner {
+                  name: "WithImplementation$class"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    name: "WithImplementation"
+                  }
+                }
+                returnType {
+                  type: Void
+                }
+              }
+              argument {
+                type: ThisRef
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

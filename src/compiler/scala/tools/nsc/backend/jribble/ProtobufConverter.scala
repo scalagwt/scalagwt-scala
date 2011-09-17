@@ -166,7 +166,12 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
   
   def methodSignature(s: Symbol): P.MethodSignature = {
     val proto = P.MethodSignature.newBuilder
-    if (s.isConstructor)
+    //symbol can be both constructor and static member
+    //this happens if you have a constructor defined
+    //for a trait. Such constructor is represented
+    //as a static method called $init$, we need to
+    //take that into account when emitting signatures
+    if (s.isConstructor && !s.isStaticMember)
       proto.setName("new")
     else
       proto.setName(s.name.encode.toString)

@@ -345,6 +345,9 @@ trait Generating extends Patching { this : Plugin =>
       //probably a call to Console.read*
       case x: DefDef if x.name startsWith "read" =>
         removeDefDef(x)
+      case x: DefDef if x.name.toString == "refArrayOps" =>
+        val range = rangePosition(x.pos).get
+        patchtree.replace(range.start, range.end, "implicit def refArrayOps[T <: AnyRef: ClassManifest](xs: Array[T]): ArrayOps[T] = new ArrayOps.ofRef[T](xs)\n")
     }
     
   }

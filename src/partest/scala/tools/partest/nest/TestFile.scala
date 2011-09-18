@@ -69,6 +69,8 @@ case class PresentationTestFile(file: JFile, fileManager: FileManager) extends T
 case class JribbleTestFile(file: JFile, fileManager: FileManager) extends TestFile("jribble") {
   override def defineSettings(settings: Settings, setOutDir: Boolean) = {
     super.defineSettings(settings, setOutDir)
+    settings.jribbleText.value = true
+
     settings.target.tryToSetColon("jribble" :: Nil).isDefined && {
       //factorymanifests plugin is required by jribble backend
       val pluginPath = File(PathSettings.buildDir / "quick/misc/scala-devel/plugins/factorymanifests.jar").path

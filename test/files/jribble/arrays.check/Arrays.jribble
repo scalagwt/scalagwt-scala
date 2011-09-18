@@ -1,43 +1,1349 @@
-public class LArrays; extends Ljava/lang/Object; implements Lscala/ScalaObject; {
-  
-  public V; values() {
-    Lscala/collection/immutable/List; x = Lscala/collection/immutable/List$;.MODULE$.(Lscala/collection/immutable/List$;::apply(Lscala/collection/Seq;)Lscala/collection/immutable/List;)(Lscala/Predef$;.MODULE$.(Lscala/LowPriorityImplicits;::wrapIntArray(I;[)Lscala/collection/mutable/WrappedArray;)(<I;>{0, 1}));
+name {
+  name: "Arrays"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; newArray() {
-    Ljava/lang/Object;[[ x = new Ljava/lang/Object;[1][];
+  method {
+    name: "values"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "scala.collection.immutable"
+                name: "List"
+              }
+            }
+            name: "x"
+            initializer {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      pkg: "scala.collection.immutable"
+                      name: "List$"
+                    }
+                    name: "MODULE$"
+                  }
+                }
+                signature {
+                  name: "apply"
+                  owner {
+                    pkg: "scala.collection.immutable"
+                    name: "List$"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.collection"
+                      name: "Seq"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.collection.immutable"
+                      name: "List"
+                    }
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: FieldRef
+                      fieldRef {
+                        enclosingType {
+                          pkg: "scala"
+                          name: "Predef$"
+                        }
+                        name: "MODULE$"
+                      }
+                    }
+                    signature {
+                      name: "wrapIntArray"
+                      owner {
+                        pkg: "scala"
+                        name: "LowPriorityImplicits"
+                      }
+                      paramType {
+                        type: Array
+                        arrayElementType {
+                          type: Primitive
+                          primitiveType: Int
+                        }
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "scala.collection.mutable"
+                          name: "WrappedArray"
+                        }
+                      }
+                    }
+                    argument {
+                      type: NewArray
+                      newArray {
+                        elementType {
+                          type: Primitive
+                          primitiveType: Int
+                        }
+                        dimensions: 1
+                        initExpr {
+                          type: Literal
+                          literal {
+                            type: Int
+                            intValue: 0
+                          }
+                        }
+                        initExpr {
+                          type: Literal
+                          literal {
+                            type: Int
+                            intValue: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public Ljava/lang/Object; returnOneArray(Lscala/reflect/ClassManifest; evidence$1) {
-    return Lscala/Array$;.MODULE$.(Lscala/Array$;::ofDim(I;Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(1, evidence$1);
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public Ljava/lang/Object; getOneArray(Lscala/reflect/ClassManifest; evidence$2) {
-    return this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(evidence$2);
+  method {
+    name: "newArray"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Array
+              arrayElementType {
+                type: Array
+                arrayElementType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+            name: "x"
+            initializer {
+              type: NewArray
+              newArray {
+                elementType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+                dimensions: 2
+                dimensionExpr {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public Ljava/lang/Object;[ returnTwoArray(Lscala/reflect/ClassManifest; evidence$3) {
-    return Lscala/Array$;.MODULE$.(Lscala/Array$;::ofDim(I;I;Lscala/reflect/ClassManifest;)Ljava/lang/Object;[)(1, 1, evidence$3);
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public Ljava/lang/Object;[ getTwoArray(Lscala/reflect/ClassManifest; evidence$4) {
-    return this.(LArrays;::returnTwoArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;[)(evidence$4);
+  method {
+    name: "returnOneArray"
+    paramDef {
+      name: "evidence$1"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "scala.reflect"
+          name: "ClassManifest"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      pkg: "scala"
+                      name: "Array$"
+                    }
+                    name: "MODULE$"
+                  }
+                }
+                signature {
+                  name: "ofDim"
+                  owner {
+                    pkg: "scala"
+                    name: "Array$"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.reflect"
+                      name: "ClassManifest"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 1
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "evidence$1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public I; arrayLength(I;[ x) {
-    return x.<length>;
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
   }
-  
-  public V; genericArrays() {
-    this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/FactoryManifest$;.MODULE$.(Lscala/reflect/FactoryManifest$;::Int()Lscala/reflect/FactoryManifest$AnyValManifest;)());
-    this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::classType(Ljava/lang/Class;Lscala/reflect/FactoryClassManifest$Factory;)Lscala/reflect/FactoryClassManifest;)(Ljava/lang/String;.class, (new (LArrays$$anon$1;::this(LArrays;)V;)(this))));
-    this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/FactoryManifest$;.MODULE$.(Lscala/reflect/FactoryManifest$;::Object()Lscala/reflect/FactoryManifest;)());
-    this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::arrayType(Lscala/reflect/OptManifest;)Lscala/reflect/FactoryClassManifest;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::classType(Ljava/lang/Class;Lscala/reflect/FactoryClassManifest$Factory;)Lscala/reflect/FactoryClassManifest;)(Ljava/lang/String;.class, (new (LArrays$$anon$3;::this(LArrays;)V;)(this)))));
-    this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::arrayType(Lscala/reflect/OptManifest;)Lscala/reflect/FactoryClassManifest;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::arrayType(Lscala/reflect/OptManifest;)Lscala/reflect/FactoryClassManifest;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::classType(Ljava/lang/Class;Lscala/reflect/FactoryClassManifest$Factory;)Lscala/reflect/FactoryClassManifest;)(Ljava/lang/String;.class, (new (LArrays$$anon$5;::this(LArrays;)V;)(this))))));
-    this.(LArrays;::returnOneArray(Lscala/reflect/ClassManifest;)Ljava/lang/Object;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::arrayType(Lscala/reflect/OptManifest;)Lscala/reflect/FactoryClassManifest;)(Lscala/reflect/FactoryClassManifest$;.MODULE$.(Lscala/reflect/FactoryClassManifest$;::arrayType(Lscala/reflect/OptManifest;)Lscala/reflect/FactoryClassManifest;)(Lscala/reflect/FactoryManifest$;.MODULE$.(Lscala/reflect/FactoryManifest$;::Int()Lscala/reflect/FactoryManifest$AnyValManifest;)())));
+  method {
+    name: "getOneArray"
+    paramDef {
+      name: "evidence$2"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "scala.reflect"
+          name: "ClassManifest"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "returnOneArray"
+                  owner {
+                    name: "Arrays"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.reflect"
+                      name: "ClassManifest"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "evidence$2"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  
-  public this() {
-    (Ljava/lang/Object;::super()V;)();
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "returnTwoArray"
+    paramDef {
+      name: "evidence$3"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "scala.reflect"
+          name: "ClassManifest"
+        }
+      }
+    }
+    returnType {
+      type: Array
+      arrayElementType {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Object"
+        }
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      pkg: "scala"
+                      name: "Array$"
+                    }
+                    name: "MODULE$"
+                  }
+                }
+                signature {
+                  name: "ofDim"
+                  owner {
+                    pkg: "scala"
+                    name: "Array$"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.reflect"
+                      name: "ClassManifest"
+                    }
+                  }
+                  returnType {
+                    type: Array
+                    arrayElementType {
+                      type: Named
+                      namedType {
+                        pkg: "java.lang"
+                        name: "Object"
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 1
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 1
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "evidence$3"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "getTwoArray"
+    paramDef {
+      name: "evidence$4"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "scala.reflect"
+          name: "ClassManifest"
+        }
+      }
+    }
+    returnType {
+      type: Array
+      arrayElementType {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Object"
+        }
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "returnTwoArray"
+                  owner {
+                    name: "Arrays"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "scala.reflect"
+                      name: "ClassManifest"
+                    }
+                  }
+                  returnType {
+                    type: Array
+                    arrayElementType {
+                      type: Named
+                      namedType {
+                        pkg: "java.lang"
+                        name: "Object"
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "evidence$4"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "arrayLength"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Array
+        arrayElementType {
+          type: Primitive
+          primitiveType: Int
+        }
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: ArrayLength
+              arrayLength {
+                array {
+                  type: VarRef
+                  varRef {
+                    name: "x"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "genericArrays"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "returnOneArray"
+                owner {
+                  name: "Arrays"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.reflect"
+                    name: "ClassManifest"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+              argument {
+                type: MethodCall
+                methodCall {
+                  receiver {
+                    type: FieldRef
+                    fieldRef {
+                      enclosingType {
+                        pkg: "scala.reflect"
+                        name: "FactoryManifest$"
+                      }
+                      name: "MODULE$"
+                    }
+                  }
+                  signature {
+                    name: "Int"
+                    owner {
+                      pkg: "scala.reflect"
+                      name: "FactoryManifest$"
+                    }
+                    returnType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryManifest$AnyValManifest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "returnOneArray"
+                owner {
+                  name: "Arrays"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.reflect"
+                    name: "ClassManifest"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+              argument {
+                type: MethodCall
+                methodCall {
+                  receiver {
+                    type: FieldRef
+                    fieldRef {
+                      enclosingType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest$"
+                      }
+                      name: "MODULE$"
+                    }
+                  }
+                  signature {
+                    name: "classType"
+                    owner {
+                      pkg: "scala.reflect"
+                      name: "FactoryClassManifest$"
+                    }
+                    paramType {
+                      type: Named
+                      namedType {
+                        pkg: "java.lang"
+                        name: "Class"
+                      }
+                    }
+                    paramType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest$Factory"
+                      }
+                    }
+                    returnType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest"
+                      }
+                    }
+                  }
+                  argument {
+                    type: ClassLiteral
+                    classLiteral {
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "String"
+                        }
+                      }
+                    }
+                  }
+                  argument {
+                    type: NewObject
+                    newObject {
+                      clazz {
+                        name: "Arrays$$anon$1"
+                      }
+                      signature {
+                        name: "new"
+                        owner {
+                          name: "Arrays$$anon$1"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            name: "Arrays"
+                          }
+                        }
+                        returnType {
+                          type: Named
+                          namedType {
+                            name: "Arrays$$anon$1"
+                          }
+                        }
+                      }
+                      argument {
+                        type: ThisRef
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "returnOneArray"
+                owner {
+                  name: "Arrays"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.reflect"
+                    name: "ClassManifest"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+              argument {
+                type: MethodCall
+                methodCall {
+                  receiver {
+                    type: FieldRef
+                    fieldRef {
+                      enclosingType {
+                        pkg: "scala.reflect"
+                        name: "FactoryManifest$"
+                      }
+                      name: "MODULE$"
+                    }
+                  }
+                  signature {
+                    name: "Object"
+                    owner {
+                      pkg: "scala.reflect"
+                      name: "FactoryManifest$"
+                    }
+                    returnType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryManifest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "returnOneArray"
+                owner {
+                  name: "Arrays"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.reflect"
+                    name: "ClassManifest"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+              argument {
+                type: MethodCall
+                methodCall {
+                  receiver {
+                    type: FieldRef
+                    fieldRef {
+                      enclosingType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest$"
+                      }
+                      name: "MODULE$"
+                    }
+                  }
+                  signature {
+                    name: "arrayType"
+                    owner {
+                      pkg: "scala.reflect"
+                      name: "FactoryClassManifest$"
+                    }
+                    paramType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "OptManifest"
+                      }
+                    }
+                    returnType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest"
+                      }
+                    }
+                  }
+                  argument {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "classType"
+                        owner {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "Class"
+                          }
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest$Factory"
+                          }
+                        }
+                        returnType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest"
+                          }
+                        }
+                      }
+                      argument {
+                        type: ClassLiteral
+                        classLiteral {
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "String"
+                            }
+                          }
+                        }
+                      }
+                      argument {
+                        type: NewObject
+                        newObject {
+                          clazz {
+                            name: "Arrays$$anon$3"
+                          }
+                          signature {
+                            name: "new"
+                            owner {
+                              name: "Arrays$$anon$3"
+                            }
+                            paramType {
+                              type: Named
+                              namedType {
+                                name: "Arrays"
+                              }
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                name: "Arrays$$anon$3"
+                              }
+                            }
+                          }
+                          argument {
+                            type: ThisRef
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "returnOneArray"
+                owner {
+                  name: "Arrays"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.reflect"
+                    name: "ClassManifest"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+              argument {
+                type: MethodCall
+                methodCall {
+                  receiver {
+                    type: FieldRef
+                    fieldRef {
+                      enclosingType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest$"
+                      }
+                      name: "MODULE$"
+                    }
+                  }
+                  signature {
+                    name: "arrayType"
+                    owner {
+                      pkg: "scala.reflect"
+                      name: "FactoryClassManifest$"
+                    }
+                    paramType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "OptManifest"
+                      }
+                    }
+                    returnType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest"
+                      }
+                    }
+                  }
+                  argument {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "arrayType"
+                        owner {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.reflect"
+                            name: "OptManifest"
+                          }
+                        }
+                        returnType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest"
+                          }
+                        }
+                      }
+                      argument {
+                        type: MethodCall
+                        methodCall {
+                          receiver {
+                            type: FieldRef
+                            fieldRef {
+                              enclosingType {
+                                pkg: "scala.reflect"
+                                name: "FactoryClassManifest$"
+                              }
+                              name: "MODULE$"
+                            }
+                          }
+                          signature {
+                            name: "classType"
+                            owner {
+                              pkg: "scala.reflect"
+                              name: "FactoryClassManifest$"
+                            }
+                            paramType {
+                              type: Named
+                              namedType {
+                                pkg: "java.lang"
+                                name: "Class"
+                              }
+                            }
+                            paramType {
+                              type: Named
+                              namedType {
+                                pkg: "scala.reflect"
+                                name: "FactoryClassManifest$Factory"
+                              }
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                pkg: "scala.reflect"
+                                name: "FactoryClassManifest"
+                              }
+                            }
+                          }
+                          argument {
+                            type: ClassLiteral
+                            classLiteral {
+                              tpe {
+                                type: Named
+                                namedType {
+                                  pkg: "java.lang"
+                                  name: "String"
+                                }
+                              }
+                            }
+                          }
+                          argument {
+                            type: NewObject
+                            newObject {
+                              clazz {
+                                name: "Arrays$$anon$5"
+                              }
+                              signature {
+                                name: "new"
+                                owner {
+                                  name: "Arrays$$anon$5"
+                                }
+                                paramType {
+                                  type: Named
+                                  namedType {
+                                    name: "Arrays"
+                                  }
+                                }
+                                returnType {
+                                  type: Named
+                                  namedType {
+                                    name: "Arrays$$anon$5"
+                                  }
+                                }
+                              }
+                              argument {
+                                type: ThisRef
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "returnOneArray"
+                owner {
+                  name: "Arrays"
+                }
+                paramType {
+                  type: Named
+                  namedType {
+                    pkg: "scala.reflect"
+                    name: "ClassManifest"
+                  }
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+              argument {
+                type: MethodCall
+                methodCall {
+                  receiver {
+                    type: FieldRef
+                    fieldRef {
+                      enclosingType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest$"
+                      }
+                      name: "MODULE$"
+                    }
+                  }
+                  signature {
+                    name: "arrayType"
+                    owner {
+                      pkg: "scala.reflect"
+                      name: "FactoryClassManifest$"
+                    }
+                    paramType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "OptManifest"
+                      }
+                    }
+                    returnType {
+                      type: Named
+                      namedType {
+                        pkg: "scala.reflect"
+                        name: "FactoryClassManifest"
+                      }
+                    }
+                  }
+                  argument {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest$"
+                          }
+                          name: "MODULE$"
+                        }
+                      }
+                      signature {
+                        name: "arrayType"
+                        owner {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                        paramType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.reflect"
+                            name: "OptManifest"
+                          }
+                        }
+                        returnType {
+                          type: Named
+                          namedType {
+                            pkg: "scala.reflect"
+                            name: "FactoryClassManifest"
+                          }
+                        }
+                      }
+                      argument {
+                        type: MethodCall
+                        methodCall {
+                          receiver {
+                            type: FieldRef
+                            fieldRef {
+                              enclosingType {
+                                pkg: "scala.reflect"
+                                name: "FactoryManifest$"
+                              }
+                              name: "MODULE$"
+                            }
+                          }
+                          signature {
+                            name: "Int"
+                            owner {
+                              pkg: "scala.reflect"
+                              name: "FactoryManifest$"
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                pkg: "scala.reflect"
+                                name: "FactoryManifest$AnyValManifest"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Arrays"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

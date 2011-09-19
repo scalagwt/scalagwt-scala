@@ -24,6 +24,14 @@ scala/collection/immutable/StringLike.scala
 Depends on String.format. I found it easier to patch it by hand. Should be removed from here
 ASAP.
 
+scala/collection/mutable/ArrayOps.scala
+-----------------------------------------
+Removes references to parallel collections and adds context bound on ClassManifest for
+ofRef class so we can get rid of "ClassManifest.classType[T](repr.getClass.getComponentType))"
+call that relies on refleciton. Ideally, this functionality should be implemented as a patch
+but our current patching mechanism lacks support for adding context bounds so it was easier
+to just add a replacement for the whole file.
+
 scala/collection/mutable/BufferLike.scala
 -----------------------------------------
 Creepy one. Since in GWT there's one Object.clone() method Scala compiler gets really confused

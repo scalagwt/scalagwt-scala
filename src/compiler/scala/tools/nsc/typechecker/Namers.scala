@@ -41,8 +41,8 @@ trait Namers { self: Analyzer =>
     }
   }
 
-  private class NormalNamer(context : Context) extends Namer(context)
-  def newNamer(context : Context) : Namer = new NormalNamer(context)
+  private class NormalNamer(context: Context) extends Namer(context)
+  def newNamer(context: Context): Namer = new NormalNamer(context)
 
   // In the typeCompleter (templateSig) of a case class (resp it's module),
   // synthetic `copy` (reps `apply`, `unapply`) methods are added. To compute
@@ -64,7 +64,7 @@ trait Namers { self: Analyzer =>
   def resetNamer() {
     classAndNamerOfModule.clear
   }
-  
+
   abstract class Namer(val context: Context) extends NamerErrorTrees {
 
     val typer = newTyper(context)
@@ -112,9 +112,6 @@ trait Namers { self: Analyzer =>
       sym
     }
 
-    private def isCopyGetter(meth: Symbol) = {
-      meth.name startsWith (nme.copy + nme.DEFAULT_GETTER_STRING)      
-    }
     private def isTemplateContext(context: Context): Boolean = context.tree match {
       case Template(_, _, _) => true
       case Import(_, _) => isTemplateContext(context.outer)
@@ -254,7 +251,7 @@ trait Namers { self: Analyzer =>
           setPrivateWithin(tree, m.moduleClass, tree.mods)
 
         context.unit.synthetics -= m
-      } else {        
+      } else {
         m = context.owner.newModule(tree.pos, tree.name)
         m.setFlag(moduleFlags)
         m = setPrivateWithin(tree, m, tree.mods)
@@ -266,7 +263,7 @@ trait Namers { self: Analyzer =>
       if (m.owner.isPackageClass && !m.isPackage) {
         m.moduleClass.sourceFile = context.unit.source.file
         currentRun.symSource(m) = m.moduleClass.sourceFile
-        registerTopLevelSym(m)          
+        registerTopLevelSym(m)
       }
       m
     }
@@ -385,37 +382,66 @@ trait Namers { self: Analyzer =>
 
     private def enterSymFinishWith(tree: Tree, tparams: List[TypeDef]) {
       val sym = tree.symbol
+      def isCopyMethodOrGetter =
+        sym.name == nme.copy || sym.name.startsWith(nme.copy + nme.DEFAULT_GETTER_STRING)
+      def useCompleter = sym.isSynthetic && (
+           !sym.hasDefaultFlag 
+        || sym.owner.info.member(nme.copy).isSynthetic
+      )
+      
       debuglog("entered " + sym + " in " + context.owner + ", scope-id = " + context.scope.## )
       var ltype = namerOf(sym).typeCompleter(tree)
       if (tparams nonEmpty) {
         //@M! TypeDef's type params are handled differently
         //@M e.g., in [A[x <: B], B], A and B are entered first as both are in scope in the definition of x 
         //@M x is only in scope in `A[x <: B]'
-        if(!sym.isAbstractType) //@M TODO: change to isTypeMember ?
+        if (!sym.isAbstractType) //@M TODO: change to isTypeMember ?
           newNamer(context.makeNewScope(tree, sym)).enterSyms(tparams) 
 
         ltype = new PolyTypeCompleter(tparams, ltype, tree, sym, context) //@M
         if (sym.isTerm) skolemize(tparams)
       }
+      def copyMethodCompleter(clazz: Symbol) = {
+        // the 'copy' method of case classes needs a special type
+        // completer to make bug0054.scala (and others) work. the copy
+        // method has to take exactly the same parameter types as the
+        // primary constructor.
+        val classTypeParams = clazz.typeParams
+        val constrType      = clazz.primaryConstructor.tpe
+        val subst           = new SubstSymMap(clazz.typeParams, tparams map (_.symbol))
+        val cparamss        = constrType.paramss
 
-      if (sym.name == nme.copy || isCopyGetter(sym)) {
-        // it could be a compiler-generated copy method or one of its default getters
-        setInfo(sym)(mkTypeCompleter(tree)(copySym => {
-          def copyIsSynthetic() = sym.owner.info.member(nme.copy).isSynthetic
-          if (sym.isSynthetic && (!sym.hasDefaultFlag || copyIsSynthetic())) {
-            // the 'copy' method of case classes needs a special type completer to make bug0054.scala (and others)
-            // work. the copy method has to take exactly the same parameter types as the primary constructor.
-            val constrType = copySym.owner.primaryConstructor.tpe
-            val subst = new SubstSymMap(copySym.owner.typeParams, tparams map (_.symbol))
-            for ((params, cparams) <- tree.asInstanceOf[DefDef].vparamss.zip(constrType.paramss);
-                 (param, cparam) <- params.zip(cparams)) {
+        tree match {
+          case DefDef(_, _, _, ps :: psRest, _, _) =>
+            val cs :: csRest = cparamss
+            for ((param, cparam) <- ps zip cs)
               // need to clone the type cparam.tpe??? problem is: we don't have the new owner yet (the new param symbol)
-              param.tpt.setType(subst(cparam.tpe))
+              param.tpt setType subst(cparam.tpe)
+
+            if (psRest.isEmpty && csRest.isEmpty) ()
+            else if (psRest.isEmpty || csRest.isEmpty)
+              debuglog("Skipping mismatched extra param lists: " + psRest + ", " + csRest)
+            else {
+              for ((vparams, cparams) <- psRest zip csRest)
+                for ((param, cparam) <- vparams zip cparams)
+                  param.tpt setType subst(cparam.tpe)
             }
+          case _ => ()
+        }
+      }
+
+      // it could be a compiler-generated copy method or one of its default getters
+      setInfo(sym)(
+        if (isCopyMethodOrGetter) (
+          mkTypeCompleter(tree) { copySym =>
+            if (useCompleter)
+              copyMethodCompleter(copySym.owner)
+              
+            ltype complete sym
           }
-          ltype.complete(sym)
-        }))
-      } else setInfo(sym)(ltype)
+        )
+        else ltype
+      )
     }
 
     def enterIfNotThere(sym: Symbol) {
@@ -424,7 +450,7 @@ trait Namers { self: Analyzer =>
       while ((e ne null) && (e.owner eq scope) && (e.sym ne sym)) e = e.tail
       if (!((e ne null) && (e.owner eq scope))) context.scope.enter(sym)
     }
-    
+
     def enterSym(tree: Tree): Context = {
       def finishWith(tparams: List[TypeDef]) { enterSymFinishWith(tree, tparams) }
       def finish() = finishWith(Nil)
@@ -452,7 +478,7 @@ trait Namers { self: Analyzer =>
               if (context.owner == EmptyPackageClass) RootClass else context.owner)
             val namer = newNamer(context.make(tree, sym.moduleClass, sym.info.decls))
             namer enterSyms stats
-            
+
           case tree @ ClassDef(mods, name, tparams, impl) =>
             tree.symbol = enterClassSymbol(tree)
             finishWith(tparams)
@@ -483,7 +509,7 @@ trait Namers { self: Analyzer =>
             tree.symbol = enterModuleSymbol(tree)
             sym.moduleClass setInfo namerOf(sym).moduleClassTypeCompleter(tree)
             finish
-          
+
           case vd @ ValDef(mods, name, tp, rhs) =>
             if ((!context.owner.isClass ||
                  (mods.isPrivateLocal && !mods.isCaseAccessor) ||
@@ -522,7 +548,7 @@ trait Namers { self: Analyzer =>
                     } else {
                       val mFlag = if (mods1.isLazy) MUTABLE else 0
                       val lFlag = if (mods.isPrivateLocal) 0 else LOCAL
-                      val newflags = mods1.flags & FieldFlags | PRIVATE | lFlag | mFlag          
+                      val newflags = mods1.flags & FieldFlags | PRIVATE | lFlag | mFlag
                       owner.newValue(tree.pos, nme.getterToLocal(name)) setFlag newflags
                     }
                   enterInScope(vsym)
@@ -558,7 +584,7 @@ trait Namers { self: Analyzer =>
             setInfo(sym)(namerOf(sym).typeCompleter(tree))
             return context.makeNewImport(imp)
           case _ =>
-        }        
+        }
       }
       catch {
         case ex: TypeError =>
@@ -770,7 +796,7 @@ trait Namers { self: Analyzer =>
         } else {
           tp
         }
-      }          
+      }
       def enterSelf(self: ValDef) {
         if (!self.tpt.isEmpty) {
           clazz.typeOfThis = selfTypeCompleter(self.tpt)
@@ -813,7 +839,7 @@ trait Namers { self: Analyzer =>
           esym.asInstanceOf[TypeSymbol].refreshType()
           esym setInfo earlyMap(esym.info)
         }
-      
+
 /*
         println("earlies: "+(earlyTypes map (_.symbol)))
         println("earlies: "+(earlyTypes map (_.symbol.tpe)))
@@ -822,7 +848,7 @@ trait Namers { self: Analyzer =>
         println(templ)
      
 */
-	  
+
       }
 */
       var parents0 = typer.parentTypes(templ)
@@ -948,7 +974,7 @@ trait Namers { self: Analyzer =>
         else MethodType(params, restpe)
       }
 
-      def thisMethodType(restpe: Type) =  {
+      def thisMethodType(restpe: Type) = {
         import scala.collection.mutable.ListBuffer
         val okParams = ListBuffer[Symbol]()
         // can we relax these restrictions? see test/files/pos/depmet_implicit_oopsla_session_2.scala and neg/depmet_try_implicit.scala for motivation
@@ -1127,7 +1153,7 @@ trait Namers { self: Analyzer =>
                   case _ =>
                     return // fix #3649 (prevent crash in erroneous source code)
                            // nmr == null can happen in IDE; this is really an ugly hack on top[ of an ugly hack but it seems to work
-                }    
+                }
               }
               deftParams = cdef.tparams map copyUntypedInvariant
               nmr
@@ -1236,7 +1262,7 @@ trait Namers { self: Analyzer =>
     def addApplyUnapply(cdef: ClassDef, namer: Namer) {
       if (!cdef.symbol.hasAbstractFlag)
         namer.enterSyntheticSym(caseModuleApplyMeth(cdef))
-        
+
       namer.enterSyntheticSym(caseModuleUnapplyMeth(cdef))
     }
 
@@ -1285,7 +1311,7 @@ trait Namers { self: Analyzer =>
           tree match {
             case ClassDef(_, _, tparams, impl) =>
               newNamer(context.makeNewScope(tree, sym)).classSig(tparams, impl)
-            
+
             case ModuleDef(_, _, impl) =>
               val clazz = sym.moduleClass
               clazz.setInfo(newNamer(context.makeNewScope(tree, clazz)).templateSig(impl))
@@ -1512,7 +1538,7 @@ trait Namers { self: Analyzer =>
         NoSymbol
     }
   }
-  
+
   def companionSymbolOf(sym: Symbol, context: Context) =
     if (sym.isTerm) companionClassOf(sym, context)
     else if (sym.isClass) companionModuleOf(sym, context)

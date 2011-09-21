@@ -909,6 +909,7 @@ PACKED QUICK BUILD (PACK)
       <!-- filemode / dirmode: see trac ticket #1294 -->
       <zipfileset dirmode="755" filemode="644" src="${fjbg.jar}"/>
       <zipfileset dirmode="755" filemode="644" src="${msil.jar}"/>
+      <zipfileset dirmode="755" filemode="644" src="${protobuf.jar}"/>
     </jar>
     <copy file="${jline.jar}" toDir="${build-pack.dir}/lib"/>
     <copy file="${protobuf.jar}" toDir="${build-pack.dir}/lib"/>

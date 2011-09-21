@@ -166,7 +166,7 @@ PROPERTIES
   <property name="ant.jar" value="${ant.home}/lib/ant.jar"/>
   <property name="scalacheck.jar" value="${lib.dir}/scalacheck.jar"/>
   <property name="protobuf.jar" value="${lib.dir}/protobuf-java-2.4.1.jar"/>
-	  
+
   <!-- Sets location of build folders -->
   <property name="build.dir" value="${basedir}/build"/>
   <property name="build-locker.dir" value="${build.dir}/locker"/>
@@ -207,7 +207,7 @@ INITIALISATION
     <property name="scalac.args.optimise" value=""/>
   <!-- scalac.args.quickonly are added to quick.* targets but not others (particularly, locker.)
        This is to facilitate testing new command line options which do not yet exist in starr. -->
-	<property name="scalac.args.quickonly" value=""/>
+    <property name="scalac.args.quickonly" value=""/>
 
     <property name="scalac.args.all" value="${scalac.args} ${scalac.args.optimise}"/>
 	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
@@ -227,6 +227,7 @@ INITIALISATION
     </condition>
 
     <exec osfamily="unix" executable="tools/get-scala-revision" outputproperty="svn.number" failifexecutionfails="false" />
+    <exec osfamily="windows" executable="tools/get-scala-revision.bat" outputproperty="svn.number" failifexecutionfails="false" />
     <!-- some default in case something went wrong getting the revision -->
     <property name="svn.number" value="0"/>
 
@@ -695,6 +696,7 @@ QUICK BUILD (QUICK)
         <include name="**/*.swf"/>
         <include name="**/*.png"/>
         <include name="**/*.gif"/>
+        <include name="**/*.txt"/>
       </fileset>
     </copy>
     <touch file="${build-quick.dir}/compiler.complete" verbose="no"/>
@@ -1377,6 +1379,7 @@ BOOTSTRAPPING BUILD (STRAP)
         <include name="**/*.swf"/>
         <include name="**/*.png"/>
         <include name="**/*.gif"/>
+        <include name="**/*.txt"/>
        </fileset>
     </copy>
     <touch file="${build-strap.dir}/compiler.complete" verbose="no"/>
@@ -1438,7 +1441,7 @@ BOOTSTRAPPING BUILD (STRAP)
       jvmargs="${scalacfork.jvmargs}">
       <include name="**/*.scala"/>
       <compilationpath>
-	<pathelement location="${build-strap.dir}/classes/library"/>
+        <pathelement location="${build-strap.dir}/classes/library"/>
       </compilationpath>
     </scalacfork>
   </target>
@@ -1687,7 +1690,8 @@ DOCUMENTATION
       docsourceurl="https://lampsvn.epfl.ch/trac/scala/browser/scala/trunk/src/€{FILE_PATH}.scala#L1"
       docUncompilable="${src.dir}/library-aux"
       sourcepath="${src.dir}"
-      classpathref="pack.classpath">
+      classpathref="pack.classpath"
+      docRootContent="${build-docs.dir}/library/lib/rootdoc.txt">
       <src>
         <files includes="${src.dir}/actors"/>
         <files includes="${src.dir}/library/scala"/>
@@ -1890,7 +1894,8 @@ DISTRIBUTION
 ============================================================================ -->
 
   <target name="dist.start" depends="docs.done, pack.done">
-    <property name="dist.dir" value="${dists.dir}/scala-${version.number}"/>
+    <property name="dist.name" value="scala-${version.number}"/>
+    <property name="dist.dir" value="${dists.dir}/${dist.name}"/>
   </target>
 
   <target name="dist.base" depends="dist.start">

@@ -188,6 +188,11 @@ member {
                       }
                     }
                   }
+                  statement {
+                    type: Break
+                    break {
+                    }
+                  }
                 }
               }
             }
@@ -218,6 +223,11 @@ member {
                           }
                         }
                       }
+                    }
+                  }
+                  statement {
+                    type: Break
+                    break {
                     }
                   }
                 }
@@ -252,6 +262,11 @@ member {
                       }
                     }
                   }
+                  statement {
+                    type: Break
+                    break {
+                    }
+                  }
                 }
               }
             }
@@ -277,6 +292,11 @@ member {
                         }
                       }
                     }
+                  }
+                }
+                statement {
+                  type: Break
+                  break {
                   }
                 }
               }

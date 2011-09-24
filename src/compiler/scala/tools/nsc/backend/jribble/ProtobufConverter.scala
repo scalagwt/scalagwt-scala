@@ -564,6 +564,31 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
 
       case tree@Match(selector, cases) =>
         assert(cases forall { case CaseDef(_, guard, _) => guard == EmptyTree })
+        /** Appends x at the end of s if s is a block,
+         * if not then both s and x are put into a new block */
+        def appendStmt(s: P.Statement, x: P.Statement): P.Statement = {
+          import java.util.Arrays.asList
+          val block = P.Block.newBuilder()
+          s.getType match {
+            case P.Statement.StatementType.Block =>
+              block.addAllStatement(s.getBlock().getStatementList())
+            case _ =>
+              block.addAllStatement(asList(s))
+          }
+          block.addAllStatement(asList(x))
+          val result = P.Statement.newBuilder()
+          result.setType(P.Statement.StatementType.Block)
+          result.setBlock(block)
+          result.build()
+        }
+        def breakStmt: P.Statement = {
+          val breakStat = P.Statement.newBuilder
+          breakStat.setType(P.Statement.StatementType.Break)
+          val break = P.Break.newBuilder
+          breakStat.setBreak(break)
+          breakStat.build()
+        }
+
         proto.setType(P.Statement.StatementType.Switch)
         val switch = P.Switch.newBuilder
         switch.setExpression(convertExpr(selector, enclosingClass))
@@ -586,10 +611,14 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
           lit.setType(P.Literal.LiteralType.Int)
           lit.setIntValue(constant)
           caseClause.setConstant(lit)
-          caseClause.setStatement(convertStat(stat))
+          val s = appendStmt(convertStat(stat), breakStmt)
+          caseClause.setStatement(s)
           switch.addCase(caseClause)
         }
-        if (default.isDefined) switch.setDefaultCase(convertStat(default.get))
+        default foreach { x =>
+          val s = appendStmt(convertStat(x), breakStmt)
+          switch.setDefaultCase(s)
+        }
         
         proto.setSwitchStat(switch)
       

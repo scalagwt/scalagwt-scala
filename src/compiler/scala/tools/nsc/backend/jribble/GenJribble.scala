@@ -6,30 +6,29 @@
 package scala.tools.nsc.backend.jribble
 
 import java.io._
-
 import scala.collection.{mutable=>mut}
 import scala.collection.mutable.ListBuffer
-
 import com.google.protobuf.GeneratedMessage
 import com.google.protobuf.TextFormat
-
 import scala.tools.nsc._
 import scala.tools.nsc.symtab.Flags._
+import scala.tools.nsc.io.AbstractFile
+import scala.tools.nsc.backend.jribble.JribbleProtos.DeclaredType
 
 
 /** The Jribble backend. */
-abstract class GenJribble
-extends SubComponent
-with JribbleAnalysis
+abstract class GenJribble 
+extends SubComponent 
+with JribbleAnalysis 
 with JavaDefinitions
 with JribbleNormalization
 {
-  val global: Global
+  val global: Global 
   import global._
   import global.scalaPrimitives._
   protected lazy val typeKinds: global.icodes.type = global.icodes
   protected lazy val scalaPrimitives: global.scalaPrimitives.type = global.scalaPrimitives
-
+  
   val phaseName = "genjribble"
 
   /** Create a new phase */
@@ -47,10 +46,11 @@ with JribbleNormalization
     def apply(unit: CompilationUnit): Unit =
       gen(unit.body, unit)
 
-    var pkgName: String = null
-
-    def emitProto(proto: GeneratedMessage, symbol: Symbol, suffix: String) {
-      val out = new BufferedOutputStream(new FileOutputStream(getFile(symbol, suffix)))
+    var pkgName: String = null      
+    
+    def emitProto(proto: DeclaredType, symbol: Symbol, suffix: String) {
+      val file = FileUtils.getFile(symbol, proto, suffix)
+      val out = file.bufferedOutput
       if (settings.jribbleText.value) {
         val writer = new OutputStreamWriter(out, "UTF-8")
         TextFormat.print(proto, writer)
@@ -60,7 +60,7 @@ with JribbleNormalization
       }
       out.close()
     }
-
+      
     private def gen(tree: Tree, unit: CompilationUnit) {
       object converter extends ProtobufConverter {
          val global: GenJribble.this.global.type = GenJribble.this.global
@@ -89,24 +89,49 @@ with JribbleNormalization
 
 
         // print the main class
-        emitProto(proto.build, clazz.symbol, converter.moduleSuffix(clazz.symbol) + ".jribble")
-
+        emitProto(proto.build, clazz.symbol, ".jribble")
+        
         // If it needs a mirror class, add one
         if (isStaticModule(clazz.symbol) && isTopLevelModule(clazz.symbol) && clazz.symbol.companionClass == NoSymbol) {
           val mirror = converter.mirrorClassFor(clazz.symbol)
           emitProto(mirror, clazz.symbol, ".jribble")
         }
       }
-
+        
       def gen(tree: Tree) {
         tree match {
           case EmptyTree =>
           case PackageDef(_, stats) => stats foreach gen
           case clazz:ClassDef => genClass(clazz)
         }
+      }  
+      
+      gen(tree)
+    }
+  }
+
+  /**
+   * Utility class for obtaining output filename for given proto message.
+   *
+   * Inspired by scala.tools.nsc.backend.jvm.BytecodeWriters
+   */
+  private object FileUtils {
+    def getFile(sym: Symbol, proto: DeclaredType, suffix: String): AbstractFile =
+      getFile(outputDirectory(sym), proto, suffix)
+
+    private def outputDirectory(sym: Symbol): AbstractFile =
+      settings.outputDirs.outputDirFor {
+        atPhase(currentRun.flattenPhase.prev)(sym.sourceFile)
       }
 
-      gen(tree)
+    private def getFile(base: AbstractFile, proto: DeclaredType, suffix: String): AbstractFile = {
+      import JribbleProtos.GlobalName
+      var dir = base
+      val name: GlobalName = proto.getName()
+      val pathParts = name.getPkg.split("[./]").toList
+      for (part <- pathParts)
+        dir = dir.subdirectoryNamed(part)
+      dir.fileNamed(name.getName + suffix)
     }
   }
 }

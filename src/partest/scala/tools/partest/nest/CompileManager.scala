@@ -3,8 +3,6 @@
  * @author Philipp Haller
  */
 
-// $Id$
-
 package scala.tools.partest
 package nest
 
@@ -105,7 +103,7 @@ class DirectCompiler(val fileManager: FileManager) extends SimpleCompiler {
     val toCompile = files map (_.getPath)
 
     try {
-      NestUI.verbose("compiling "+toCompile)
+      NestUI.verbose("compiling "+toCompile.mkString(" "))
       try new global.Run compile toCompile
       catch {
         case FatalError(msg) =>

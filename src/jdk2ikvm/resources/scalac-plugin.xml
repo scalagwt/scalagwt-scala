@@ -1,4 +1,0 @@
-<plugin>
-	<name>jdk2ikvm</name>
-  <classname>scala.tools.jdk2ikvm.JDK2IKVMPlugin</classname>
-</plugin>

@@ -35,10 +35,8 @@ abstract class TreeInfo {
   /** Is tree a declaration or type definition? 
    */
   def isDeclarationOrTypeDef(tree: Tree): Boolean = tree match {
-    case DefDef(_, _, _, _, _, EmptyTree)
-       | ValDef(_, _, _, EmptyTree)
-       | TypeDef(_, _, _, _) => true
-    case _ => false
+    case x: ValOrDefDef   => x.rhs eq EmptyTree
+    case _                => tree.isInstanceOf[TypeDef]
   }
 
   /** Is tree legal as a member definition of an interface?
@@ -104,6 +102,35 @@ abstract class TreeInfo {
       false
   }
 
+  def zipMethodParamsAndArgs(params: List[Symbol], args: List[Tree]): List[(Symbol, Tree)] = {
+    val plen   = params.length
+    val alen   = args.length
+    def fail() = {
+      global.debugwarn(
+        "Mismatch trying to zip method parameters and argument list:\n" +
+        "  params = " + params + "\n" +
+        "    args = " + args + "\n"
+      )
+      params zip args
+    }
+
+    if (plen == alen) params zip args
+    else if (params.isEmpty) fail
+    else if (isVarArgsList(params)) {
+      val plenInit = plen - 1
+      if (alen == plenInit) {
+        if (alen == 0) Nil        // avoid calling mismatched zip
+        else params.init zip args
+      }
+      else if (alen < plenInit) fail
+      else {
+        val front = params.init zip (args take plenInit)
+        val back  = args drop plenInit map (a => (params.last, a))
+        front ++ back
+      }
+    }
+    else fail
+  }
 
   /**
    * Selects the correct parameter list when there are nested applications.
@@ -116,35 +143,17 @@ abstract class TreeInfo {
    */
   def zipMethodParamsAndArgs(t: Tree): List[(Symbol, Tree)] = t match {
     case Apply(fn, args) =>
-      val params = fn.symbol.paramss(applyDepth(fn))
-      val plen   = params.length
-      val alen   = args.length
-      def fail() = {
-        global.debugwarn(
-          "Mismatch trying to zip method parameters and argument list:\n" +
-          "  params = " + params + "\n" +
-          "    args = " + args + "\n" +
-          "    tree = " + t
-        )
-        params zip args
-      }
-
-      if (plen == alen) params zip args
-      else if (params.isEmpty) fail
-      else if (isVarArgsList(params)) {
-        val plenInit = plen - 1
-        if (alen == plenInit) {
-          if (alen == 0) Nil        // avoid calling mismatched zip
-          else params.init zip args
-        }
-        else if (alen < plenInit) fail
-        else {
-          val front = params.init zip (args take plenInit)
-          val back  = args drop plenInit map (a => (params.last, a))
-          front ++ back
-        }
-      }
-      else fail
+      val depth  = applyDepth(fn)
+      // There could be applies which go beyond the parameter list(s),
+      // being applied to the result of the method call.
+      // !!! Note that this still doesn't seem correct, although it should
+      // be closer than what it replaced.
+      val params = (
+        if (depth < fn.symbol.paramss.size) fn.symbol.paramss(depth)
+        else if (fn.symbol.paramss.isEmpty) Nil
+        else fn.symbol.paramss.last
+      )
+      zipMethodParamsAndArgs(params, args)
     case _  => Nil
   }
 

@@ -6,15 +6,14 @@
 package scala.tools.nsc.backend.jribble
 
 import java.io._
-
 import scala.collection.{mutable=>mut}
 import scala.collection.mutable.ListBuffer
-
 import com.google.protobuf.GeneratedMessage
 import com.google.protobuf.TextFormat
- 
 import scala.tools.nsc._
 import scala.tools.nsc.symtab.Flags._
+import scala.tools.nsc.io.AbstractFile
+import scala.tools.nsc.backend.jribble.JribbleProtos.DeclaredType
 
 
 /** The Jribble backend. */
@@ -49,8 +48,9 @@ with JribbleNormalization
 
     var pkgName: String = null      
     
-    def emitProto(proto: GeneratedMessage, symbol: Symbol, suffix: String) {
-      val out = new BufferedOutputStream(new FileOutputStream(getFile(symbol, suffix)))
+    def emitProto(proto: DeclaredType, symbol: Symbol, suffix: String) {
+      val file = FileUtils.getFile(symbol, proto, suffix)
+      val out = file.bufferedOutput
       if (settings.jribbleText.value) {
         val writer = new OutputStreamWriter(out, "UTF-8")
         TextFormat.print(proto, writer)
@@ -89,7 +89,7 @@ with JribbleNormalization
 
 
         // print the main class
-        emitProto(proto.build, clazz.symbol, converter.moduleSuffix(clazz.symbol) + ".jribble")
+        emitProto(proto.build, clazz.symbol, ".jribble")
         
         // If it needs a mirror class, add one
         if (isStaticModule(clazz.symbol) && isTopLevelModule(clazz.symbol) && clazz.symbol.companionClass == NoSymbol) {
@@ -107,6 +107,31 @@ with JribbleNormalization
       }  
       
       gen(tree)
+    }
+  }
+
+  /**
+   * Utility class for obtaining output filename for given proto message.
+   *
+   * Inspired by scala.tools.nsc.backend.jvm.BytecodeWriters
+   */
+  private object FileUtils {
+    def getFile(sym: Symbol, proto: DeclaredType, suffix: String): AbstractFile =
+      getFile(outputDirectory(sym), proto, suffix)
+
+    private def outputDirectory(sym: Symbol): AbstractFile =
+      settings.outputDirs.outputDirFor {
+        atPhase(currentRun.flattenPhase.prev)(sym.sourceFile)
+      }
+
+    private def getFile(base: AbstractFile, proto: DeclaredType, suffix: String): AbstractFile = {
+      import JribbleProtos.GlobalName
+      var dir = base
+      val name: GlobalName = proto.getName()
+      val pathParts = name.getPkg.split("[./]").toList
+      for (part <- pathParts)
+        dir = dir.subdirectoryNamed(part)
+      dir.fileNamed(name.getName + suffix)
     }
   }
 }

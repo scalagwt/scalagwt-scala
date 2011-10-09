@@ -1,6 +1,0 @@
-<!-- GWT's module descriptor for ScalaLibrary -->
-<module>
-
-  <source path="scala" />
-  
-</module>

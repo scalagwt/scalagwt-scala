@@ -114,10 +114,8 @@ object Predef extends LowPriorityImplicits {
   def implicitly[T](implicit e: T) = e    // for summoning implicit values from the nether world
   @inline def locally[T](x: T): T  = x    // to communicate intent and avoid unmoored statements
 
-  /*@XML*/
   // Apparently needed for the xml library
   val $scope = scala.xml.TopScope
-  /*XML@*/
 
   // Deprecated
 
@@ -223,6 +221,11 @@ object Predef extends LowPriorityImplicits {
     def ensuring(cond: A => Boolean, msg: => Any): A = { assert(cond(x), msg); x }
   }
   implicit def any2Ensuring[A](x: A): Ensuring[A] = new Ensuring(x)
+
+  /** `???` can be used for marking methods that remain to be implemented.
+   *  @throws  A `NotImplementedError`
+   */
+  def ??? : Nothing = throw new NotImplementedError
 
   // tupling ------------------------------------------------------------
 

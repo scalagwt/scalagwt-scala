@@ -132,9 +132,7 @@ trait ProcessCreation {
     * apply(<x> {dxPath.absolutePath} --dex --output={classesDexPath.absolutePath} {classesMinJarPath.absolutePath}</x>)
     * }}}
     */
-  /*@XML*/
   def apply(command: scala.xml.Elem): ProcessBuilder  = apply(command.text.trim)
-  /*XML@*/
 
   /** Create a [[scala.sys.process.ProcessBuilder]] from a `Boolean`. This can be
     * to force an exit value.
@@ -156,14 +154,6 @@ trait ProcessCreation {
     * [[scala.sys.process.ProcessBuilder.Source]], which can then be
     * piped to something else.
     *
-    * This will concatenate the output of all sources.
-    */
-  def cat(file: Source, files: Source*): ProcessBuilder = cat(file +: files)
-
-  /** Create a [[scala.sys.process.ProcessBuilder]] from a non-empty sequence
-    * of [[scala.sys.process.ProcessBuilder.Source]], which can then be
-    * piped to something else.
-    *
     * This will concatenate the output of all sources. For example:
     *
     * {{{
@@ -177,6 +167,14 @@ trait ProcessCreation {
     * val build = new File("project/build.properties")
     * cat(spde, dispatch, build) #| "grep -i scala" !
     * }}}
+    */
+  def cat(file: Source, files: Source*): ProcessBuilder = cat(file +: files)
+  
+  /** Create a [[scala.sys.process.ProcessBuilder]] from a non-empty sequence
+    * of [[scala.sys.process.ProcessBuilder.Source]], which can then be
+    * piped to something else.
+    *
+    * This will concatenate the output of all sources.
     */
   def cat(files: Seq[Source]): ProcessBuilder = {
     require(files.nonEmpty)
@@ -207,9 +205,7 @@ trait ProcessImplicits {
   implicit def urlToProcess(url: URL): URLBuilder                         = apply(url)
 
   /** Implicitly convert a [[scala.xml.Elem]] into a [[scala.sys.process.ProcessBuilder]] */
-  /*@XML*/
   implicit def xmlToProcess(command: scala.xml.Elem): ProcessBuilder      = apply(command)
-  /*XML@*/
 
   /** Implicitly convert a `String` into a [[scala.sys.process.ProcessBuilder]] */
   implicit def stringToProcess(command: String): ProcessBuilder           = apply(command)

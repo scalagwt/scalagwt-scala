@@ -64,27 +64,14 @@ trait Namers { self: Analyzer =>
   def resetNamer() {
     classAndNamerOfModule.clear
   }
-
-  abstract class Namer(val context: Context) extends NamerErrorTrees {
+  
+  abstract class Namer(val context: Context) {
 
     val typer = newTyper(context)
 
     def setPrivateWithin[Sym <: Symbol](tree: Tree, sym: Sym, mods: Modifiers): Sym = {
-      if (mods.hasAccessBoundary) { 
-        val symOrError = typer.qualifyingClass(tree, mods.privateWithin, true) match {
-          case Left(err) =>
-            try {
-              err.emit(context)
-            } catch {
-              case _: TypeError =>
-                assert(false, "qualifying class info can fail but cannot throw type errors")
-            }
-            NoSymbol
-          case Right(sym) =>
-            sym
-        }
-        sym.privateWithin = symOrError
-      }
+      if (mods.hasAccessBoundary) 
+        sym.privateWithin = typer.qualifyingClass(tree, mods.privateWithin, true)
       sym
     }
 
@@ -161,7 +148,6 @@ trait Namers { self: Analyzer =>
 
     private def setInfo[Sym <: Symbol](sym : Sym)(tpe : LazyType) : Sym = sym.setInfo(tpe)
 
-    // TODO: make it into error trees
     private def doubleDefError(pos: Position, sym: Symbol) {
       val s1 = if (sym.isModule) "case class companion " else ""
       val s2 = if (sym.isSynthetic) "(compiler-generated) " + s1 else ""
@@ -511,25 +497,30 @@ trait Namers { self: Analyzer =>
             finish
 
           case vd @ ValDef(mods, name, tp, rhs) =>
-            if ((!context.owner.isClass ||
-                 (mods.isPrivateLocal && !mods.isCaseAccessor) ||
-                 name.startsWith(nme.OUTER) ||
-                 context.unit.isJava) && 
-                 !mods.isLazy) {
-              val vsym = owner.newValue(tree.pos, name).setFlag(mods.flags);
-              if(context.unit.isJava) setPrivateWithin(tree, vsym, mods) // #3663 -- for Scala fields we assume private[this]
+            val needsNoAccessors = !mods.isLazy && (
+                 !context.owner.isClass
+              || (mods.isPrivateLocal && !mods.isCaseAccessor)
+              || name.startsWith(nme.OUTER)
+              || context.unit.isJava
+            )
+
+            if (needsNoAccessors) {
+              val vsym = owner.newValue(tree.pos, name).setFlag(mods.flags)
+              if (context.unit.isJava) setPrivateWithin(tree, vsym, mods) // #3663 -- for Scala fields we assume private[this]
               tree.symbol = enterInScope(vsym)
               finish
-            } else {
-              val mods1 =
-            	  if (mods.isPrivateLocal && !mods.isLazy) {
-                    context.error(tree.pos, "private[this] not allowed for case class parameters")
-                    mods &~ LOCAL
-                  } else mods
+            }
+            else {
+              val mods1 = (
+                if (mods.isPrivateLocal && !mods.isLazy) {
+                  context.error(tree.pos, "private[this] not allowed for case class parameters")
+                  mods &~ LOCAL
+                }
+                else mods
+              )
               // add getter and possibly also setter
               if (nme.isSetterName(name))
                 context.error(tree.pos, "Names of vals or vars may not end in `_='")
-              // .isInstanceOf[..]: probably for (old) IDE hook. is this obsolete?
               val getter = enterAccessorMethod(tree, name, getterFlags(mods1.flags), mods1)
               setInfo(getter)(namerOf(getter).getterTypeCompleter(vd))
               if (mods1.isMutable) {
@@ -543,7 +534,7 @@ trait Namers { self: Analyzer =>
                 } else {
                   val vsym =
                     if (!context.owner.isClass) {
-                      assert(mods1.isLazy)   // if not a field, it has to be a lazy val
+                      assert(mods1.isLazy, mods1)   // if not a field, it has to be a lazy val
                       owner.newValue(tree.pos, name + "$lzy" ).setFlag((mods1.flags | MUTABLE) & ~IMPLICIT)
                     } else {
                       val mFlag = if (mods1.isLazy) MUTABLE else 0
@@ -674,18 +665,10 @@ trait Namers { self: Analyzer =>
         case _ =>
       }
       sym.setInfo(if (sym.isJavaDefined) RestrictJavaArraysMap(tp) else tp)
-      if ((sym.isAliasType || sym.isAbstractType) && !sym.isParameter) {
-        val check = typer.checkNonCyclic(tree.pos, tp)
-        if (check.isDefined) {
-          sym.setInfo(ErrorType) // this early test is there to avoid infinite baseTypes when
-                                 // adding setters and getters --> bug798
-          try {
-            check.get.emit(context)
-          } catch {
-            case _: TypeError => assert(false, "Type errors cannot be thrown in type completers") 
-          }
-        }
-      }
+      if ((sym.isAliasType || sym.isAbstractType) && !sym.isParameter && 
+          !typer.checkNonCyclic(tree.pos, tp))
+        sym.setInfo(ErrorType) // this early test is there to avoid infinite baseTypes when
+                               // adding setters and getters --> bug798
       debuglog("defined " + sym);
       validate(sym)
     }
@@ -788,7 +771,7 @@ trait Namers { self: Analyzer =>
       val clazz = context.owner
       def checkParent(tpt: Tree): Type = {
         val tp = tpt.tpe
-        if (tp.typeSymbol == context.owner) {
+        if (tp.typeSymbol == context.owner) { 
           context.error(tpt.pos, ""+tp.typeSymbol+" inherits itself")
           AnyRefClass.tpe 
         } else if (tp.isError) {
@@ -851,14 +834,7 @@ trait Namers { self: Analyzer =>
 
       }
 */
-      var parents0 = typer.parentTypes(templ)
-      try {
-        parents0.foreach(p => if (p.containsError()) typer.emitAllErrorTrees(p, context))
-      } catch {
-        case _: TypeError => 
-          assert(false, "parent types cannot throw type errors")
-      }
-      val parents = parents0 map checkParent
+      var parents = typer.parentTypes(templ) map checkParent
       enterSelf(templ.self)
       val decls = new Scope
 //      for (etdef <- earlyTypes) decls enter etdef.symbol
@@ -1327,7 +1303,7 @@ trait Namers { self: Analyzer =>
                 if (rhs.isEmpty) {
                   context.error(tpt.pos, "missing parameter type");
                   ErrorType
-                } else {
+                } else { 
                   tpt defineType widenIfNecessary(
                     sym, 
                     newTyper(typer1.context.make(vdef, sym)).computeType(rhs, WildcardType), 
@@ -1342,10 +1318,7 @@ trait Namers { self: Analyzer =>
               
             case Import(expr, selectors) =>
               val expr1 = typer.typedQualifier(expr)
-              val stable = typer.checkStable(expr1)
-              if (stable.containsError())
-                typer.emitAllErrorTrees(stable, context)
-
+              typer checkStable expr1
               if (expr1.symbol != null && expr1.symbol.isRootPackage)
                 context.error(tree.pos, "_root_ cannot be imported")
 
@@ -1355,16 +1328,13 @@ trait Namers { self: Analyzer =>
               // copy symbol and type attributes back into old expression
               // so that the structure builder will find it.
               expr.symbol = expr1.symbol
-              expr.tpe = expr1.tpe
+              expr.tpe = expr1.tpe 
               ImportType(expr1)
           }
         } catch {
           case ex: TypeError =>
             //Console.println("caught " + ex + " in typeSig")
-            // TODO: once ErrorTrees are implemented we should be able
-            // to get rid of this catch and simply report the error
-            // (maybe apart from cyclic errors)
-            TypeSigError(tree, ex).emit(context)
+            typer.reportTypeError(tree.pos, ex)
             ErrorType
         }
       result match {
@@ -1409,7 +1379,7 @@ trait Namers { self: Analyzer =>
       }
 
       if (sym.isConstructor) {
-        if (sym.hasFlag(OVERRIDE | ABSOVERRIDE))
+        if (sym.isAnyOverride)
           context.error(sym.pos, "`override' modifier not allowed for constructors")
         if (sym.isImplicit)
           context.error(sym.pos, "`implicit' modifier not allowed for constructors")
@@ -1424,9 +1394,9 @@ trait Namers { self: Analyzer =>
       if (sym.hasFlag(ABSTRACT) && !sym.isClass)
         context.error(sym.pos, "`abstract' modifier can be used only for classes; " + 
           "\nit should be omitted for abstract members")
-      if (sym.hasFlag(OVERRIDE | ABSOVERRIDE) && !sym.hasFlag(TRAIT) && sym.isClass)
+      if (sym.isAnyOverride && !sym.hasFlag(TRAIT) && sym.isClass)
         context.error(sym.pos, "`override' modifier not allowed for classes")
-      if (sym.hasFlag(ABSOVERRIDE) && !sym.owner.isTrait)
+      if (sym.isAbstractOverride && !sym.owner.isTrait)
         context.error(sym.pos, "`abstract override' modifier only allowed for members of traits")
       if (sym.isLazy && sym.hasFlag(PRESUPER))
         context.error(sym.pos, "`lazy' definitions may not be initialized early")

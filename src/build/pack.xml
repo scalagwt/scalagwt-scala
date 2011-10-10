@@ -286,7 +286,7 @@ MAIN DISTRIBUTION SBAZ
           file="${src.dir}/build/maven/maven-deploy.xml"/>
     <!-- export properties for use when deploying -->
     <property name="maven.snapshot.version.number"
-              value="${version.major}.${version.minor}.${version.patch}-SNAPSHOT"/>
+              value="${version.major}.${version.minor}.${version.patch}-scalagwt-SNAPSHOT"/>
     <echoproperties destfile="${dists.dir}/maven/${version.number}/build.properties"/>
   </target>
 

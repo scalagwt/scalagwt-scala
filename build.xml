@@ -234,7 +234,7 @@ INITIALISATION
     <property file="${basedir}/build.number"/>
     <property
       name="version.number"
-      value="${version.major}.${version.minor}.${version.patch}.r${svn.number}-b${time.short}"/>
+      value="${version.major}.${version.minor}.${version.patch}-scalagwt.r${svn.number}-b${time.short}"/>
     <!-- And print-out what we are building -->
     <echo level="info" message="Build number is '${version.number}'"/>
     <echo level="info" message="Built ${time.human} from revision ${svn.number} with ${java.vm.name} ${java.version}"/>

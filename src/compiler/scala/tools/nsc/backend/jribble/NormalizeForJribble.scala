@@ -220,7 +220,7 @@ with JribbleNormalization
         // TODO(spoon): reuse the original tree when possible
         mkBlock(newBlockStats.toList, unitLiteral)
       case tree@ValDef(mods, name, tpt, rhs) if isLocalValDef(tree) && mods.isPrivate =>
-        import scala.reflect.generic.Flags._
+        import scala.reflect.internal.Flags._
         val newTree = treeCopy.ValDef(tree, mods &~ PRIVATE, name, tpt, rhs)
         newTree.symbol.flags = newTree.symbol.flags & ~ PRIVATE
         transform(newTree)

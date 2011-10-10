@@ -35,7 +35,7 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
     
   //copied from GenJVM
   def moduleSuffix(sym: Symbol) = {
-    import scala.reflect.generic.Flags
+    import scala.reflect.internal.Flags
     if (sym.hasFlag(Flags.MODULE) && !sym.isMethod &&
        !sym.isImplClass && !sym.hasFlag(Flags.JAVA)) "$"
     else "";

@@ -85,7 +85,7 @@ trait JribbleAnalysis {
  
   //copied from GenJVM
   def isStaticModule(sym: Symbol): Boolean = {
-    import scala.reflect.generic.Flags
+    import scala.reflect.internal.Flags
     sym.isModuleClass && !sym.isImplClass && !sym.hasFlag(Flags.LIFTED)
   }
 

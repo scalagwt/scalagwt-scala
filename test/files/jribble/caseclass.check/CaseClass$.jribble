@@ -86,7 +86,7 @@ member {
                 name: "Option"
               }
             }
-            name: "$2$"
+            name: "$1$"
           }
         }
         statement {
@@ -145,7 +145,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$2$"
+                          name: "$1$"
                         }
                       }
                       rhs {
@@ -174,7 +174,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$2$"
+                          name: "$1$"
                         }
                       }
                       rhs {
@@ -264,7 +264,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$2$"
+                name: "$1$"
               }
             }
           }
@@ -338,7 +338,7 @@ member {
 member {
   type: Method
   modifiers {
-    isProtected: true
+    isPrivate: true
   }
   method {
     name: "readResolve"

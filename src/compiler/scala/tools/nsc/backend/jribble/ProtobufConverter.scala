@@ -465,7 +465,7 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
         val tpe: P.Type = convert(exBinding.symbol.tpe)
         assert(tpe.getType == P.Type.TypeType.Named)
         proto.setTpe(tpe.getNamedType)
-        proto.setParam(exName.encode.toString)
+        proto.setParam(exBinding.symbol.name.encode.toString)
         
       case CaseDef(Typed(Ident(nme.WILDCARD), tpt), _, catchBody) =>
         val tpe: P.Type = convert(tpt.tpe)

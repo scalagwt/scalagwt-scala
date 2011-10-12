@@ -534,6 +534,100 @@ member {
 member {
   type: Method
   modifiers {
+    isPublic: true
+  }
+  method {
+    name: "catchAndPassToLambda"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Try
+          tryStat {
+            block {
+              type: Block
+              block {
+              }
+            }
+            catch {
+              tpe {
+                pkg: "java.lang"
+                name: "Exception"
+              }
+              param: "ex$2"
+              body {
+                type: Block
+                block {
+                  statement {
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala"
+                          name: "Function0"
+                        }
+                      }
+                      name: "f"
+                      initializer {
+                        type: NewObject
+                        newObject {
+                          clazz {
+                            name: "Try$$anonfun$1"
+                          }
+                          signature {
+                            name: "new"
+                            owner {
+                              name: "Try$$anonfun$1"
+                            }
+                            paramType {
+                              type: Named
+                              namedType {
+                                name: "Try"
+                              }
+                            }
+                            paramType {
+                              type: Named
+                              namedType {
+                                pkg: "java.lang"
+                                name: "Exception"
+                              }
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                name: "Try$$anonfun$1"
+                              }
+                            }
+                          }
+                          argument {
+                            type: ThisRef
+                          }
+                          argument {
+                            type: VarRef
+                            varRef {
+                              name: "ex$2"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
     isPrivate: true
     isFinal: true
   }

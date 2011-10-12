@@ -20,4 +20,9 @@ class Try {
   def tryPlusFinally {
     try { true } finally { println("finally") }
   }
+
+  def catchAndPassToLambda {
+    try { true } catch { case ex: Exception => val f = () => ex }
+  }
+
 }

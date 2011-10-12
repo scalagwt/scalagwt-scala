@@ -124,7 +124,7 @@ trait GenMapLike[A, +B, +Repr] extends GenIterableLike[(A, B), Repr] with Equals
         }
       } catch { 
         case ex: ClassCastException => 
-          false 
+          println("class cast "); false 
       }}
     case _ =>
       false

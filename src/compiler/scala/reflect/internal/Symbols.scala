@@ -42,7 +42,10 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
   val originalOwner = perRunCaches.newMap[Symbol, Symbol]()
 
   /** The class for all symbols */
-  abstract class Symbol(initOwner: Symbol, initPos: Position, initName: Name) extends AbsSymbol with HasFlags {
+  abstract class Symbol(initOwner: Symbol, initPos: Position, initName: Name)
+          extends AbsSymbol
+             with HasFlags
+             with Annotatable[Symbol] {
 
     type FlagsType          = Long
     type AccessBoundaryType = Symbol
@@ -1165,26 +1168,26 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       rawannots = annots1
       annots1
     }
-    
-    def setAnnotations(annots: List[AnnotationInfoBase]): this.type = {
+
+    def setRawAnnotations(annots: List[AnnotationInfoBase]): this.type = {
       this.rawannots = annots
       this
     }
+    def setAnnotations(annots: List[AnnotationInfo]): this.type =
+      setRawAnnotations(annots)
 
-    def addAnnotation(annot: AnnotationInfo) {
-      setAnnotations(annot :: this.rawannots)
-    }
+    def withAnnotations(annots: List[AnnotationInfo]): this.type =
+      setRawAnnotations(annots ::: rawannots)
 
-    /** Does this symbol have an annotation of the given class? */
-    def hasAnnotation(cls: Symbol) = 
-      getAnnotation(cls).isDefined
+    def withoutAnnotations: this.type =
+      setRawAnnotations(Nil)
 
-    def getAnnotation(cls: Symbol): Option[AnnotationInfo] = 
-      annotations find (_.atp.typeSymbol == cls)
-      
-    /** Remove all annotations matching the given class. */
-    def removeAnnotation(cls: Symbol): Unit = 
-      setAnnotations(annotations filterNot (_.atp.typeSymbol == cls))
+    def addAnnotation(annot: AnnotationInfo): this.type =
+      setRawAnnotations(annot :: rawannots)
+
+    // Convenience for the overwhelmingly common case
+    def addAnnotation(sym: Symbol, args: Tree*): this.type =
+      addAnnotation(AnnotationInfo(sym.tpe, args.toList, Nil))
 
 // ------ comparisons ----------------------------------------------------------------
 
@@ -1443,8 +1446,12 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         (this.sourceFile == that.sourceFile) || {
           // recognize companion object in separate file and fail, else compilation
           // appears to succeed but highly opaque errors come later: see bug #1286
-          if (this.sourceFile.path != that.sourceFile.path)
-            throw InvalidCompanions(this, that)
+          if (this.sourceFile.path != that.sourceFile.path) {
+            // The cheaper check can be wrong: do the expensive normalization
+            // before failing.
+            if (this.sourceFile.canonicalPath != that.sourceFile.canonicalPath)
+              throw InvalidCompanions(this, that)
+          }
         
           false
         }
@@ -1897,13 +1904,20 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       else ExplicitFlags
     
     def defaultFlagString = hasFlagsToString(defaultFlagMask)
-
-    /** String representation of symbol's definition */
-    def defString = compose(
+    private def defStringCompose(infoString: String) = compose(
       defaultFlagString,
       keyString,
-      varianceString + nameString + signatureString
+      varianceString + nameString + infoString
     )
+    /** String representation of symbol's definition.  It uses the
+     *  symbol's raw info to avoid forcing types.
+     */
+    def defString = defStringCompose(signatureString)
+
+    /** String representation of symbol's definition, using the supplied
+     *  info rather than the symbol's.
+     */
+    def defStringSeenAs(info: Type) = defStringCompose(infoString(info))
 
     /** Concatenate strings separated by spaces */
     private def compose(ss: String*) = ss filter (_ != "") mkString " "
@@ -2394,8 +2408,10 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     // printStackTrace() // debug
   }
   
-  case class InvalidCompanions(sym1: Symbol, sym2: Symbol)
-  extends Throwable("Companions '" + sym1 + "' and '" + sym2 + "' must be defined in same file") {
+  case class InvalidCompanions(sym1: Symbol, sym2: Symbol) extends Throwable(
+    "Companions '" + sym1 + "' and '" + sym2 + "' must be defined in same file:\n" +
+    "  Found in " + sym1.sourceFile.canonicalPath + " and " + sym2.sourceFile.canonicalPath
+  ) {
       override def toString = getMessage
   }
 

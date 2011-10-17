@@ -202,7 +202,7 @@ trait Typers extends Modes with Adaptations {
      *  @return     ...
      */
     def checkStable(tree: Tree): Tree =
-      if (treeInfo.isPureExpr(tree)) tree
+      if (treeInfo.isExprSafeToInline(tree)) tree
       else errorTree(
         tree, 
         "stable identifier required, but "+tree+" found."+
@@ -223,7 +223,7 @@ trait Typers extends Modes with Adaptations {
         val savedSTABLE = tree.symbol getFlag STABLE
         tree.symbol setInfo AnyRefClass.tpe
         tree.symbol setFlag STABLE
-        val result = treeInfo.isPureExpr(tree)
+        val result = treeInfo.isExprSafeToInline(tree)
         tree.symbol setInfo savedTpe
         tree.symbol setFlag savedSTABLE
         result
@@ -1490,36 +1490,21 @@ trait Typers extends Modes with Adaptations {
 
     /**
      * The annotations amongst `annots` that should go on a member of class
-     * `memberClass` (field, getter, setter, beanGetter, beanSetter, param)
-     * If 'keepClean' is true, annotations without any meta-annotation are kept
+     * `annotKind` (one of: field, getter, setter, beanGetter, beanSetter, param)
+     * If 'keepClean' is true, annotations without any meta-annotations are kept.
      */
-    protected def memberAnnots(annots: List[AnnotationInfo], memberClass: Symbol, keepClean: Boolean = false) = {
-
-      def hasMatching(metaAnnots: List[AnnotationInfo], orElse: => Boolean) = {
-        // either one of the meta-annotations matches the `memberClass`
-        metaAnnots.exists(_.atp.typeSymbol == memberClass) ||
-        // else, if there is no `target` meta-annotation at all, use the default case
-        (metaAnnots.forall(ann => {
-          val annClass = ann.atp.typeSymbol
-          annClass != FieldTargetClass && annClass != GetterTargetClass &&
-          annClass != SetterTargetClass && annClass != BeanGetterTargetClass &&
-          annClass != BeanSetterTargetClass && annClass != ParamTargetClass
-        }) && orElse)
+    protected def memberAnnots(annots: List[AnnotationInfo], annotKind: Symbol, keepClean: Boolean = false) = {
+      annots filter { ann =>
+        // There are no meta-annotation arguments attached to `ann`
+        if (ann.metaAnnotations.isEmpty) {
+          // A meta-annotation matching `annotKind` exists on `ann`'s definition.
+          (ann.defaultTargets contains annotKind) ||
+          // `ann`'s definition has no meta-annotations, and `keepClean` is true.
+          (ann.defaultTargets.isEmpty && keepClean)
+        }
+        // There are meta-annotation arguments, and one of them matches `annotKind`
+        else ann.metaAnnotations exists (_ matches annotKind)
       }
-
-      // there was no meta-annotation on `ann`. Look if the class annotations of
-      // `ann` has a `target` annotation, otherwise put `ann` only on fields.
-      def noMetaAnnot(ann: AnnotationInfo) = {
-        hasMatching(ann.atp.typeSymbol.annotations, keepClean)
-      }
-
-      annots.filter(ann => ann.atp match {
-        // the annotation type has meta-annotations, e.g. @(foo @getter)
-        case AnnotatedType(metaAnnots, _, _) =>
-          hasMatching(metaAnnots, noMetaAnnot(ann))
-        // there are no meta-annotations, e.g. @foo
-        case _ => noMetaAnnot(ann)
-      })
     }
 
     protected def enterSyms(txt: Context, trees: List[Tree]) = {
@@ -1991,7 +1976,7 @@ trait Typers extends Modes with Adaptations {
         val stats1 = typedStats(block.stats, context.owner)
         val expr1 = typed(block.expr, mode & ~(FUNmode | QUALmode), pt)
         treeCopy.Block(block, stats1, expr1)
-          .setType(if (treeInfo.isPureExpr(block)) expr1.tpe else expr1.tpe.deconst)
+          .setType(if (treeInfo.isExprSafeToInline(block)) expr1.tpe else expr1.tpe.deconst)
       } finally {
         // enable escaping privates checking from the outside and recycle
         // transient flag
@@ -2151,7 +2136,7 @@ trait Typers extends Modes with Adaptations {
     private def isWarnablePureExpression(tree: Tree) = tree match {
       case EmptyTree | Literal(Constant(())) => false
       case _                                 =>
-        (treeInfo isPureExpr tree) && {
+        (treeInfo isExprSafeToInline tree) && {
           val sym = tree.symbol
           (sym == null) || !(sym.isModule || sym.isLazy) || {
             debuglog("'Pure' but side-effecting expression in statement position: " + tree)
@@ -2603,7 +2588,7 @@ trait Typers extends Modes with Adaptations {
           if (args.length > MaxTupleArity)
             error(fun.pos, "too many arguments for unapply pattern, maximum = "+MaxTupleArity)
 
-          def freshArgType(tp: Type): (Type, List[Symbol]) = (tp: @unchecked) match {
+          def freshArgType(tp: Type): (Type, List[Symbol]) = tp match {
             case MethodType(param :: _, _) => 
               (param.tpe, Nil)
             case PolyType(tparams, restype) => 
@@ -2611,6 +2596,9 @@ trait Typers extends Modes with Adaptations {
               (freshArgType(restype)._1.substSym(tparams, tparams1), tparams1)
             case OverloadedType(_, _) =>
               error(fun.pos, "cannot resolve overloaded unapply")
+              (ErrorType, Nil)
+            case _ =>
+              error(fun.pos, "an unapply method must accept a single argument.")
               (ErrorType, Nil)
           }
 

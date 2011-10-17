@@ -558,7 +558,7 @@ trait Namers { self: Analyzer =>
             finishWith(tparams)
           case DefDef(mods, name, tparams, _, _, _) =>
             tree.symbol = enterNewMethod(tree, name, mods.flags, mods, tree.pos)
-            if (mods.annotations.exists(ann => isAnn(ann, "bridge")))
+            if (mods hasAnnotationNamed tpnme.bridgeAnnot)
               tree.symbol setFlag BRIDGE
             finishWith(tparams)
           case TypeDef(mods, name, tparams, _) =>
@@ -602,18 +602,11 @@ trait Namers { self: Analyzer =>
     def enterAccessorMethod(tree: Tree, name: Name, flags: Long, mods: Modifiers): TermSymbol = 
       enterNewMethod(tree, name, flags, mods, tree.pos.focus)
 
-    def isAnn(ann: Tree, demand: String) = ann match {
-      case Apply(Select(New(Ident(name)), _), _) =>
-        name.toString == demand
-      case Apply(Select(New(Select(pre, name)), _), _) =>
-        name.toString == demand
-      case _ => false
-    }
-
     private def addBeanGetterSetter(vd: ValDef, getter: Symbol) {
       val ValDef(mods, name, tpt, _) = vd
-      val hasBP = mods.annotations.exists(isAnn(_, "BeanProperty"))
-      val hasBoolBP = mods.annotations.exists(isAnn(_, "BooleanBeanProperty"))
+      val hasBP     = mods hasAnnotationNamed tpnme.BeanPropertyAnnot
+      val hasBoolBP = mods hasAnnotationNamed tpnme.BooleanBeanPropertyAnnot
+
       if ((hasBP || hasBoolBP) && !forMSIL) {
         if (!name(0).isLetter)
           context.error(vd.pos, "`BeanProperty' annotation can be applied "+
@@ -1266,9 +1259,9 @@ trait Namers { self: Analyzer =>
               LazyAnnotationInfo(() => typer.typedAnnotation(ann))
             }
             if (!ainfos.isEmpty)
-              annotated.setAnnotations(ainfos)
-            if (annotated.isTypeSkolem) 
-              annotated.deSkolemize.setAnnotations(ainfos) 
+              annotated.setRawAnnotations(ainfos)
+            if (annotated.isTypeSkolem)
+              annotated.deSkolemize.setRawAnnotations(ainfos)
           case _ =>
         }
       }
@@ -1410,7 +1403,7 @@ trait Namers { self: Analyzer =>
           !context.tree.isInstanceOf[ExistentialTypeTree] &&
           (!sym.owner.isClass || sym.owner.isModuleClass || sym.owner.isAnonymousClass)) {
             context.error(sym.pos, 
-              "only classes can have declared but undefined members" + varNotice(sym))
+              "only classes can have declared but undefined members" + abstractVarMessage(sym))
             sym.resetFlag(DEFERRED)
         } 
       }
@@ -1462,21 +1455,8 @@ trait Namers { self: Analyzer =>
     }
   }
 
-  /** The symbol that which this accessor represents (possibly in part).
-   *  This is used for error messages, where we want to speak in terms
-   *  of the actual declaration or definition, not in terms of the generated setters
-   *  and getters */
-  def underlying(member: Symbol): Symbol = 
-    if (member.hasAccessorFlag) {
-      if (member.isDeferred) {
-        val getter = if (member.isSetter) member.getter(member.owner) else member
-        val result = getter.owner.newValue(getter.pos, getter.name.toTermName)
-          .setInfo(getter.tpe.resultType)
-          .setFlag(DEFERRED)
-        if (getter.setter(member.owner) != NoSymbol) result.setFlag(MUTABLE)
-        result
-      } else member.accessed 
-    } else member
+  @deprecated("Use underlyingSymbol instead", "2.10.0")
+  def underlying(member: Symbol): Symbol = underlyingSymbol(member)
 
   /**
    * Finds the companion module of a class symbol. Calling .companionModule
@@ -1513,12 +1493,5 @@ trait Namers { self: Analyzer =>
     if (sym.isTerm) companionClassOf(sym, context)
     else if (sym.isClass) companionModuleOf(sym, context)
     else NoSymbol
-
-  /** An explanatory note to be added to error messages
-   *  when there's a problem with abstract var defs */
-  def varNotice(sym: Symbol): String = 
-    if (underlying(sym).isVariable)
-      "\n(Note that variables need to be initialized to be defined)" 
-    else ""
 }
 

@@ -86,7 +86,7 @@ member {
                       type: Literal
                       literal {
                         type: Int
-                        intValue: 1
+                        intValue: 2
                       }
                     }
                     tpe {
@@ -138,7 +138,7 @@ member {
                               type: Literal
                               literal {
                                 type: Int
-                                intValue: 1
+                                intValue: 2
                               }
                             }
                             tpe {
@@ -238,7 +238,7 @@ member {
                                     type: Literal
                                     literal {
                                       type: Int
-                                      intValue: 1
+                                      intValue: 2
                                     }
                                   }
                                   tpe {

@@ -268,6 +268,8 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
       }
     }
 
+    // behavior
+
     // debugging
     def checkPhase = wasActive(settings.check)
     def logPhase   = isActive(settings.log)

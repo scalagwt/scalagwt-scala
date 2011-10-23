@@ -92,6 +92,13 @@ member {
                             name: "Predef$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "Predef$"
+                            }
+                          }
                         }
                       }
                       signature {
@@ -139,6 +146,13 @@ member {
                             name: "Predef$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "Predef$"
+                            }
+                          }
                         }
                       }
                       signature {
@@ -239,6 +253,13 @@ member {
                             name: "Predef$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "Predef$"
+                            }
+                          }
                         }
                       }
                       signature {
@@ -290,6 +311,13 @@ member {
                             name: "Predef$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "Predef$"
+                            }
+                          }
                         }
                       }
                       signature {

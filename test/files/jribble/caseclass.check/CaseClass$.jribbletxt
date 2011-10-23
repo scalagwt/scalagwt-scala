@@ -156,6 +156,13 @@ member {
                             name: "None$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "None$"
+                            }
+                          }
                         }
                       }
                     }
@@ -362,6 +369,12 @@ member {
                   name: "CaseClass$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "CaseClass$"
+                  }
+                }
               }
             }
           }
@@ -513,6 +526,12 @@ member {
                     name: "CaseClass$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      name: "CaseClass$"
+                    }
+                  }
                 }
               }
               rhs {

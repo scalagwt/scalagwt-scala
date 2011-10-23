@@ -53,6 +53,10 @@ member {
                   name: "ValDef"
                 }
                 name: "x$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -101,6 +105,10 @@ member {
                   name: "ValDef"
                 }
                 name: "y$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -144,6 +152,10 @@ member {
                     name: "ValDef"
                   }
                   name: "y$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -233,6 +245,10 @@ member {
                   name: "ValDef"
                 }
                 name: "a$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -351,6 +367,12 @@ member {
                       name: "ValDef$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        name: "ValDef$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -428,6 +450,10 @@ member {
                     name: "ValDef"
                   }
                   name: "x$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -455,6 +481,10 @@ member {
                     name: "ValDef"
                   }
                   name: "y$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -482,6 +512,10 @@ member {
                     name: "ValDef"
                   }
                   name: "a$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -524,6 +558,12 @@ member {
                   name: "ValDef$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "ValDef$"
+                  }
+                }
               }
             }
             signature {

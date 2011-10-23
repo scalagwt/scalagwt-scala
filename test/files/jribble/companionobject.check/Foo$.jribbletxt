@@ -52,6 +52,10 @@ member {
                   name: "Foo$"
                 }
                 name: "x$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -144,6 +148,12 @@ member {
                     name: "Foo$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      name: "Foo$"
+                    }
+                  }
                 }
               }
               rhs {
@@ -167,6 +177,10 @@ member {
                     name: "Foo$"
                   }
                   name: "x$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {

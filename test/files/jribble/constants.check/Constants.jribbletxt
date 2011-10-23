@@ -203,6 +203,10 @@ member {
                   name: "Double"
                 }
                 name: "NaN"
+                tpe {
+                  type: Primitive
+                  primitiveType: Double
+                }
               }
             }
           }
@@ -223,6 +227,10 @@ member {
                   name: "Double"
                 }
                 name: "NEGATIVE_INFINITY"
+                tpe {
+                  type: Primitive
+                  primitiveType: Double
+                }
               }
             }
           }
@@ -243,6 +251,10 @@ member {
                   name: "Double"
                 }
                 name: "POSITIVE_INFINITY"
+                tpe {
+                  type: Primitive
+                  primitiveType: Double
+                }
               }
             }
           }
@@ -371,6 +383,10 @@ member {
                   name: "Float"
                 }
                 name: "NaN"
+                tpe {
+                  type: Primitive
+                  primitiveType: Float
+                }
               }
             }
           }
@@ -391,6 +407,10 @@ member {
                   name: "Float"
                 }
                 name: "NEGATIVE_INFINITY"
+                tpe {
+                  type: Primitive
+                  primitiveType: Float
+                }
               }
             }
           }
@@ -411,6 +431,10 @@ member {
                   name: "Float"
                 }
                 name: "POSITIVE_INFINITY"
+                tpe {
+                  type: Primitive
+                  primitiveType: Float
+                }
               }
             }
           }

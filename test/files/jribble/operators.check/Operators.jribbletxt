@@ -280,6 +280,13 @@ member {
                           name: "Int$"
                         }
                         name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
                       }
                     }
                     signature {
@@ -372,6 +379,13 @@ member {
                           name: "Int$"
                         }
                         name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
                       }
                     }
                     signature {
@@ -607,6 +621,13 @@ member {
                           name: "Int$"
                         }
                         name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
                       }
                     }
                     signature {
@@ -699,6 +720,13 @@ member {
                           name: "Int$"
                         }
                         name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
                       }
                     }
                     signature {

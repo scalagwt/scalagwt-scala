@@ -51,6 +51,13 @@ member {
                     name: "Predef$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      pkg: "scala"
+                      name: "Predef$"
+                    }
+                  }
                 }
               }
               signature {
@@ -138,6 +145,12 @@ member {
                     name: "HelloWorld$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      name: "HelloWorld$"
+                    }
+                  }
                 }
               }
               rhs {

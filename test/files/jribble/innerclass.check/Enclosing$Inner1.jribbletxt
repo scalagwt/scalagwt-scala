@@ -57,6 +57,12 @@ member {
                   name: "Enclosing$Inner1"
                 }
                 name: "$outer$u0020"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "Enclosing"
+                  }
+                }
               }
             }
           }
@@ -167,6 +173,12 @@ member {
                             name: "Enclosing$Inner1"
                           }
                           name: "$outer$u0020"
+                          tpe {
+                            type: Named
+                            namedType {
+                              name: "Enclosing"
+                            }
+                          }
                         }
                       }
                       rhs {

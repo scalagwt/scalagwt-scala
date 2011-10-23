@@ -52,6 +52,10 @@ member {
                   name: "Test"
                 }
                 name: "x1$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -100,6 +104,10 @@ member {
                   name: "Test"
                 }
                 name: "x2$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Long
+                }
               }
             }
           }
@@ -148,6 +156,10 @@ member {
                   name: "Test"
                 }
                 name: "x3$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Float
+                }
               }
             }
           }
@@ -196,6 +208,10 @@ member {
                   name: "Test"
                 }
                 name: "x4$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Double
+                }
               }
             }
           }
@@ -261,6 +277,10 @@ member {
                     name: "Test"
                   }
                   name: "x1$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -288,6 +308,10 @@ member {
                     name: "Test"
                   }
                   name: "x2$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Long
+                  }
                 }
               }
               rhs {
@@ -315,6 +339,10 @@ member {
                     name: "Test"
                   }
                   name: "x3$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Float
+                  }
                 }
               }
               rhs {
@@ -342,6 +370,10 @@ member {
                     name: "Test"
                   }
                   name: "x4$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Double
+                  }
                 }
               }
               rhs {

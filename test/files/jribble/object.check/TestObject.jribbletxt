@@ -38,6 +38,12 @@ member {
                   name: "TestObject$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "TestObject$"
+                  }
+                }
               }
             }
             signature {
@@ -97,6 +103,12 @@ member {
                 name: "TestObject$"
               }
               name: "MODULE$"
+              tpe {
+                type: Named
+                namedType {
+                  name: "TestObject$"
+                }
+              }
             }
           }
           signature {
@@ -149,6 +161,12 @@ member {
                   name: "TestObject$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "TestObject$"
+                  }
+                }
               }
             }
             signature {
@@ -193,6 +211,12 @@ member {
                   name: "TestObject$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "TestObject$"
+                  }
+                }
               }
             }
             signature {

@@ -40,6 +40,13 @@ member {
                   name: "BoxedUnit"
                 }
                 name: "UNIT"
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "BoxedUnit"
+                  }
+                }
               }
             }
           }
@@ -196,6 +203,13 @@ member {
                       name: "Byte"
                     }
                     name: "TYPE"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "java.lang"
+                        name: "Class"
+                      }
+                    }
                   }
                 }
                 argument {

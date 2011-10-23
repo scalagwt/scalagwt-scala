@@ -48,6 +48,13 @@ member {
                     name: "package$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      pkg: "scala.sys"
+                      name: "package$"
+                    }
+                  }
                 }
               }
               signature {

@@ -80,6 +80,10 @@ member {
                           name: "Test"
                         }
                         name: "bitmap$0"
+                        tpe {
+                          type: Primitive
+                          primitiveType: Int
+                        }
                       }
                     }
                     rhs {
@@ -132,6 +136,10 @@ member {
                                   name: "Test"
                                 }
                                 name: "bitmap$0"
+                                tpe {
+                                  type: Primitive
+                                  primitiveType: Int
+                                }
                               }
                             }
                             rhs {
@@ -178,6 +186,10 @@ member {
                                     name: "Test"
                                   }
                                   name: "x$u0020"
+                                  tpe {
+                                    type: Primitive
+                                    primitiveType: Int
+                                  }
                                 }
                               }
                               rhs {
@@ -216,6 +228,10 @@ member {
                                     name: "Test"
                                   }
                                   name: "bitmap$0"
+                                  tpe {
+                                    type: Primitive
+                                    primitiveType: Int
+                                  }
                                 }
                               }
                               rhs {
@@ -232,6 +248,10 @@ member {
                                         name: "Test"
                                       }
                                       name: "bitmap$0"
+                                      tpe {
+                                        type: Primitive
+                                        primitiveType: Int
+                                      }
                                     }
                                   }
                                   rhs {
@@ -271,6 +291,10 @@ member {
                   name: "Test"
                 }
                 name: "x$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }

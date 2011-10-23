@@ -47,6 +47,13 @@ member {
                       name: "List$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "scala.collection.immutable"
+                        name: "List$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -81,6 +88,13 @@ member {
                           name: "Predef$"
                         }
                         name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Predef$"
+                          }
+                        }
                       }
                     }
                     signature {
@@ -235,6 +249,13 @@ member {
                       name: "Array$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "scala"
+                        name: "Array$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -397,6 +418,13 @@ member {
                       name: "Array$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "scala"
+                        name: "Array$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -631,6 +659,13 @@ member {
                         name: "FactoryManifest$"
                       }
                       name: "MODULE$"
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.reflect"
+                          name: "FactoryManifest$"
+                        }
+                      }
                     }
                   }
                   signature {
@@ -691,6 +726,13 @@ member {
                         name: "FactoryClassManifest$"
                       }
                       name: "MODULE$"
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                      }
                     }
                   }
                   signature {
@@ -806,6 +848,13 @@ member {
                         name: "FactoryManifest$"
                       }
                       name: "MODULE$"
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.reflect"
+                          name: "FactoryManifest$"
+                        }
+                      }
                     }
                   }
                   signature {
@@ -866,6 +915,13 @@ member {
                         name: "FactoryClassManifest$"
                       }
                       name: "MODULE$"
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                      }
                     }
                   }
                   signature {
@@ -900,6 +956,13 @@ member {
                             name: "FactoryClassManifest$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala.reflect"
+                              name: "FactoryClassManifest$"
+                            }
+                          }
                         }
                       }
                       signature {
@@ -1017,6 +1080,13 @@ member {
                         name: "FactoryClassManifest$"
                       }
                       name: "MODULE$"
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                      }
                     }
                   }
                   signature {
@@ -1051,6 +1121,13 @@ member {
                             name: "FactoryClassManifest$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala.reflect"
+                              name: "FactoryClassManifest$"
+                            }
+                          }
                         }
                       }
                       signature {
@@ -1085,6 +1162,13 @@ member {
                                 name: "FactoryClassManifest$"
                               }
                               name: "MODULE$"
+                              tpe {
+                                type: Named
+                                namedType {
+                                  pkg: "scala.reflect"
+                                  name: "FactoryClassManifest$"
+                                }
+                              }
                             }
                           }
                           signature {
@@ -1204,6 +1288,13 @@ member {
                         name: "FactoryClassManifest$"
                       }
                       name: "MODULE$"
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.reflect"
+                          name: "FactoryClassManifest$"
+                        }
+                      }
                     }
                   }
                   signature {
@@ -1238,6 +1329,13 @@ member {
                             name: "FactoryClassManifest$"
                           }
                           name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala.reflect"
+                              name: "FactoryClassManifest$"
+                            }
+                          }
                         }
                       }
                       signature {
@@ -1272,6 +1370,13 @@ member {
                                 name: "FactoryManifest$"
                               }
                               name: "MODULE$"
+                              tpe {
+                                type: Named
+                                namedType {
+                                  pkg: "scala.reflect"
+                                  name: "FactoryManifest$"
+                                }
+                              }
                             }
                           }
                           signature {

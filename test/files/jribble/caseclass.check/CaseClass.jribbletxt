@@ -283,6 +283,10 @@ member {
                   name: "CaseClass"
                 }
                 name: "x$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -458,6 +462,13 @@ member {
                       name: "ScalaRunTime$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "scala.runtime"
+                        name: "ScalaRunTime$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -611,6 +622,13 @@ member {
                       name: "ScalaRunTime$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "scala.runtime"
+                        name: "ScalaRunTime$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -673,6 +691,13 @@ member {
                       name: "ScalaRunTime$"
                     }
                     name: "MODULE$"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "scala.runtime"
+                        name: "ScalaRunTime$"
+                      }
+                    }
                   }
                 }
                 signature {
@@ -1062,6 +1087,10 @@ member {
                     name: "CaseClass"
                   }
                   name: "x$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -1234,6 +1263,12 @@ member {
                   name: "CaseClass$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "CaseClass$"
+                  }
+                }
               }
             }
             signature {
@@ -1308,6 +1343,12 @@ member {
                   name: "CaseClass$"
                 }
                 name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "CaseClass$"
+                  }
+                }
               }
             }
             signature {

@@ -52,6 +52,10 @@ member {
                   name: "Test"
                 }
                 name: "x$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -117,6 +121,10 @@ member {
                     name: "Test"
                   }
                   name: "x$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {

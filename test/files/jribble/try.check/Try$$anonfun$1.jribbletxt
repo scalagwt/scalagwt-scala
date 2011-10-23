@@ -44,6 +44,13 @@ member {
                   name: "Try$$anonfun$1"
                 }
                 name: "ex$2"
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Exception"
+                  }
+                }
               }
             }
           }
@@ -167,6 +174,13 @@ member {
                     name: "Try$$anonfun$1"
                   }
                   name: "ex$2"
+                  tpe {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Exception"
+                    }
+                  }
                 }
               }
               rhs {

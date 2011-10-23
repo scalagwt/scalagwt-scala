@@ -42,6 +42,12 @@ member {
                 name: "HelloWorld$"
               }
               name: "MODULE$"
+              tpe {
+                type: Named
+                namedType {
+                  name: "HelloWorld$"
+                }
+              }
             }
           }
           signature {

@@ -52,6 +52,10 @@ member {
                   name: "TestObject$"
                 }
                 name: "field$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -100,6 +104,10 @@ member {
                   name: "TestObject$"
                 }
                 name: "mutableField$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -143,6 +151,10 @@ member {
                     name: "TestObject$"
                   }
                   name: "mutableField$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -248,6 +260,12 @@ member {
                     name: "TestObject$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      name: "TestObject$"
+                    }
+                  }
                 }
               }
               rhs {
@@ -271,6 +289,10 @@ member {
                     name: "TestObject$"
                   }
                   name: "field$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {
@@ -298,6 +320,10 @@ member {
                     name: "TestObject$"
                   }
                   name: "mutableField$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {

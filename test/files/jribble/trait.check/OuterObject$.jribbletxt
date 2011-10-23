@@ -66,6 +66,12 @@ member {
                     name: "OuterObject$"
                   }
                   name: "MODULE$"
+                  tpe {
+                    type: Named
+                    namedType {
+                      name: "OuterObject$"
+                    }
+                  }
                 }
               }
               rhs {

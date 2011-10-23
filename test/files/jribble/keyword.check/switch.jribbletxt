@@ -52,6 +52,10 @@ member {
                   name: "switch"
                 }
                 name: "cast$u0020"
+                tpe {
+                  type: Primitive
+                  primitiveType: Int
+                }
               }
             }
           }
@@ -169,6 +173,10 @@ member {
                     name: "switch"
                   }
                   name: "cast$u0020"
+                  tpe {
+                    type: Primitive
+                    primitiveType: Int
+                  }
                 }
               }
               rhs {

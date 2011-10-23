@@ -77,6 +77,13 @@ member {
                   name: "Integer"
                 }
                 name: "TYPE"
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Class"
+                  }
+                }
               }
             }
           }

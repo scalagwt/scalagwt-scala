@@ -54,6 +54,8 @@ abstract class ClassfileParser {
   }
 
   def parse(file: AbstractFile, root: Symbol) = try {
+    debuglog("[class] >> " + root.fullName)
+
     def handleMissing(e: MissingRequirementError) = {
       if (settings.debug.value) e.printStackTrace
       throw new IOException("Missing dependency '" + e.req + "', required by " + in.file)
@@ -82,7 +84,6 @@ abstract class ClassfileParser {
         println("Skipping class: " + root + ": " + root.getClass)
     }
 */
-    debuglog("parsing " + file.name)
     this.in = new AbstractFileReader(file)
     if (root.isModule) {
       this.clazz = root.companionClass
@@ -871,7 +872,7 @@ abstract class ClassfileParser {
           in.skip(attrLen)
         case tpnme.DeprecatedATTR =>
           val arg = Literal(Constant("see corresponding Javadoc for more information."))
-          sym addAnnotation AnnotationInfo(definitions.DeprecatedAttr.tpe, List(arg, Literal(Constant(""))), Nil)
+          sym.addAnnotation(definitions.DeprecatedAttr, arg, Literal(Constant("")))
           in.skip(attrLen)
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
@@ -892,7 +893,7 @@ abstract class ClassfileParser {
           this.hasMeta = true
          // Attribute on methods of java annotation classes when that method has a default
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(AnnotationInfo(definitions.AnnotationDefaultAttr.tpe, List(), List()))
+          sym.addAnnotation(definitions.AnnotationDefaultAttr)
           in.skip(attrLen)
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeAnnotationATTR =>
@@ -907,8 +908,12 @@ abstract class ClassfileParser {
                 case None =>
                   throw new RuntimeException("Scala class file does not contain Scala annotation")
               }
-            debuglog("" + sym + "; annotations = " + sym.rawAnnotations)
-          } else
+            debuglog("[class] << " + sym.fullName + (
+              if (sym.rawAnnotations.isEmpty) ""
+              else sym.rawAnnotations.mkString("(", ", ", ")"))
+            )
+          }
+          else
             in.skip(attrLen)
 
         // TODO 1: parse runtime visible annotations on parameters
@@ -1036,9 +1041,7 @@ abstract class ClassfileParser {
       val nClasses = in.nextChar
       for (n <- 0 until nClasses) {
         val cls = pool.getClassSymbol(in.nextChar.toInt)
-        sym.addAnnotation(AnnotationInfo(definitions.ThrowsClass.tpe,
-                                         Literal(Constant(cls.tpe)) :: Nil,
-                                         Nil))
+        sym.addAnnotation(definitions.ThrowsClass, Literal(Constant(cls.tpe)))
       }
     }
 

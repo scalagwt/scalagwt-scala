@@ -607,8 +607,8 @@ trait Definitions extends reflect.api.StandardDefinitions {
     lazy val uncheckedStableClass       = getClass("scala.annotation.unchecked.uncheckedStable")
     lazy val uncheckedVarianceClass     = getClass("scala.annotation.unchecked.uncheckedVariance")
 
-    lazy val BeanPropertyAttr           = getClass(sn.BeanProperty)
-    lazy val BooleanBeanPropertyAttr    = getClass(sn.BooleanBeanProperty)
+    lazy val BeanPropertyAttr           = getClass("scala.beans.BeanProperty")
+    lazy val BooleanBeanPropertyAttr    = getClass("scala.beans.BooleanBeanProperty")
     lazy val CloneableAttr              = getClass("scala.cloneable")
     lazy val DeprecatedAttr             = getClass("scala.deprecated")
     lazy val DeprecatedNameAttr         = getClass("scala.deprecatedName")
@@ -630,14 +630,13 @@ trait Definitions extends reflect.api.StandardDefinitions {
     lazy val GetterTargetClass          = getMetaAnnotation("getter")
     lazy val ParamTargetClass           = getMetaAnnotation("param")
     lazy val SetterTargetClass          = getMetaAnnotation("setter")
-
+    // TODO: module, moduleClass? package, packageObject?
 
     private def getMetaAnnotation(name: String) = getClass("scala.annotation.meta." + name)
     def isMetaAnnotation(sym: Symbol): Boolean = metaAnnotations(sym) || (
       // Trying to allow for deprecated locations
       sym.isAliasType && isMetaAnnotation(sym.info.typeSymbol)
     )
-
     lazy val metaAnnotations = Set(
       FieldTargetClass, ParamTargetClass,
       GetterTargetClass, SetterTargetClass,
@@ -647,8 +646,7 @@ trait Definitions extends reflect.api.StandardDefinitions {
     lazy val AnnotationDefaultAttr: Symbol = {
       val attr = newClass(RuntimePackageClass, tpnme.AnnotationDefaultATTR, List(AnnotationClass.typeConstructor))
       // This attribute needs a constructor so that modifiers in parsed Java code make sense
-      attr.info.decls enter (attr newConstructor NoPosition setInfo MethodType(Nil, attr.tpe))
-      attr
+      attr.info.decls enter attr.newClassConstructor(NoPosition)
     }
     
     def getPackageObjectClass(fullname: Name): Symbol =

@@ -91,8 +91,16 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       new MethodSymbol(this, pos, name).setFlag(METHOD)
     final def newLabel(pos: Position, name: TermName) =
       newMethod(pos, name).setFlag(LABEL)
+
+    /** Propagates ConstrFlags (JAVA, specifically) from owner to constructor. */
     final def newConstructor(pos: Position) =
-      newMethod(pos, nme.CONSTRUCTOR)
+      newMethod(pos, nme.CONSTRUCTOR) setFlag getFlag(ConstrFlags)
+    /** Static constructor with info set. */
+    def newStaticConstructor(pos: Position) =
+      newConstructor(pos) setFlag STATIC setInfo UnitClass.tpe
+    /** Instance constructor with info set. */
+    def newClassConstructor(pos: Position) =
+      newConstructor(pos) setInfo MethodType(Nil, this.tpe)
 
     private def finishModule(m: ModuleSymbol, clazz: ClassSymbol): ModuleSymbol = {
       // Top-level objects can be automatically marked final, but others
@@ -1669,7 +1677,11 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      */
     final def getter(base: Symbol): Symbol = base.info.decl(getterName) filter (_.hasAccessorFlag)
 
-    def getterName = if (isSetter) nme.setterToGetter(name) else nme.getterName(name)
+    def getterName = (
+      if (isSetter) nme.setterToGetter(name)
+      else if (nme.isLocalName(name)) nme.localToGetter(name)
+      else name
+    )
 
     /** The setter of this value or getter definition, or NoSymbol if none exists */
     final def setter(base: Symbol): Symbol = setter(base, false)
@@ -1797,6 +1809,9 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       else if (isRefinementClass) "refinement class"
       else if (isModule) "module"
       else if (isModuleClass) "module class"
+      else if (isGetter) "getter"
+      else if (isSetter) "setter"
+      else if (isVariable) "field"
       else sanitizedKindString
     
     /** String representation of symbol's kind, suitable for the masses. */

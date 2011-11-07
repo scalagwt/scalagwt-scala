@@ -176,6 +176,7 @@ trait ScalaSettings extends AbsScalaSettings
   val jribbleText   = BooleanSetting    ("-Yjribble-text", "Use the text format for Jribble output")
 
   val exposeEmptyPackage = BooleanSetting("-Yexpose-empty-package", "Internal only: expose the empty package.").internalOnly()
+  val YnoProductN = BooleanSetting ("-Yno-productN", "Do not add ProductN to case classes")
   
   def stop = stopAfter
 

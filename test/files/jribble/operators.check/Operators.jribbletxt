@@ -1,0 +1,1037 @@
+name {
+  name: "Operators"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "zero"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "one"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "equalsOp"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "s1"
+            initializer {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "test"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "s2"
+            initializer {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "test2"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x1"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s2"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x2"
+            initializer {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: ThisRef
+                    }
+                    signature {
+                      name: "zero"
+                      owner {
+                        name: "Operators"
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                    }
+                  }
+                }
+                rhs {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: ThisRef
+                    }
+                    signature {
+                      name: "one"
+                      owner {
+                        name: "Operators"
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                    }
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x3"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: FieldRef
+                      fieldRef {
+                        enclosingType {
+                          pkg: "scala"
+                          name: "Int$"
+                        }
+                        name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
+                      }
+                    }
+                    signature {
+                      name: "box"
+                      owner {
+                        pkg: "scala"
+                        name: "Int$"
+                      }
+                      paramType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Integer"
+                        }
+                      }
+                    }
+                    argument {
+                      type: Literal
+                      literal {
+                        type: Int
+                        intValue: 0
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x4"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: FieldRef
+                      fieldRef {
+                        enclosingType {
+                          pkg: "scala"
+                          name: "Int$"
+                        }
+                        name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
+                      }
+                    }
+                    signature {
+                      name: "box"
+                      owner {
+                        pkg: "scala"
+                        name: "Int$"
+                      }
+                      paramType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Integer"
+                        }
+                      }
+                    }
+                    argument {
+                      type: Literal
+                      literal {
+                        type: Int
+                        intValue: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x5"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: NewObject
+                  newObject {
+                    clazz {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                    signature {
+                      name: "new"
+                      owner {
+                        pkg: "java.lang"
+                        name: "Object"
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Object"
+                        }
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: NewObject
+                  newObject {
+                    clazz {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                    signature {
+                      name: "new"
+                      owner {
+                        pkg: "java.lang"
+                        name: "Object"
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x6"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+                argument {
+                  type: NewObject
+                  newObject {
+                    clazz {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                    signature {
+                      name: "new"
+                      owner {
+                        pkg: "java.lang"
+                        name: "Object"
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x7"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: FieldRef
+                      fieldRef {
+                        enclosingType {
+                          pkg: "scala"
+                          name: "Int$"
+                        }
+                        name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
+                      }
+                    }
+                    signature {
+                      name: "box"
+                      owner {
+                        pkg: "scala"
+                        name: "Int$"
+                      }
+                      paramType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Integer"
+                        }
+                      }
+                    }
+                    argument {
+                      type: Literal
+                      literal {
+                        type: Int
+                        intValue: 0
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Null
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x8"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Null
+                  }
+                }
+                argument {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: FieldRef
+                      fieldRef {
+                        enclosingType {
+                          pkg: "scala"
+                          name: "Int$"
+                        }
+                        name: "MODULE$"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "scala"
+                            name: "Int$"
+                          }
+                        }
+                      }
+                    }
+                    signature {
+                      name: "box"
+                      owner {
+                        pkg: "scala"
+                        name: "Int$"
+                      }
+                      paramType {
+                        type: Primitive
+                        primitiveType: Int
+                      }
+                      returnType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Integer"
+                        }
+                      }
+                    }
+                    argument {
+                      type: Literal
+                      literal {
+                        type: Int
+                        intValue: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x9"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Null
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x10"
+            initializer {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Null
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "eqOp"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "s1"
+            initializer {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "test"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "String"
+              }
+            }
+            name: "s2"
+            initializer {
+              type: Literal
+              literal {
+                type: String
+                stringValue: "test2"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x1"
+            initializer {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+                rhs {
+                  type: VarRef
+                  varRef {
+                    name: "s2"
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "x2"
+            initializer {
+              type: Binary
+              binary {
+                op: NotEqual
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "s1"
+                  }
+                }
+                rhs {
+                  type: VarRef
+                  varRef {
+                    name: "s2"
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Operators"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

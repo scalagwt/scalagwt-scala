@@ -49,7 +49,8 @@ with JribbleNormalization
     var pkgName: String = null      
     
     def emitProto(proto: DeclaredType, symbol: Symbol, suffix: String) {
-      val file = FileUtils.getFile(symbol, proto, suffix)
+      val completeSuffix = if (settings.jribbleText.value) suffix + "txt" else suffix
+      val file = FileUtils.getFile(symbol, proto, completeSuffix)
       val out = file.bufferedOutput
       if (settings.jribbleText.value) {
         val writer = new OutputStreamWriter(out, "UTF-8")

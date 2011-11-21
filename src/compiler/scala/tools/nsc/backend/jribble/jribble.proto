@@ -229,6 +229,7 @@ message FieldRef {
   optional Expr qualifier = 1;
   required GlobalName enclosingType  = 2;
   required string name = 3;
+  required Type tpe = 4;
 }
 
 message InstanceOf {

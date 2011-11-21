@@ -1,0 +1,337 @@
+name {
+  name: "StaticRef"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "staticField"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "scala.runtime"
+        name: "BoxedUnit"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "scala.runtime"
+                  name: "BoxedUnit"
+                }
+                name: "UNIT"
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala.runtime"
+                    name: "BoxedUnit"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "staticMethod"
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Boolean"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "boxToBoolean"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Boolean"
+                    }
+                  }
+                }
+                argument {
+                  type: Literal
+                  literal {
+                    type: Boolean
+                    boolValue: false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "patternMatchOnStatic"
+    paramDef {
+      name: "clazz"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "Class"
+        }
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "Class"
+              }
+            }
+            name: "temp1"
+            initializer {
+              type: VarRef
+              varRef {
+                name: "clazz"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$1$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: MethodCall
+              methodCall {
+                signature {
+                  name: "equals"
+                  owner {
+                    pkg: "scala.runtime"
+                    name: "BoxesRunTime"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      pkg: "java.lang"
+                      name: "Object"
+                    }
+                  }
+                  returnType {
+                    type: Primitive
+                    primitiveType: Boolean
+                  }
+                }
+                argument {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      pkg: "java.lang"
+                      name: "Byte"
+                    }
+                    name: "TYPE"
+                    tpe {
+                      type: Named
+                      namedType {
+                        pkg: "java.lang"
+                        name: "Class"
+                      }
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "temp1"
+                  }
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Int
+                          intValue: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Int
+                          intValue: 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$1$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "StaticRef"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

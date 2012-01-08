@@ -19,11 +19,11 @@ import scala.collection.mutable.ListBuffer
  *
  *  @author  Nikolay Mihaylov, Lex Spoon
  */
-abstract class GenJribble 
-extends SubComponent 
-with JribbleAnalysis 
+abstract class GenJribble
+extends SubComponent
+with JribbleAnalysis
 with JavaDefinitions
-with JribbleFormatting 
+with JribbleFormatting
 with JribbleNormalization
 {
   val global: Global // TODO(spoon): file a bug report about this.  The declarations
@@ -33,7 +33,7 @@ with JribbleNormalization
   import global.scalaPrimitives._
   protected lazy val typeKinds: global.icodes.type = global.icodes
   protected lazy val scalaPrimitives: global.scalaPrimitives.type = global.scalaPrimitives
-  
+
   val phaseName = "genjribble"
 
   /** Create a new phase */
@@ -61,7 +61,7 @@ with JribbleNormalization
       val out = new PrintWriter(new FileOutputStream(file))
       new JribblePrinter(out)
     }
-      
+
     private def gen(tree: Tree): Unit = tree match {
       case EmptyTree => ()
       case PackageDef(packaged, stats) =>
@@ -105,30 +105,30 @@ with JribbleNormalization
     // incorrect output.
     def dumpMirrorClass(printer: JribblePrinter)(clazz: Symbol): Unit = {
       import printer.{print, println, indent, undent}
-      
+
       print("public final class "); print(jribbleName(clazz.companionSymbol))
       print(" {"); indent; println
       for (val m <- clazz.tpe.nonPrivateMembers; // TODO(spoon) -- non-private, or public?
            m.owner != definitions.ObjectClass && !m.hasFlag(PROTECTED) &&
            m.isMethod && !m.hasFlag(CASE) && !m.isConstructor && !m.isStaticMember)
       {
-        print("public final static "); print(m.tpe.resultType); print(" ") 
+        print("public final static "); print(m.tpe.resultType); print(" ")
         print(m.name); print("(");
         val paramTypes = m.tpe.paramTypes
         for (val i <- 0 until paramTypes.length) {
-          if (i > 0) print(", ") 
+          if (i > 0) print(", ")
           print(paramTypes(i)); print(" x_" + i)
         }
         print(") { ")
         if (!isUnit(m.tpe.resultType))
-          print("return ") 
+          print("return ")
         print(jribbleName(clazz)); print("."); print(nme.MODULE_INSTANCE_FIELD)
         print("."); print(jribbleMethodSignature(m)); print("(")
         for (val i <- 0 until paramTypes.length) {
           if (i > 0) print(", ");
           print("x_" + i)
         }
-        print("); }") 
+        print("); }")
         println
       }
       undent; println; print("}"); println
@@ -144,19 +144,19 @@ with JribbleNormalization
     val labelSyms = mut.Set.empty[Symbol]
 
     override def printRaw(tree: Tree): Unit = printRaw(tree, false)
-    
+
     override def print(name: Name) = super.print(name.encode)
 
     def printStats(stats: List[Tree]) =
     	printSeq(stats) {s => print(s); if (needsSemi(s)) print(";")} {println}
 
-    
+
     override def symName(tree: Tree, name: Name): String =
       if (tree.symbol != null && tree.symbol != NoSymbol) {
         ((if (tree.symbol.isMixinConstructor) "/*"+tree.symbol.owner.name+"*/" else "") +
          tree.symbol.simpleName.encode.toString)
       } else name.encode.toString;
-    
+
     def logIfException[T](tree: Tree)(process: =>T): T =
       try {
         process
@@ -164,15 +164,15 @@ with JribbleNormalization
       case ex:Error =>
         Console.println("Exception while traversing: " + tree)
         throw ex
-      } 
+      }
 
     // TODO(spoon): read all cases carefully.
     // TODO(spoon): sort the cases in alphabetical order
     // TODO(spoon): remove the "ret" flag
-    def printRaw(tree: Tree, ret: Boolean): Unit = 
+    def printRaw(tree: Tree, ret: Boolean): Unit =
       logIfException(tree) { tree match {
-      case EmptyTree =>  
-        
+      case EmptyTree =>
+
       case ClassDef(mods, name, _, Template(superclass :: ifaces, _, body)) =>
         //printAttributes(tree)
         //printFlags(mods.flags)
@@ -207,13 +207,13 @@ with JribbleNormalization
         printFlags(tree.symbol)
         print(tp.tpe)
         print(" ")
-        print(tree.symbol.simpleName) 
+        print(tree.symbol.simpleName)
         if (!rhs.isEmpty) { print(" = "); print(rhs) }
         print(";")
 
       case tree@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
         val resultType = tree.symbol.tpe.resultType
-        
+
         // TODO(spoon): decide about these two prints; put them in or delete the comments
         //printAttributes(tree)
         //printFlags(mods.flags)
@@ -252,7 +252,7 @@ with JribbleNormalization
 
       case tree:Apply if labelSyms.contains(tree.symbol) =>
         print("continue "); print(tree.symbol.name)
-        
+
       case Apply(t @ Select(New(tpt), nme.CONSTRUCTOR), args) if (tpt.tpe.typeSymbol == definitions.ArrayClass) =>
         tpt.tpe match {
           case TypeRef(_, _, List(elemType)) =>
@@ -261,10 +261,10 @@ with JribbleNormalization
         }
 
       case Apply(fun @ Select(receiver, name), args) if isPrimitive(fun.symbol) => {
-        val prim = getPrimitive(fun.symbol) 
+        val prim = getPrimitive(fun.symbol)
         prim match {
           case POS | NEG | NOT | ZNOT =>
-            print(jribblePrimName(prim)); print("("); print(receiver); print(")") 
+            print(jribblePrimName(prim)); print("("); print(receiver); print(")")
           case ADD | SUB | MUL | DIV | MOD | OR | XOR | AND | ID |
                LSL | LSR | ASR |EQ | NE | LT | LE | GT | GE | ZOR | ZAND |
                CONCAT =>
@@ -272,14 +272,14 @@ with JribbleNormalization
             print(receiver); print(" "); print(jribblePrimName(prim)); print(" "); print(args.head)
           case APPLY => print(receiver); print("["); print(args.head); print("]")
           case UPDATE =>
-            print(receiver); print("["); print(args.head); print("] = ") 
+            print(receiver); print("["); print(args.head); print("] = ")
             print(args.tail.head); print("")
-          case SYNCHRONIZED => print("synchronized ("); print(receiver); print(") {") 
-            indent; println; print(args.head); undent; println; print("}") 
+          case SYNCHRONIZED => print("synchronized ("); print(receiver); print(") {")
+            indent; println; print(args.head); undent; println; print("}")
           case prim => print("Unhandled primitive ("+prim+") for "+tree)
         }
       }
-    
+
       case Apply(TypeApply(fun@Select(rcvr, _), List(tpe)), Nil)
       if fun.symbol == definitions.Object_asInstanceOf =>
         print("(")
@@ -316,16 +316,16 @@ with JribbleNormalization
         print("new ");
         print(jribbleConstructorSignature(tree.symbol))
         printParams(args)
-        
+
       case tree@Select(qualifier, selector) if tree.symbol.isModule =>
         printLoadModule(tree.symbol) // TODO(spoon): handle other loadModule cases from GenIcodes
-        
+
       case This(_) => print("this")
-      
+
       case If(cond, exp1: Block, exp2) =>
         // If statement
         super.printRaw(tree)
-        
+
       case If(cond, exp1, exp2) =>
         // If expression
         print("(")
@@ -335,7 +335,7 @@ with JribbleNormalization
         print(") : (")
         print(exp2)
         print(")")
-      
+
       case Try(block, catches, finalizer) =>
         print("try ");
         printInBraces(block, ret)
@@ -347,7 +347,7 @@ with JribbleNormalization
               print(" catch("); print(exBinding.symbol.tpe); print(" ");
               print(exName); print(") ");
               printInBraces(catchBody, ret)
-              
+
             // TODO(spoon): handle any other patterns that are possible here
           }
         if (finalizer != EmptyTree) {
@@ -355,13 +355,13 @@ with JribbleNormalization
           indent; print(finalizer); undent; println
           print("}")
         }
-      
-      case Throw(expr) => 
+
+      case Throw(expr) =>
         print("throw "); print(expr)
-        
+
       case tree@TypeTree() =>
         print(tree.tpe)
-        
+
       case _ => super.printRaw(tree)
       } }
 
@@ -370,7 +370,7 @@ with JribbleNormalization
     def printInBraces(exp: Tree, ret: Boolean) {
       exp match {
         case _:Block => printRaw(exp, ret);
-        case _ => 
+        case _ =>
           assert(false, exp.toString)
           // TODO(spoon): try to eliminate this case through earlier normalization
           print("{")
@@ -384,7 +384,7 @@ with JribbleNormalization
           if (needsSemi(exp))
             print(";")
           undent; println
-          print("}");   
+          print("}");
       }
     }
 
@@ -402,11 +402,11 @@ with JribbleNormalization
       }
       print(")")
     }
-    
+
     override def printParam(tree: Tree): Unit = tree match {
       case ValDef(mods, name, tp, rhs) =>
         //printAttributes(tree)
-        print(tp.tpe); print(" "); print(symName(tree, name)) 
+        print(tp.tpe); print(" "); print(symName(tree, name))
     }
 
     def printFlags(sym: Symbol): Unit = {
@@ -428,11 +428,11 @@ with JribbleNormalization
       val flagstr = fs.mkString("", " ", "")
       if (flagstr.length != 0) { print(flagstr); print(" ")  }
     }
-    
+
     def print(tpe: Type) {
       print(jribbleName(tpe))
     }
-    
+
     def needsSemi(exp: Tree): Boolean = exp match {
       case _:ValDef => false
       case _:DefDef=> false

@@ -15,7 +15,7 @@ import backend.icode.TypeKinds
 
 /**
  * Utilities for formatting Scala constructs in Jribble syntax.
- * 
+ *
  *  @author  Lex Spoon
  */
 trait JribbleFormatting {
@@ -51,13 +51,13 @@ trait JribbleFormatting {
 
     if (fullyQualify) "L" + fullName + suffix + ";" else sym.simpleName.toString
   }
-  
+
   protected def jribbleShortName(sym: Symbol): String =
     jribbleName(sym, false)
-  
+
   protected def jribbleName(sym: Symbol): String =
     jribbleName(sym, true)
-  
+
   protected def jribbleName(tpe: Type): String = {
     def tpstr(typ: TypeKind): String =
       typ match {
@@ -100,8 +100,8 @@ trait JribbleFormatting {
     "(" + on + "::" + name + (paramsTypes).mkString("(", "", ")") + returnType + ")"
   }
 
-  private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe) 
-  
+  private def isJribblePrimitive(tpe: Type): Boolean = typeKinds.primitiveTypeMap.values.map(_.toType).exists(_ =:= tpe)
+
   protected def jribblePrimName(prim: Int): String = {
     import scalaPrimitives._
 
@@ -110,24 +110,24 @@ trait JribbleFormatting {
 	  case POS => "+"                            // +x
 	  case NEG => "-"                           // -x
 	  case NOT => "~"                           // ~x
-	
+
 	  // Arithmetic binary operations
 	  case ADD => "+"                          // x + y
 	  case SUB => "-"                           // x - y
 	  case MUL => "*"                           // x * y
 	  case DIV => "/"                           // x / y
 	  case MOD => "%"                           // x % y
-	
+
 	  // Bitwise operations
 	  case OR  => "|"                           // x | y
 	  case XOR => "^"                           // x ^ y
 	  case AND => "&"                           // x & y
-	
+
 	  // Shift operations
 	  case LSL => "<<"                           // x << y
 	  case LSR => ">>"                           // x >>> y
 	  case ASR => ">>>"                           // x >> y
-	
+
 	  // Comparison operations
 	  case ID => "=="                            // x eq y
 	  case NI => "!="                            // x ne y
@@ -137,19 +137,19 @@ trait JribbleFormatting {
 	  case LE => "<="                            // x <= y
 	  case GE => ">="                            // x > y
 	  case GT => ">"                            // x >= y
-	
+
 	  // Boolean unary operations
 	  case ZNOT => "!"                          // !x
-	
+
 	  // Boolean binary operations
 	  case ZOR => "||"                           // x || y
 	  case ZAND => "&&"                          // x && y
-	
+
 	  // Array operations
 	  case LENGTH => ""                        // x.length
 	  case APPLY  => ""                        // x(y)
 	  case UPDATE => ""                        // x(y) => ""z
-	
+
 	  // String operations
 	  case CONCAT => "+"                       // String.valueOf(x)+String.valueOf(y)
     }

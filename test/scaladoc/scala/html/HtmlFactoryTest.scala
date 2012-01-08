@@ -344,4 +344,24 @@ object Test extends Properties("HtmlFactory") {
       case _ => false
     }
   }
+
+  property("Shouldn't drop type arguments to aliased tuple.") = {
+    createTemplate("SI_4676.scala") match {
+      case node: scala.xml.Node => {
+        node.toString.contains(">ss: (String, String)<")
+      }
+      case _ => false
+    }
+  }
+
+  property("Default arguments of synthesized constructor") = {
+    val files = createTemplates("SI_4287.scala")
+
+    files("ClassWithSugar.html") match {
+      case node: scala.xml.Node => {
+        node.toString.contains(">123<")
+      }
+      case _ => false
+    }
+  }
 }

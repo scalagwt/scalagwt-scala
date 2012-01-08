@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -35,8 +35,12 @@ class Channel[A] {
   }
 
   def read: A = synchronized {
-    while (null == written.next) {
-      nreaders += 1; wait(); nreaders -= 1
+    while (written.next == null) {
+      try {
+        nreaders += 1
+        wait()
+      }
+      finally nreaders -= 1
     }
     val x = written.elem
     written = written.next

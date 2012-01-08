@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -28,7 +28,7 @@ import generic._
  *  @define thatinfo the class of the returned collection. In the standard library configuration,
  *    `That` is always `DoubleLinkedList[B]` because an implicit of type `CanBuildFrom[DoubleLinkedList, B, DoubleLinkedList[B]]`
  *    is defined in object `DoubleLinkedList`.
- *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *  @define bfinfo an implicit value of class `CanBuildFrom` which determines the
  *    result class `That` from the current representation type `Repr`
  *    and the new element type `B`. This is usually the `canBuildFrom` value
  *    defined in object `DoubleLinkedList`.
@@ -37,10 +37,11 @@ import generic._
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
-@serializable @SerialVersionUID(-8144992287952814767L)
+@SerialVersionUID(-8144992287952814767L)
 class DoubleLinkedList[A]() extends LinearSeq[A]
                             with GenericTraversableTemplate[A, DoubleLinkedList]
-                            with DoubleLinkedListLike[A, DoubleLinkedList[A]] {
+                            with DoubleLinkedListLike[A, DoubleLinkedList[A]]
+                            with Serializable {
   next = this
 
   /** Creates a node for the double linked list.
@@ -53,6 +54,7 @@ class DoubleLinkedList[A]() extends LinearSeq[A]
     if (next != null) {
       this.elem = elem
       this.next = next
+      this.next.prev = this
     }
   }
 
@@ -64,20 +66,24 @@ class DoubleLinkedList[A]() extends LinearSeq[A]
  *  @define Coll DoubleLinkedList
  */
 object DoubleLinkedList extends SeqFactory[DoubleLinkedList] {
-  /** $genericCanBuildFrom */
+  /** $genericCanBuildFromInfo */
   implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, DoubleLinkedList[A]] = new GenericCanBuildFrom[A]
+
   def newBuilder[A]: Builder[A, DoubleLinkedList[A]] =
     new Builder[A, DoubleLinkedList[A]] {
-      var current: DoubleLinkedList[A] = _
+      def emptyList() = new DoubleLinkedList[A]()
+      var current = emptyList()
+
       def +=(elem: A): this.type = {
-        val tmp = new DoubleLinkedList(elem, null)
-        if (current != null)
-          current.insert(tmp)
+        if (current.isEmpty)
+          current = new DoubleLinkedList(elem, emptyList())
         else
-          current = tmp
+          current append new DoubleLinkedList(elem, emptyList())
+
         this
       }
-      def clear() { current = null }
+
+      def clear(): Unit = current = emptyList()
       def result() = current
     }
 }

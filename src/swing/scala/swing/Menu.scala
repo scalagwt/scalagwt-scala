@@ -1,16 +1,14 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala.swing
 
-import scala.collection.mutable._
+import scala.collection.mutable
 import javax.swing._
 
 object MenuBar {
@@ -25,7 +23,7 @@ object MenuBar {
 class MenuBar extends Component with SequentialContainer.Wrapper {
   override lazy val peer: JMenuBar = new JMenuBar with SuperMixin
 
-  def menus: Seq[Menu] = contents.filter(_.isInstanceOf[Menu]).map(_.asInstanceOf[Menu])
+  def menus: mutable.Seq[Menu] = contents.filter(_.isInstanceOf[Menu]).map(_.asInstanceOf[Menu])
 
   // Not implemented by Swing
   //def helpMenu: Menu = UIElement.cachedWrapper(peer.getHelpMenu)

@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -11,6 +11,7 @@ package mutable
 
 import java.lang.{ StringBuilder => JavaStringBuilder }
 import annotation.migration
+import immutable.StringLike
 
 /** A builder for mutable sequence of characters.  This class provides an API
  *  mostly compatible with java.lang.StringBuilder, except where there are conflicts
@@ -21,13 +22,19 @@ import annotation.migration
  *  @version 2.8
  *  @since   2.7
  */
-@serializable
 @SerialVersionUID(0 - 8525408645367278351L)
 final class StringBuilder(private val underlying: JavaStringBuilder)
-      extends Builder[Char, String]
-         with java.lang.CharSequence
+      extends java.lang.CharSequence
          with IndexedSeq[Char]
-         with IndexedSeqOptimized[Char, IndexedSeq[Char]] {
+         with StringLike[StringBuilder]
+         with Builder[Char, String]
+         with Serializable {
+
+  override protected[this] def thisCollection: StringBuilder = this
+  override protected[this] def toCollection(repr: StringBuilder): StringBuilder = repr
+
+  /** Creates a string builder buffer as builder for this class */
+  override protected[this] def newBuilder = new GrowingBuilder(new StringBuilder)
 
   /** Constructs a string builder initialized with String initValue
    *  and with additional Char capacity initCapacity.
@@ -59,7 +66,7 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
     arr
   }
 
-  def length: Int = underlying.length()
+  override def length: Int = underlying.length()
   def length_=(n: Int) { underlying.setLength(n) }
 
   /** Clears the builder contents.
@@ -83,7 +90,7 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
   def capacity: Int = underlying.capacity()
 
   @deprecated("Use `ensureCapacity' instead. An assignment is misleading because\n"+
-              "it can never decrease the capacity.")
+              "it can never decrease the capacity.", "2.8.0")
   def capacity_=(n: Int) { ensureCapacity(n) }
 
   /** Ensure that the capacity is at least the given argument.
@@ -105,7 +112,7 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
 
   /** Equivalent to charAt.
    */
-  def apply(index: Int): Char = underlying charAt index
+  override def apply(index: Int): Char = underlying charAt index
 
   /** Removes the Char at the specified index.  The sequence is
    *  shortened by one.
@@ -163,6 +170,17 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
   /** Appends the given Char to the end of the sequence.
    */
   def +=(x: Char): this.type = { append(x); this }
+
+  /** Optimization.
+   */
+  def ++=(s: String): this.type = {
+    underlying append s
+    this
+  }
+  def appendAll(xs: String): StringBuilder = {
+    underlying append xs
+    this
+  }
 
   /** !!! This should create a new sequence.
    */
@@ -349,28 +367,28 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
   def insert(index: Int, x: Char): StringBuilder    = insert(index, String.valueOf(x))
 
   @deprecated("Use appendAll instead. This method is deprecated because of the\n"+
-              "possible confusion with `append(Any)'.")
+              "possible confusion with `append(Any)'.", "2.8.0")
   def append(x: Seq[Char]): StringBuilder = appendAll(x)
 
   @deprecated("use appendAll instead. This method is deprecated because\n"+
-              "of the possible confusion with `append(Any)'.")
+              "of the possible confusion with `append(Any)'.", "2.8.0")
   def append(x: Array[Char]): StringBuilder = appendAll(x)
 
   @deprecated("use appendAll instead. This method is deprecated because\n"+
-              "of the possible confusion with `append(Any, Int, Int)'.")
+              "of the possible confusion with `append(Any, Int, Int)'.", "2.8.0")
   def append(x: Array[Char], offset: Int, len: Int): StringBuilder = appendAll(x, offset, len)
 
   @deprecated("use insertAll instead. This method is deprecated because of the\n"+
-              "possible confusion with `insert(Int, Any, Int, Int)'.")
+              "possible confusion with `insert(Int, Any, Int, Int)'.", "2.8.0")
   def insert(index: Int, str: Array[Char], offset: Int, len: Int): StringBuilder =
     insertAll(index, str, offset, len)
 
   @deprecated("use insertAll instead. This method is deprecated because of\n"+
-              "the possible confusion with `insert(Int, Any)'.")
+              "the possible confusion with `insert(Int, Any)'.", "2.8.0")
   def insert(at: Int, x: Seq[Char]): StringBuilder = insertAll(at, x)
 
   @deprecated("use insertAll instead. This method is deprecated because of\n"+
-              "the possible confusion with `insert(Int, Any)'.")
+              "the possible confusion with `insert(Int, Any)'.", "2.8.0")
   def insert(at: Int, x: Array[Char]): StringBuilder = insertAll(at, x)
 
   /** Finds the index of the first occurrence of the specified substring.
@@ -425,9 +443,26 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
 
   /** Returns a new String representing the data in this sequence.
    *
+   *  @note    because toString is inherited from AnyRef and used for
+   *           many purposes, it is better practice to call mkString
+   *           to obtain a StringBuilder result.
    *  @return  the current contents of this sequence as a String
    */
   override def toString = underlying.toString
 
+  /** Returns a new String representing the data in this sequence.
+   *
+   *  @return  the current contents of this sequence as a String
+   */
+  override def mkString = toString
+
+  /** Returns the result of this Builder (a String)
+   *
+   *  @return  the string assembled by this StringBuilder
+   */
   def result(): String = toString
+}
+
+object StringBuilder {
+  def newBuilder = new StringBuilder
 }

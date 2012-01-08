@@ -1,14 +1,15 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
 
 package scala.tools.nsc
-package backend.icode.analysis
+package backend.icode
+package analysis
 
-import scala.collection.immutable.{Set, ListSet, HashSet}
-import scala.collection.mutable.{HashMap, Map}
+import scala.collection.{ mutable, immutable }
+import immutable.ListSet
 
 /** Compute reaching definitions. We are only interested in reaching
  *  definitions for local variables, since values on the stack
@@ -23,18 +24,18 @@ abstract class ReachingDefinitions {
   /** The lattice for reaching definitions. Elements are
    *  a triple (local variable, basic block, index of instruction of that basic block)
    */
-  object rdefLattice extends CompleteLattice {
+  object rdefLattice extends SemiLattice {
     type Definition = (Local, BasicBlock, Int)
     type Elem = IState[Set[Definition], Stack]
     type StackPos = Set[(BasicBlock, Int)]
     type Stack = List[StackPos]
 
-    val top: Elem = IState(new ListSet[Definition](), Nil)
+    private def referenceEqualSet(name: String) = new ListSet[Definition] with ReferenceEquality {
+      override def toString = "<" + name + ">"
+    }
 
-    val bottom: Elem = IState(new ListSet[Definition]() {
-      override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-      override def toString = "<bottom>"
-    }, Nil)
+    val top: Elem = IState(referenceEqualSet("top"), Nil)
+    val bottom: Elem = IState(referenceEqualSet("bottom"), Nil)
 
     /** The least upper bound is set inclusion for locals, and pairwise set inclusion for stacks. */
     def lub2(exceptional: Boolean)(a: Elem, b: Elem): Elem =
@@ -43,8 +44,8 @@ abstract class ReachingDefinitions {
       else {
         val locals = a.vars ++ b.vars
         val stack =
-          if (a.stack == Nil) b.stack
-          else if (b.stack == Nil) a.stack
+          if (a.stack.isEmpty) b.stack
+          else if (b.stack.isEmpty) a.stack
           else (a.stack, b.stack).zipped map (_ ++ _)
 
         IState(locals, stack)
@@ -67,10 +68,10 @@ abstract class ReachingDefinitions {
 
     var method: IMethod = _
 
-    val gen: Map[BasicBlock, Set[Definition]] = new HashMap()
-    val kill:Map[BasicBlock, Set[Local]]      = new HashMap()
-    val drops: Map[BasicBlock, Int]           = new HashMap()
-    val outStack: Map[BasicBlock, Stack]      = new HashMap()
+    val gen: mutable.Map[BasicBlock, Set[Definition]] = new mutable.HashMap()
+    val kill: mutable.Map[BasicBlock, Set[Local]]     = new mutable.HashMap()
+    val drops: mutable.Map[BasicBlock, Int]           = new mutable.HashMap()
+    val outStack: mutable.Map[BasicBlock, Stack]      = new mutable.HashMap()
 
     def init(m: IMethod) {
       this.method = m
@@ -102,8 +103,8 @@ abstract class ReachingDefinitions {
     import opcodes._
 
     def genAndKill(b: BasicBlock): (Set[Definition], Set[Local]) = {
-      var genSet: Set[Definition] = new HashSet
-      var killSet: Set[Local] = new HashSet
+      var genSet: Set[Definition] = new immutable.HashSet
+      var killSet: Set[Local] = new immutable.HashSet
       for ((i, idx) <- b.toList.zipWithIndex) i match {
         case STORE_LOCAL(local) =>
           killSet = killSet + local
@@ -119,15 +120,15 @@ abstract class ReachingDefinitions {
       var stackOut: List[Set[(BasicBlock, Int)]] = Nil
 
       for ((instr, idx) <- b.toList.zipWithIndex) {
-        if (instr == LOAD_EXCEPTION())
-          ()
-        else if (instr.consumed > depth) {
-          drops = drops + (instr.consumed - depth)
-          depth = 0
-          stackOut = Nil
-        } else {
-          stackOut = stackOut.drop(instr.consumed)
-          depth = depth - instr.consumed
+        instr match {
+          case LOAD_EXCEPTION(_)            => ()
+          case _ if instr.consumed > depth  =>
+            drops += (instr.consumed - depth)
+            depth = 0
+            stackOut = Nil
+          case _ =>
+            stackOut = stackOut.drop(instr.consumed)
+            depth -= instr.consumed
         }
         var prod = instr.produced
         depth = depth + prod
@@ -141,7 +142,7 @@ abstract class ReachingDefinitions {
       (drops, stackOut)
     }
 
-    override def run {
+    override def run() {
       forwardAnalysis(blockTransfer)
       if (settings.debug.value) {
         linearizer.linearize(method).foreach(b => if (b != method.code.startBlock)
@@ -176,7 +177,7 @@ abstract class ReachingDefinitions {
         case STORE_LOCAL(l1) =>
           locals = updateReachingDefinition(b, idx, locals)
           stack = stack.drop(instr.consumed)
-        case LOAD_EXCEPTION() =>
+        case LOAD_EXCEPTION(_) =>
           stack = Nil
         case _ =>
           stack = stack.drop(instr.consumed)
@@ -209,8 +210,9 @@ abstract class ReachingDefinitions {
         if (prod > d) {
           res = (bb, i) :: res
           n   = n - (prod - d)
-          if (instrs(i) != LOAD_EXCEPTION()) {
-            d = instrs(i).consumed
+          instrs(i) match {
+            case LOAD_EXCEPTION(_)  => ()
+            case _                  => d = instrs(i).consumed
           }
         } else {
           d -= prod

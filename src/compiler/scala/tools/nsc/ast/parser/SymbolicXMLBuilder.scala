@@ -1,12 +1,12 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author Burak Emir
  */
 
 package scala.tools.nsc
 package ast.parser
 
-import collection.mutable.Map
+import scala.collection.{ mutable, immutable }
 import xml.{ EntityRef, Text }
 import xml.XML.{ xmlns }
 import symtab.Flags.MUTABLE
@@ -22,43 +22,58 @@ import scala.tools.util.StringOps.splitWhere
  *  @author  Burak Emir
  *  @version 1.0
  */
-abstract class SymbolicXMLBuilder(p: Parsers#Parser, preserveWS: Boolean)
-{
+abstract class SymbolicXMLBuilder(p: Parsers#Parser, preserveWS: Boolean) {
   val global: Global
   import global._
-  def freshName(prefix: String): Name
 
   var isPattern: Boolean = _
 
-  def _Comment             = global.newTypeName("Comment")
-  def _Elem                = global.newTypeName("Elem")
-  def _EntityRef           = global.newTypeName("EntityRef")
-  def _Group               = global.newTypeName("Group")
-  def _MetaData            = global.newTypeName("MetaData")
-  def _NamespaceBinding    = global.newTypeName("NamespaceBinding")
-  def _NodeBuffer          = global.newTypeName("NodeBuffer")
-  def _PrefixedAttribute   = global.newTypeName("PrefixedAttribute")
-  def _ProcInstr           = global.newTypeName("ProcInstr")
-  def _Text                = global.newTypeName("Text")
-  def _Unparsed            = global.newTypeName("Unparsed")
-  def _UnprefixedAttribute = global.newTypeName("UnprefixedAttribute")
+  trait XMLTypeNames extends TypeNames {
+    val _Comment: NameType             = "Comment"
+    val _Elem: NameType                = "Elem"
+    val _EntityRef: NameType           = "EntityRef"
+    val _Group: NameType               = "Group"
+    val _MetaData: NameType            = "MetaData"
+    val _NamespaceBinding: NameType    = "NamespaceBinding"
+    val _NodeBuffer: NameType          = "NodeBuffer"
+    val _PrefixedAttribute: NameType   = "PrefixedAttribute"
+    val _ProcInstr: NameType           = "ProcInstr"
+    val _Text: NameType                = "Text"
+    val _Unparsed: NameType            = "Unparsed"
+    val _UnprefixedAttribute: NameType = "UnprefixedAttribute"
+  }
 
-  def __Elem               = global.newTermName("Elem")
-  def __Text               = global.newTermName("Text")
-  def _Null                = global.newTermName("Null")
-  def _plus                = global.newTermName("$amp$plus")
-  def _xml                 = global.newTermName("xml")
+  trait XMLTermNames extends TermNames {
+    val _Null: NameType     = "Null"
+    val __Elem: NameType    = "Elem"
+    val __Text: NameType    = "Text"
+    val _buf: NameType      = "$buf"
+    val _md: NameType       = "$md"
+    val _plus: NameType     = "$amp$plus"
+    val _scope: NameType    = "$scope"
+    val _tmpscope: NameType = "$tmpscope"
+    val _xml: NameType      = "xml"
+  }
 
-  final def _buf           = global.newTermName("$buf")
-  final def _md            = global.newTermName("$md")
-  final def _scope         = global.newTermName("$scope")
-  final def _tmpscope      = global.newTermName("$tmpscope")
+  private object xmltypes extends XMLTypeNames {
+    type NameType = TypeName
+    implicit def createNameType(name: String): TypeName = newTypeName(name)
+  }
+  private object xmlterms extends XMLTermNames {
+    type NameType = TermName
+    implicit def createNameType(name: String): TermName = newTermName(name)
+  }
+
+  import xmltypes.{_Comment, _Elem, _EntityRef, _Group, _MetaData, _NamespaceBinding, _NodeBuffer,
+    _PrefixedAttribute, _ProcInstr, _Text, _Unparsed, _UnprefixedAttribute}
+
+  import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml}
 
   // convenience methods
   private def LL[A](x: A*): List[List[A]] = List(List(x:_*))
   private def const(x: Any) = Literal(Constant(x))
   private def wild                          = Ident(nme.WILDCARD)
-  private def wildStar                      = Ident(nme.WILDCARD_STAR.toTypeName)
+  private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
   private def _scala(name: Name)            = Select(Select(Ident(nme.ROOTPKG), nme.scala_), name)
   private def _scala_xml(name: Name)        = Select(_scala(_xml), name)
 
@@ -172,7 +187,7 @@ abstract class SymbolicXMLBuilder(p: Parsers#Parser, preserveWS: Boolean)
   def unparsed(pos: Position, str: String): Tree =
     atPos(pos)( New(_scala_xml_Unparsed, LL(const(str))) )
 
-  def element(pos: Position, qname: String, attrMap: Map[String, Tree], args: Seq[Tree]): Tree = {
+  def element(pos: Position, qname: String, attrMap: mutable.Map[String, Tree], args: Seq[Tree]): Tree = {
     def handleNamespaceBinding(pre: String, z: String): Tree = {
       def mkAssign(t: Tree): Tree = Assign(
         Ident(_tmpscope),

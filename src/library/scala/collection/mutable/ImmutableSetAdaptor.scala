@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -22,8 +22,7 @@ package mutable
  *  @version 1.0, 21/07/2003
  *  @since   1
  */
-@serializable
-class ImmutableSetAdaptor[A](protected var set: immutable.Set[A]) extends Set[A] {
+class ImmutableSetAdaptor[A](protected var set: immutable.Set[A]) extends Set[A] with Serializable {
 
   override def size: Int = set.size
 
@@ -41,7 +40,8 @@ class ImmutableSetAdaptor[A](protected var set: immutable.Set[A]) extends Set[A]
 
   def iterator: Iterator[A] = set.iterator
 
-  @deprecated("use `iterator' instead") override def elements: Iterator[A] = iterator
+  @deprecated("use `iterator' instead", "2.8.0")
+  override def elements: Iterator[A] = iterator
 
   def +=(elem: A): this.type = { set = set + elem; this }
 

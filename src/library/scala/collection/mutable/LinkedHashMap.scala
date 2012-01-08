@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -35,7 +35,7 @@ object LinkedHashMap extends MutableMapFactory[LinkedHashMap] {
  *    pairs of type `(A, B)`. This is because an implicit of type `CanBuildFrom[LinkedHashMap, (A, B), LinkedHashMap[A, B]]`
  *    is defined in object `LinkedHashMap`. Otherwise, `That` resolves to the most specific type that doesn't have
  *    to contain pairs of type `(A, B)`, which is `Iterable`.
- *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *  @define bfinfo an implicit value of class `CanBuildFrom` which determines the
  *    result class `That` from the current representation type `Repr`
  *    and the new element type `B`. This is usually the `canBuildFrom` value
  *    defined in object `LinkedHashMap`.
@@ -44,10 +44,11 @@ object LinkedHashMap extends MutableMapFactory[LinkedHashMap] {
  *  @define orderDependent
  *  @define orderDependentFold
  */
-@serializable @SerialVersionUID(1L)
+@SerialVersionUID(1L)
 class LinkedHashMap[A, B] extends Map[A, B]
                              with MapLike[A, B, LinkedHashMap[A, B]]
-                             with HashTable[A] {
+                             with HashTable[A, LinkedEntry[A, B]]
+                             with Serializable {
 
   override def empty = LinkedHashMap.empty[A, B]
   override def size = tableSize
@@ -140,6 +141,8 @@ class LinkedHashMap[A, B] extends Map[A, B]
   }
 
   private def readObject(in: java.io.ObjectInputStream) {
+    firstEntry = null
+    lastEntry = null
     init[B](in, { (key, value) =>
       val entry = new Entry(key, value)
       updateLinkedEntries(entry)

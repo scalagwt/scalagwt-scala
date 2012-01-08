@@ -1,3 +1,7 @@
+/* NSC -- new Scala compiler
+ * Copyright 2009-2011 Scala Solutions and LAMP/EPFL
+ * @author Martin Odersky
+ */
 package scala.tools.nsc
 package interactive
 
@@ -17,7 +21,7 @@ trait ContextTrees { self: Global =>
    *  3. The `pos` field of a context is the same as `context.tree.pos`, unless that
    *     position is transparent. In that case, `pos` equals the position of
    *     one of the solid descendants of `context.tree`.
-   *  4. Children of a context have non-overlapping increasining positions.
+   *  4. Children of a context have non-overlapping increasing positions.
    *  5. No context in the tree has a transparent position.
    */
   class ContextTree(val pos: Position, val context: Context, val children: ArrayBuffer[ContextTree]) {
@@ -27,7 +31,7 @@ trait ContextTrees { self: Global =>
 
   /** Optionally returns the smallest context that contains given `pos`, or None if none exists.
    */
-  def locateContext(contexts: Contexts, pos: Position): Option[Context] = {
+  def locateContext(contexts: Contexts, pos: Position): Option[Context] = synchronized {
     def locateNearestContextTree(contexts: Contexts, pos: Position, recent: Array[ContextTree]): Option[ContextTree] = {
       locateContextTree(contexts, pos) match {
         case Some(x) =>
@@ -46,7 +50,7 @@ trait ContextTrees { self: Global =>
     if (contexts.isEmpty) None
     else {
       val hi = contexts.length - 1
-      if ((contexts(hi).pos precedes pos) || (pos precedes contexts(0).pos)) None
+      if ((contexts(hi).pos properlyPrecedes pos) || (pos properlyPrecedes contexts(0).pos)) None
       else {
         def loop(lo: Int, hi: Int): Option[ContextTree] = {
           val mid = (lo + hi) / 2
@@ -70,7 +74,7 @@ trait ContextTrees { self: Global =>
    *  If the `context` has a transparent position, add it multiple times
    *  at the positions of all its solid descendant trees.
    */
-  def addContext(contexts: Contexts, context: Context) {
+  def addContext(contexts: Contexts, context: Context): Unit = {
     val cpos = context.tree.pos
     if (cpos.isTransparent)
       for (t <- context.tree.children flatMap solidDescendants)
@@ -82,7 +86,7 @@ trait ContextTrees { self: Global =>
   /** Insert a context with non-transparent position `cpos`
    *  at correct position into a buffer of context trees.
    */
-  def addContext(contexts: Contexts, context: Context, cpos: Position) {
+  def addContext(contexts: Contexts, context: Context, cpos: Position): Unit = synchronized {
     try {
       if (!cpos.isRange) {}
       else if (contexts.isEmpty) contexts += new ContextTree(cpos, context)

@@ -1,11 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
 
 
 package scala.collection
@@ -27,10 +26,34 @@ import generic._
  * @since 1
  */
 trait Map[A, +B] extends Iterable[(A, B)]
+//                    with GenMap[A, B]
                     with scala.collection.Map[A, B]
                     with MapLike[A, B, Map[A, B]] { self =>
 
   override def empty: Map[A, B] = Map.empty
+  override def toMap[T, U](implicit ev: (A, B) <:< (T, U)): immutable.Map[T, U] =
+    self.asInstanceOf[immutable.Map[T, U]]
+
+  override def seq: Map[A, B] = this
+
+  /** The same map with a given default function.
+   *  Note: `get`, `contains`, `iterator`, `keys`, etc are not affected by `withDefault`.
+   *
+   *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
+   *
+   *  @param d     the function mapping keys to values, used for non-present keys
+   *  @return      a wrapper of the map with a default value
+   */
+  def withDefault[B1 >: B](d: A => B1): immutable.Map[A, B1] = new Map.WithDefault[A, B1](this, d)
+
+  /** The same map with a given default value.
+   *
+   *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
+   *
+   *  @param d     the function mapping keys to values, used for non-present keys
+   *  @return      a wrapper of the map with a default value
+   */
+  def withDefaultValue[B1 >: B](d: B1): immutable.Map[A, B1] = new Map.WithDefault[A, B1](this, x => d)
 
   /** Add a key/value pair to this map.
    *  @param    key the key
@@ -39,12 +62,6 @@ trait Map[A, +B] extends Iterable[(A, B)]
    */
   override def updated [B1 >: B](key: A, value: B1): Map[A, B1]
   def + [B1 >: B](kv: (A, B1)): Map[A, B1]
-
-  /** The same map with a given default function !!! todo: move to general maps? */
-  def withDefault[B1 >: B](d: A => B1): Map[A, B1] = new Map.WithDefault[A, B1](this, d)
-
-  /** The same map with a given default value */
-  def withDefaultValue[B1 >: B](d: B1): Map[A, B1] = new Map.WithDefault[A, B1](this, x => d)
 }
 
 /** $factoryInfo
@@ -58,19 +75,16 @@ object Map extends ImmutableMapFactory[Map] {
 
   def empty[A, B]: Map[A, B] = EmptyMap.asInstanceOf[Map[A, B]]
 
-  class WithDefault[A, +B](underlying: Map[A, B], d: A => B) extends Map[A, B] {
-    override def size = underlying.size
-    def get(key: A) = underlying.get(key) orElse Some(default(key))
-    def iterator = underlying.iterator
+  class WithDefault[A, +B](underlying: Map[A, B], d: A => B) extends collection.Map.WithDefault[A, B](underlying, d) with Map[A, B] {
     override def empty = new WithDefault(underlying.empty, d)
     override def updated[B1 >: B](key: A, value: B1): WithDefault[A, B1] = new WithDefault[A, B1](underlying.updated[B1](key, value), d)
-    def + [B1 >: B](kv: (A, B1)): WithDefault[A, B1] = updated(kv._1, kv._2)
-    def - (key: A): WithDefault[A, B] = new WithDefault(underlying - key, d)
-    override def default(key: A): B = d(key)
+    override def + [B1 >: B](kv: (A, B1)): WithDefault[A, B1] = updated(kv._1, kv._2)
+    override def - (key: A): WithDefault[A, B] = new WithDefault(underlying - key, d)
+    override def withDefault[B1 >: B](d: A => B1): immutable.Map[A, B1] = new WithDefault[A, B1](underlying, d)
+    override def withDefaultValue[B1 >: B](d: B1): immutable.Map[A, B1] = new WithDefault[A, B1](underlying, x => d)
   }
 
-  @serializable
-  private object EmptyMap extends Map[Any, Nothing] {
+  private object EmptyMap extends Map[Any, Nothing] with Serializable {
     override def size: Int = 0
     def get(key: Any): Option[Nothing] = None
     def iterator: Iterator[(Any, Nothing)] = Iterator.empty
@@ -79,8 +93,8 @@ object Map extends ImmutableMapFactory[Map] {
     def - (key: Any): Map[Any, Nothing] = this
   }
 
-  @serializable @deprecated("use `Map.empty' instead")
-  class EmptyMap[A,B] extends Map[A,B] {
+  @deprecated("use `Map.empty' instead", "2.8.0")
+  class EmptyMap[A,B] extends Map[A,B] with Serializable {
     override def size: Int = 0
     def get(key: A): Option[B] = None
     def iterator: Iterator[(A, B)] = Iterator.empty
@@ -89,8 +103,7 @@ object Map extends ImmutableMapFactory[Map] {
     def - (key: A): Map[A, B] = this
   }
 
-  @serializable
-  class Map1[A, +B](key1: A, value1: B) extends Map[A, B] {
+  class Map1[A, +B](key1: A, value1: B) extends Map[A, B] with Serializable {
     override def size = 1
     def get(key: A): Option[B] =
       if (key == key1) Some(value1) else None
@@ -106,8 +119,7 @@ object Map extends ImmutableMapFactory[Map] {
     }
   }
 
-  @serializable
-  class Map2[A, +B](key1: A, value1: B, key2: A, value2: B) extends Map[A, B] {
+  class Map2[A, +B](key1: A, value1: B, key2: A, value2: B) extends Map[A, B] with Serializable {
     override def size = 2
     def get(key: A): Option[B] =
       if (key == key1) Some(value1)
@@ -128,8 +140,7 @@ object Map extends ImmutableMapFactory[Map] {
     }
   }
 
-  @serializable
-  class Map3[A, +B](key1: A, value1: B, key2: A, value2: B, key3: A, value3: B) extends Map[A, B] {
+  class Map3[A, +B](key1: A, value1: B, key2: A, value2: B, key3: A, value3: B) extends Map[A, B] with Serializable {
     override def size = 3
     def get(key: A): Option[B] =
       if (key == key1) Some(value1)
@@ -153,8 +164,7 @@ object Map extends ImmutableMapFactory[Map] {
     }
   }
 
-  @serializable
-  class Map4[A, +B](key1: A, value1: B, key2: A, value2: B, key3: A, value3: B, key4: A, value4: B) extends Map[A, B] {
+  class Map4[A, +B](key1: A, value1: B, key2: A, value2: B, key3: A, value3: B, key4: A, value4: B) extends Map[A, B] with Serializable {
     override def size = 4
     def get(key: A): Option[B] =
       if (key == key1) Some(value1)

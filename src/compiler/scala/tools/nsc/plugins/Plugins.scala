@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2007-2010 LAMP/EPFL
+ * Copyright 2007-2011 LAMP/EPFL
  * @author Lex Spoon
  * Updated by Anders Bach Nielsen
  */
@@ -15,8 +15,7 @@ import io.{ File, Path }
  *  @version 1.1, 2009/1/2
  *  Updated 2009/1/2 by Anders Bach Nielsen: Added features to implement SIP 00002
  */
-trait Plugins
-{
+trait Plugins {
   self: Global =>
 
   /** Load a rough list of the plugins.  For speed, it
@@ -75,7 +74,7 @@ trait Plugins
 
     /** Verify requirements are present. */
     for (req <- settings.require.value ; if !(plugs exists (_.name == req)))
-      error("Missing required plugin: " + req)
+      globalError("Missing required plugin: " + req)
 
     /** Process plugin options. */
     def namec(plug: Plugin) = plug.name + ":"
@@ -86,12 +85,12 @@ trait Plugins
     for (p <- plugs) {
       val opts = doOpts(p)
       if (!opts.isEmpty)
-        p.processOptions(opts, error)
+        p.processOptions(opts, globalError)
     }
 
     /** Verify no non-existent plugin given with -P */
     for (opt <- settings.pluginOptions.value ; if plugs forall (p => optList(List(opt), p).isEmpty))
-      error("bad option: -P:" + opt)
+      globalError("bad option: -P:" + opt)
 
     plugs
   }
@@ -112,6 +111,6 @@ trait Plugins
   /** Summary of the options for all loaded plugins */
   def pluginOptionsHelp: String =
     (for (plug <- roughPluginsList ; help <- plug.optionsHelp) yield {
-      "Options for plugin %s:\n%s\n".format(plug.name, help)
+      "\nOptions for plugin '%s':\n%s\n".format(plug.name, help)
     }) mkString
 }

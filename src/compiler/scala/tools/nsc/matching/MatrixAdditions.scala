@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * Author: Paul Phillips
  */
 
@@ -12,8 +12,7 @@ import PartialFunction._
 /** Traits which are mixed into MatchMatrix, but separated out as
  *  (somewhat) independent components to keep them on the sidelines.
  */
-trait MatrixAdditions extends ast.TreeDSL
-{
+trait MatrixAdditions extends ast.TreeDSL {
   self: ExplicitOuter with ParallelMatching =>
 
   import global.{ typer => _, _ }
@@ -21,56 +20,61 @@ trait MatrixAdditions extends ast.TreeDSL
   import CODE._
   import Debug._
   import treeInfo.{ IsTrue, IsFalse }
+  import definitions.{ isValueClass }
 
   /** The Squeezer, responsible for all the squeezing.
    */
   private[matching] trait Squeezer {
     self: MatrixContext =>
 
-    def squeezedBlockPVs(pvs: List[PatternVar], exp: Tree): Tree =
-      squeezedBlock(pvs map (_.valDef), exp)
+    private val settings_squeeze = !settings.Ynosqueeze.value
 
-    /** Compresses multiple Blocks. */
-    def mkBlock(stats: List[Tree], expr: Tree): Tree = expr match {
-      case Block(stats1, expr1) if stats.isEmpty  => mkBlock(stats1, expr1)
-      case _                                      => Block(stats, expr)
+    class RefTraverser(vd: ValDef) extends Traverser {
+      private val targetSymbol = vd.symbol
+      private var safeRefs     = 0
+      private var isSafe       = true
+
+      def canDrop   = isSafe && safeRefs == 0
+      def canInline = isSafe && safeRefs == 1
+
+      override def traverse(tree: Tree): Unit = tree match {
+        case t: Ident if t.symbol eq targetSymbol =>
+          // target symbol's owner should match currentOwner
+          if (targetSymbol.owner == currentOwner) safeRefs += 1
+          else isSafe = false
+
+        case LabelDef(_, params, rhs) =>
+          if (params exists (_.symbol eq targetSymbol))  // cannot substitute this one
+            isSafe = false
+
+          traverse(rhs)
+        case _ if safeRefs > 1 => ()
+        case _ =>
+          super.traverse(tree)
+      }
+    }
+    class Subst(vd: ValDef) extends Transformer {
+      private var stop = false
+      override def transform(tree: Tree): Tree = tree match {
+        case t: Ident if t.symbol == vd.symbol =>
+          stop = true
+          vd.rhs
+        case _ =>
+          if (stop) tree
+          else super.transform(tree)
+      }
     }
 
+    /** Compresses multiple Blocks. */
+    private def combineBlocks(stats: List[Tree], expr: Tree): Tree = expr match {
+      case Block(stats1, expr1) if stats.isEmpty => combineBlocks(stats1, expr1)
+      case _                                     => Block(stats, expr)
+    }
     def squeezedBlock(vds: List[Tree], exp: Tree): Tree =
-      if (settings_squeeze) mkBlock(Nil, squeezedBlock1(vds, exp))
-      else                  mkBlock(vds, exp)
+      if (settings_squeeze) combineBlocks(Nil, squeezedBlock1(vds, exp))
+      else                  combineBlocks(vds, exp)
 
     private def squeezedBlock1(vds: List[Tree], exp: Tree): Tree = {
-      class RefTraverser(sym: Symbol) extends Traverser {
-        var nref, nsafeRef = 0
-        override def traverse(tree: Tree) = tree match {
-          case t: Ident if t.symbol eq sym =>
-            nref += 1
-            if (sym.owner == currentOwner) // oldOwner should match currentOwner
-              nsafeRef += 1
-
-          case LabelDef(_, args, rhs) =>
-            (args dropWhile(_.symbol ne sym)) match {
-              case Nil  =>
-              case _    => nref += 2  // cannot substitute this one
-            }
-            traverse(rhs)
-          case t if nref > 1 =>       // abort, no story to tell
-          case t =>
-            super.traverse(t)
-        }
-      }
-
-      class Subst(sym: Symbol, rhs: Tree) extends Transformer {
-        var stop = false
-        override def transform(tree: Tree) = tree match {
-          case t: Ident if t.symbol == sym =>
-            stop = true
-            rhs
-          case _ => if (stop) tree else super.transform(tree)
-        }
-      }
-
       lazy val squeezedTail = squeezedBlock(vds.tail, exp)
       def default = squeezedTail match {
         case Block(vds2, exp2) => Block(vds.head :: vds2, exp2)
@@ -80,17 +84,13 @@ trait MatrixAdditions extends ast.TreeDSL
       if (vds.isEmpty) exp
       else vds.head match {
         case vd: ValDef =>
-          val sym = vd.symbol
-          val rt = new RefTraverser(sym)
-          rt.atOwner (owner) (rt traverse squeezedTail)
+          val rt = new RefTraverser(vd)
+          rt.atOwner(owner)(rt traverse squeezedTail)
 
-          rt.nref match {
-            case 0                      => squeezedTail
-            case 1 if rt.nsafeRef == 1  => new Subst(sym, vd.rhs) transform squeezedTail
-            case _                      => default
-          }
-        case _          =>
-          default
+          if (rt.canDrop) squeezedTail
+          else if (rt.canInline) new Subst(vd) transform squeezedTail
+          else default
+        case _ => default
       }
     }
   }
@@ -106,9 +106,7 @@ trait MatrixAdditions extends ast.TreeDSL
       object lxtt extends Transformer {
         override def transform(tree: Tree): Tree = tree match {
           case blck @ Block(vdefs, ld @ LabelDef(name, params, body)) =>
-            def shouldInline(t: FinalState) = t.isReachedOnce && (t.labelSym eq ld.symbol)
-
-            if (targets exists shouldInline) squeezedBlock(vdefs, body)
+            if (targets exists (_ shouldInline ld.symbol)) squeezedBlock(vdefs, body)
             else blck
 
           case t =>
@@ -124,18 +122,7 @@ trait MatrixAdditions extends ast.TreeDSL
           })
         }
       }
-      object resetTraverser extends Traverser {
-        import Flags._
-        def reset(vd: ValDef) =
-          if (vd.symbol hasFlag SYNTHETIC) vd.symbol resetFlag (TRANS_FLAG|MUTABLE)
-
-        override def traverse(x: Tree): Unit = x match {
-          case vd: ValDef => reset(vd)
-          case _          => super.traverse(x)
-        }
-      }
-
-      returning(lxtt transform tree)(resetTraverser traverse _)
+      returning(lxtt transform tree)(_ => clearSyntheticSyms())
     }
   }
 
@@ -149,37 +136,28 @@ trait MatrixAdditions extends ast.TreeDSL
     /** Exhaustiveness checking requires looking for sealed classes
      *  and if found, making sure all children are covered by a pattern.
      */
-    class ExhaustivenessChecker(rep: Rep) {
+    class ExhaustivenessChecker(rep: Rep, matchPos: Position) {
       val Rep(tvars, rows) = rep
 
-      import Flags.{ MUTABLE, ABSTRACT, SEALED, TRANS_FLAG }
+      import Flags.{ MUTABLE, ABSTRACT, SEALED }
 
       private case class Combo(index: Int, sym: Symbol) {
         // is this combination covered by the given pattern?
         def isCovered(p: Pattern) = {
-          def cmpSymbols(t1: Type, t2: Type)  = t1.typeSymbol eq t2.typeSymbol
           def coversSym = {
-            val tpe = decodedEqualsType(p.tpe)
-            lazy val lmoc = sym.companionModule
-            val symtpe =
-              if ((sym hasFlag Flags.MODULE) && (lmoc ne NoSymbol))
-                singleType(sym.tpe.prefix, lmoc)   // e.g. None, Nil
-              else sym.tpe
-
-            /** Note to Martin should you come through this way: this
-             *  logic looks way overcomplicated for the intention, but a little
-             *  experimentation showed that at least most of it is serving
-             *  some necessary purpose.  It doesn't seem like much more than
-             *  "sym.tpe matchesPattern tpe" ought to be necessary though.
-             *
-             *  For the time being I tacked the matchesPattern test onto the
-             *  end to address #3097.
-             */
-            (tpe.typeSymbol == sym) ||
-            (symtpe <:< tpe) ||
-            (symtpe.parents exists (x => cmpSymbols(x, tpe))) || // e.g. Some[Int] <: Option[&b]
-            ((tpe.prefix memberType sym) <:< tpe) ||  // outer, see combinator.lexical.Scanner
-            (symtpe matchesPattern tpe)
+            val lhs = decodedEqualsType(p.tpe)
+            val rhs = sym.tpe
+            // This logic, arrived upon after much struggle, attempts to find the
+            // the route through the type maze which let us issue precise exhaustiveness
+            // warnings against narrowed types (see test case sealed-java-enums.scala)
+            // while retaining the necessary pattern matching behavior that case _: List[_] =>
+            // matches both "object Nil" and "class ::[T]".
+            //
+            // Doubtless there is a more direct/correct expression of it.
+            if (rhs.typeSymbol.isSingletonExistential)
+              lhs <:< rhs
+            else
+              rhs.baseClasses contains lhs.typeSymbol
           }
 
           cond(p.tree) {
@@ -193,16 +171,29 @@ trait MatrixAdditions extends ast.TreeDSL
       private def rowCoversCombo(row: Row, combos: List[Combo]) =
         row.guard.isEmpty && (combos forall (c => c isCovered row.pats(c.index)))
 
-      private def requiresExhaustive(s: Symbol) =
-         (s hasFlag MUTABLE) &&                 // indicates that have not yet checked exhaustivity
-        !(s hasFlag TRANS_FLAG) &&              // indicates @unchecked
-         (s.tpe.typeSymbol.isSealed) &&
-         { s resetFlag MUTABLE ; true }         // side effects MUTABLE flag
+      private def requiresExhaustive(sym: Symbol) = {
+         (sym.isMutable) &&                 // indicates that have not yet checked exhaustivity
+        !(sym hasFlag NO_EXHAUSTIVE) &&     // indicates @unchecked
+         (sym.tpe.typeSymbol.isSealed) &&
+        !isValueClass(sym.tpe.typeSymbol)   // make sure it's not a primitive, else (5: Byte) match { case 5 => ... } sees no Byte
+      }
 
       private lazy val inexhaustives: List[List[Combo]] = {
-        val collected =
-          for ((pv, i) <- tvars.zipWithIndex ; val sym = pv.lhs ; if requiresExhaustive(sym)) yield
-            i -> sym.tpe.typeSymbol.sealedDescendants
+        // let's please not get too clever side-effecting the mutable flag.
+        val toCollect = tvars.zipWithIndex filter { case (pv, i) => requiresExhaustive(pv.sym) }
+        val collected = toCollect map { case (pv, i) =>
+          // okay, now reset the flag
+          pv.sym resetFlag MUTABLE
+
+          i -> (
+            pv.tpe.typeSymbol.sealedDescendants.toList sortBy (_.sealedSortName)
+            // symbols which are both sealed and abstract need not be covered themselves, because
+            // all of their children must be and they cannot otherwise be created.
+            filterNot (x => x.isSealed && x.isAbstractClass && !isValueClass(x))
+            // have to filter out children which cannot match: see ticket #3683 for an example
+            filter (_.tpe matchesPattern pv.tpe)
+          )
+        }
 
         val folded =
           collected.foldRight(List[List[Combo]]())((c, xs) => {
@@ -227,7 +218,7 @@ trait MatrixAdditions extends ast.TreeDSL
       def check = {
         def errMsg = (inexhaustives map mkMissingStr).mkString
         if (inexhaustives.nonEmpty)
-          cunit.warning(tvars.head.lhs.pos, "match is not exhaustive!\n" + errMsg)
+          cunit.warning(matchPos, "match is not exhaustive!\n" + errMsg)
 
         rep
       }

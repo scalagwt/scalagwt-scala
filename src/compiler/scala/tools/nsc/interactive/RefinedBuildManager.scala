@@ -1,8 +1,8 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
- * @author  Martin Odersky
+ * Copyright 2009-2011 Scala Solutions and LAMP/EPFL
+ * @author Iulian Dragos
+ * @author Hubert Plocinicak
  */
-
 package scala.tools.nsc
 package interactive
 
@@ -12,8 +12,9 @@ import scala.util.control.Breaks._
 import scala.tools.nsc.symtab.Flags
 
 import dependencies._
-import util.FakePos
+import util.{FakePos, ClassPath}
 import io.AbstractFile
+import scala.tools.util.PathResolver
 
 /** A more defined build manager, based on change sets. For each
  *  updated source file, it computes the set of changes to its
@@ -32,8 +33,14 @@ class RefinedBuildManager(val settings: Settings) extends Changes with BuildMana
       super.computeInternalPhases
       phasesSet += dependencyAnalysis
     }
+    lazy val _classpath: ClassPath[_] = new NoSourcePathPathResolver(settings).result
+    override def classPath: ClassPath[_] = _classpath
 
     def newRun() = new Run()
+  }
+
+  class NoSourcePathPathResolver(settings: Settings) extends PathResolver(settings) {
+    override def containers = Calculated.basis.dropRight(1).flatten.distinct
   }
 
   protected def newCompiler(settings: Settings) = new BuilderGlobal(settings)
@@ -101,12 +108,12 @@ class RefinedBuildManager(val settings: Settings) extends Changes with BuildMana
   private def update(files: Set[AbstractFile]) = {
     val coll: mutable.Map[AbstractFile, immutable.Set[AbstractFile]] =
         mutable.HashMap[AbstractFile, immutable.Set[AbstractFile]]()
-    compiler.reporter.reset
+    compiler.reporter.reset()
 
     // See if we really have corresponding symbols, not just those
     // which share the name
     def isCorrespondingSym(from: Symbol, to: Symbol): Boolean =
-      (from.hasFlag(Flags.TRAIT) == to.hasFlag(Flags.TRAIT)) &&
+      (from.hasFlag(Flags.TRAIT) == to.hasFlag(Flags.TRAIT)) && // has to run in 2.8, so no hasTraitFlag
       (from.hasFlag(Flags.MODULE) == to.hasFlag(Flags.MODULE))
 
     // For testing purposes only, order irrelevant for compilation
@@ -159,7 +166,7 @@ class RefinedBuildManager(val settings: Settings) extends Changes with BuildMana
               case _ =>
                 // a new top level definition
                 changesOf(sym) =
-                    sym.info.parents.filter(_.typeSymbol hasFlag Flags.SEALED).map(
+                    sym.info.parents.filter(_.typeSymbol.isSealed).map(
                       p => changeChangeSet(p.typeSymbol,
                                            sym+" extends a sealed "+p.typeSymbol))
             }
@@ -180,6 +187,8 @@ class RefinedBuildManager(val settings: Settings) extends Changes with BuildMana
     }
 
     update0(files)
+    // remove the current run in order to save some memory
+    compiler.dropRun()
   }
 
   // Attempt to break the cycling reference deps as soon as possible and reduce

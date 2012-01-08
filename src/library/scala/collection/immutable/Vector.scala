@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -15,6 +15,7 @@ import compat.Platform
 
 import scala.collection.generic._
 import scala.collection.mutable.Builder
+import scala.collection.parallel.immutable.ParVector
 
 
 object Vector extends SeqFactory[Vector] {
@@ -32,11 +33,14 @@ object Vector extends SeqFactory[Vector] {
 // in principle, most members should be private. however, access privileges must
 // be carefully chosen to not prevent method inlining
 
-@serializable
-final class Vector[+A](startIndex: Int, endIndex: Int, focus: Int) extends IndexedSeq[A]
-                 with GenericTraversableTemplate[A, Vector]
-                 with IndexedSeqLike[A, Vector[A]]
-                 with VectorPointer[A @uncheckedVariance] { self =>
+final class Vector[+A](private[collection] val startIndex: Int, private[collection] val endIndex: Int, focus: Int)
+extends IndexedSeq[A]
+   with GenericTraversableTemplate[A, Vector]
+   with IndexedSeqLike[A, Vector[A]]
+   with VectorPointer[A @uncheckedVariance]
+   with Serializable
+   with CustomParallelizable[A, ParVector[A]]
+{ self =>
 
 override def companion: GenericCompanion[Vector] = Vector
 
@@ -49,14 +53,19 @@ override def companion: GenericCompanion[Vector] = Vector
 
   def length = endIndex - startIndex
 
+  override def par = new ParVector(this)
+
   override def lengthCompare(len: Int): Int = length - len
 
-
-  @inline override def iterator: VectorIterator[A] = {
-    val s = new VectorIterator[A](startIndex, endIndex)
+  private[collection] final def initIterator[B >: A](s: VectorIterator[B]) {
     s.initFrom(this)
     if (dirty) s.stabilize(focus)
     if (s.depth > 1) s.gotoPos(startIndex, startIndex ^ focus)
+  }
+
+  @inline override def iterator: VectorIterator[A] = {
+    val s = new VectorIterator[A](startIndex, endIndex)
+    initIterator(s)
     s
   }
 
@@ -80,9 +89,9 @@ override def companion: GenericCompanion[Vector] = Vector
   // In principle, escape analysis could even remove the iterator/builder allocations and do it
   // with local variables exclusively. But we're not quite there yet ...
 
-  @deprecated("this method is experimental and will be removed in a future release")
+  @deprecated("this method is experimental and will be removed in a future release", "2.8.0")
   @inline def foreachFast[U](f: A => U): Unit = iterator.foreachFast(f)
-  @deprecated("this method is experimental and will be removed in a future release")
+  @deprecated("this method is experimental and will be removed in a future release", "2.8.0")
   @inline def mapFast[B, That](f: A => B)(implicit bf: CanBuildFrom[Vector[A], B, That]): That = {
     val b = bf(repr)
     foreachFast(x => b += f(x))
@@ -182,6 +191,13 @@ override def companion: GenericCompanion[Vector] = Vector
     take(until).drop(from)
 
   override /*IterableLike*/ def splitAt(n: Int): (Vector[A], Vector[A]) = (take(n), drop(n))
+
+
+  // concat (stub)
+
+  override def ++[B >: A, That](that: GenTraversableOnce[B])(implicit bf: CanBuildFrom[Vector[A], B, That]): That = {
+    super.++(that.seq)
+  }
 
 
 
@@ -602,7 +618,7 @@ override def companion: GenericCompanion[Vector] = Vector
 }
 
 
-final class VectorIterator[+A](_startIndex: Int, _endIndex: Int) extends Iterator[A] with VectorPointer[A @uncheckedVariance] {
+class VectorIterator[+A](_startIndex: Int, _endIndex: Int) extends Iterator[A] with VectorPointer[A @uncheckedVariance] {
 
   private var blockIndex: Int = _startIndex & ~31
   private var lo: Int = _startIndex & 31
@@ -636,9 +652,18 @@ final class VectorIterator[+A](_startIndex: Int, _endIndex: Int) extends Iterato
     res
   }
 
-  // TODO: drop (important?)
+  private[collection] def remainingElementCount: Int = (_endIndex - (blockIndex + lo)) max 0
 
-  @deprecated("this method is experimental and will be removed in a future release")
+  /** Creates a new vector which consists of elements remaining in this iterator.
+   *  Such a vector can then be split into several vectors using methods like `take` and `drop`.
+   */
+  private[collection] def remainingVector: Vector[A] = {
+    val v = new Vector(blockIndex + lo, _endIndex, blockIndex + lo)
+    v.initFrom(this)
+    v
+  }
+
+  @deprecated("this method is experimental and will be removed in a future release", "2.8.0")
   @inline def foreachFast[U](f: A =>  U) { while (hasNext) f(next()) }
 }
 
@@ -666,6 +691,9 @@ final class VectorBuilder[A]() extends Builder[A,Vector[A]] with VectorPointer[A
     this
   }
 
+  override def ++=(xs: TraversableOnce[A]): this.type =
+    super.++=(xs)
+
   def result: Vector[A] = {
     val size = blockIndex + lo
     if (size == 0)
@@ -676,7 +704,7 @@ final class VectorBuilder[A]() extends Builder[A,Vector[A]] with VectorPointer[A
     s
   }
 
-  def clear: Unit = {
+  def clear(): Unit = {
     display0 = new Array[AnyRef](32)
     depth = 1
     blockIndex = 0

@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -54,7 +54,7 @@ trait Builder[-Elem, +To] extends Growable[Elem] {
   /** Gives a hint that one expects the `result` of this builder
    *  to have the same size as the given collection, plus some delta. This will
    *  provide a hint only if the collection is known to have a cheap
-   *  `size` method. Currently this is assumed ot be the case if and only if
+   *  `size` method. Currently this is assumed to be the case if and only if
    *  the collection is of type `IndexedSeqLike`.
    *  Some builder classes
    *  will optimize their representation based on the hint. However,

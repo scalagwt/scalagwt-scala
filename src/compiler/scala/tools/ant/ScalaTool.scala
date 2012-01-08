@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -10,9 +10,7 @@
 package scala.tools.ant
 
 import java.io.{File, InputStream, FileWriter}
-
 import org.apache.tools.ant.BuildException
-import org.apache.tools.ant.taskdefs.MatchingTask
 import org.apache.tools.ant.types.{Path, Reference}
 
 /** <p>
@@ -31,7 +29,7 @@ import org.apache.tools.ant.types.{Path, Reference}
  * @author  Gilles Dubochet
  * @version 1.1
  */
-class ScalaTool extends MatchingTask {
+class ScalaTool extends ScalaMatchingTask {
 
   private def emptyPath = new Path(getProject)
 
@@ -101,8 +99,7 @@ class ScalaTool extends MatchingTask {
       if (Platforms.isPermissible(st))
         (if (input != "") List(st) else Nil)
       else {
-        error("Platform " + st + " does not exist.")
-        Nil
+        buildError("Platform " + st + " does not exist.")
       }
     }
   }
@@ -148,7 +145,7 @@ class ScalaTool extends MatchingTask {
         if (input != "") List(Pair(stArray(0), stArray(1))) else Nil
       }
       else
-        error("Property " + st + " is not formatted properly.")
+        buildError("Property " + st + " is not formatted properly.")
     }
   }
 
@@ -182,13 +179,6 @@ class ScalaTool extends MatchingTask {
 /*============================================================================*\
 **                       Compilation and support methods                      **
 \*============================================================================*/
-
-    /** Generates a build error. Error location will be the current task in the
-      * ant file.
-      * @param message A message describing the error.
-      * @throws BuildException A build error exception thrown in every case. */
-    private def error(message: String): Nothing =
-      throw new BuildException(message, getLocation())
 
     // XXX encoding and generalize
     private def getResourceAsCharStream(clazz: Class[_], resource: String): Stream[Char] = {
@@ -246,7 +236,7 @@ class ScalaTool extends MatchingTask {
 
     private def writeFile(file: File, content: String) =
       if (file.exists() && !file.canWrite())
-        error("File " + file + " is not writable")
+        buildError("File " + file + " is not writable")
       else {
         val writer = new FileWriter(file, false)
         writer.write(content)
@@ -260,8 +250,8 @@ class ScalaTool extends MatchingTask {
   /** Performs the tool creation. */
   override def execute() = {
     // Tests if all mandatory attributes are set and valid.
-    if (file.isEmpty) error("Attribute 'file' is not set.")
-    if (mainClass.isEmpty) error("Main class must be set.")
+    if (file.isEmpty) buildError("Attribute 'file' is not set.")
+    if (mainClass.isEmpty) buildError("Main class must be set.")
     val resourceRoot = "scala/tools/ant/templates/"
     val patches = Map (
       ("class", mainClass.get),

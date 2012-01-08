@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Iulian Dragos
  */
 
@@ -7,17 +7,18 @@
 package scala.tools.nsc
 package backend.jvm
 
+import java.io.{ DataOutputStream, OutputStream }
 import java.nio.ByteBuffer
-
-import scala.collection.immutable.{Set, ListSet}
-import scala.collection.mutable.{Map, HashMap, HashSet}
-import scala.tools.nsc.io.AbstractFile
+import scala.collection.{ mutable, immutable }
+import scala.reflect.internal.pickling.{ PickleFormat, PickleBuffer }
+import scala.tools.reflect.SigParser
+import scala.tools.nsc.util.ScalaClassLoader
 import scala.tools.nsc.symtab._
 import scala.tools.nsc.symtab.classfile.ClassfileConstants._
-
 import ch.epfl.lamp.fjbg._
-import java.io.{ByteArrayOutputStream, DataOutputStream, File, OutputStream}
-import reflect.generic.{PickleFormat, PickleBuffer}
+import JAccessFlags._
+import JObjectType.{ JAVA_LANG_STRING, JAVA_LANG_OBJECT }
+import java.util.jar.{ JarEntry, JarOutputStream }
 
 /** This class ...
  *
@@ -25,44 +26,79 @@ import reflect.generic.{PickleFormat, PickleBuffer}
  *  @version 1.0
  *
  */
-abstract class GenJVM extends SubComponent {
+abstract class GenJVM extends SubComponent with GenJVMUtil with GenAndroid with BytecodeWriters {
   import global._
   import icodes._
   import icodes.opcodes._
+  import definitions.{
+    NullClass, RuntimeNullClass, NothingClass, RuntimeNothingClass,
+    AnyClass, ObjectClass, ThrowsClass, ThrowableClass, ClassfileAnnotationClass,
+    SerializableClass, StringClass, ClassClass, FunctionClass,
+    DeprecatedAttr, SerializableAttr, SerialVersionUIDAttr, VolatileAttr,
+    TransientAttr, CloneableAttr, RemoteAttr
+  }
 
   val phaseName = "jvm"
 
   /** Create a new phase */
   override def newPhase(p: Phase): Phase = new JvmPhase(p)
 
+  private def outputDirectory(sym: Symbol): AbstractFile = (
+    settings.outputDirs.outputDirFor {
+      atPhase(currentRun.flattenPhase.prev)(sym.sourceFile)
+    }
+  )
+  private def getFile(base: AbstractFile, cls: JClass, suffix: String): AbstractFile = {
+    var dir = base
+    val pathParts = cls.getName().split("[./]").toList
+    for (part <- pathParts.init) {
+      dir = dir.subdirectoryNamed(part)
+    }
+    dir.fileNamed(pathParts.last + suffix)
+  }
+  private def getFile(sym: Symbol, cls: JClass, suffix: String): AbstractFile =
+    getFile(outputDirectory(sym), cls, suffix)
+
   /** JVM code generation phase
    */
   class JvmPhase(prev: Phase) extends ICodePhase(prev) {
-
     def name = phaseName
     override def erasedTypes = true
-    object codeGenerator extends BytecodeGenerator
+    def apply(cls: IClass) = sys.error("no implementation")
 
-    override def run {
+    override def run() {
+      // we reinstantiate the bytecode generator at each run, to allow the GC
+      // to collect everything
       if (settings.debug.value) inform("[running phase " + name + " on icode]")
       if (settings.Xdce.value)
-        for ((sym, cls) <- icodes.classes ; if inliner.isClosureClass(sym) && !deadCode.liveClosures(sym))
+        for ((sym, cls) <- icodes.classes if inliner.isClosureClass(sym) && !deadCode.liveClosures(sym))
           icodes.classes -= sym
 
-      classes.values foreach apply
-    }
-
-    override def apply(cls: IClass) {
-      codeGenerator.genClass(cls)
+      val bytecodeWriter = settings.outputDirs.getSingleOutput match {
+        case Some(f) if f hasExtension "jar"    =>
+          new DirectToJarfileWriter(f)
+        case _                                  =>
+          if (settings.Ygenjavap.isDefault) new ClassBytecodeWriter { }
+          else new ClassBytecodeWriter with JavapBytecodeWriter { }
+      }
+      val codeGenerator = new BytecodeGenerator(bytecodeWriter)
+      classes.values foreach { c =>
+        try codeGenerator.genClass(c)
+        catch {
+          case e: JCode.CodeSizeTooBigException =>
+            log("Skipped class %s because it has methods that are too long.".format(c.toString))
+        }
+      }
+      bytecodeWriter.close()
+      classes.clear()
     }
   }
 
   /** Return the suffix of a class name */
   def moduleSuffix(sym: Symbol) =
-    if (sym.hasFlag(Flags.MODULE) && !sym.isMethod &&
-       !sym.isImplClass && !sym.hasFlag(Flags.JAVA)) "$"
-    else "";
-
+    if (sym.hasModuleFlag && !sym.isMethod &&
+       !sym.isImplClass && !sym.isJavaDefined) "$"
+    else ""
 
   var pickledBytes = 0 // statistics
 
@@ -70,31 +106,29 @@ abstract class GenJVM extends SubComponent {
    * Java bytecode generator.
    *
    */
-  class BytecodeGenerator {
-    import JAccessFlags._
-
+  class BytecodeGenerator(bytecodeWriter: BytecodeWriter) extends BytecodeUtil {
+    def this() = this(new ClassBytecodeWriter { })
     def debugLevel = settings.debuginfo.indexOfChoice
+    import bytecodeWriter.writeClass
 
     val MIN_SWITCH_DENSITY = 0.7
     val INNER_CLASSES_FLAGS =
       (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC | ACC_FINAL | ACC_INTERFACE | ACC_ABSTRACT)
-    val StringBuilderClass = definitions.getClass2("scala.StringBuilder", "scala.collection.mutable.StringBuilder").fullName
+
+    val PublicStatic      = ACC_PUBLIC | ACC_STATIC
+    val PublicStaticFinal = ACC_PUBLIC | ACC_STATIC | ACC_FINAL
+
+    val StringBuilderClassName = definitions.StringBuilderClass.fullName
     val BoxesRunTime = "scala.runtime.BoxesRunTime"
 
-    val StringBuilderType = new JObjectType(StringBuilderClass)
-    val toStringType      = new JMethodType(JObjectType.JAVA_LANG_STRING, JType.EMPTY_ARRAY)
-    val arrayCloneType    = new JMethodType(JObjectType.JAVA_LANG_OBJECT, JType.EMPTY_ARRAY)
+    val StringBuilderType = new JObjectType(StringBuilderClassName)
+    val toStringType      = new JMethodType(JAVA_LANG_STRING, JType.EMPTY_ARRAY)
+    val arrayCloneType    = new JMethodType(JAVA_LANG_OBJECT, JType.EMPTY_ARRAY)
     val MethodTypeType    = new JObjectType("java.dyn.MethodType")
     val JavaLangClassType = new JObjectType("java.lang.Class")
     val MethodHandleType  = new JObjectType("java.dyn.MethodHandle")
 
     // Scala attributes
-    val SerializableAttr = definitions.SerializableAttr
-    val SerialVersionUID = definitions.getClass("scala.SerialVersionUID")
-    val CloneableAttr    = definitions.getClass("scala.cloneable")
-    val TransientAtt     = definitions.getClass("scala.transient")
-    val VolatileAttr     = definitions.getClass("scala.volatile")
-    val RemoteAttr       = definitions.getClass("scala.remote")
     val BeanInfoAttr     = definitions.getClass("scala.reflect.BeanInfo")
     val BeanInfoSkipAttr = definitions.getClass("scala.reflect.BeanInfoSkip")
     val BeanDisplayNameAttr = definitions.getClass("scala.reflect.BeanDisplayName")
@@ -104,13 +138,12 @@ abstract class GenJVM extends SubComponent {
     lazy val RemoteInterface = definitions.getClass("java.rmi.Remote")
     lazy val RemoteException = definitions.getClass("java.rmi.RemoteException").tpe
 
-
     val versionPickle = {
       val vp = new PickleBuffer(new Array[Byte](16), -1, 0)
       assert(vp.writeIndex == 0)
-      vp.writeNat(PickleFormat.MajorVersion)
-      vp.writeNat(PickleFormat.MinorVersion)
-      vp.writeNat(0)
+      vp writeNat PickleFormat.MajorVersion
+      vp writeNat PickleFormat.MinorVersion
+      vp writeNat 0
       vp
     }
 
@@ -120,99 +153,108 @@ abstract class GenJVM extends SubComponent {
     var jmethod: JMethod = _
 //    var jcode: JExtendedCode = _
 
-    var innerClasses: Set[Symbol] = ListSet.empty // referenced inner classes
-
     val fjbgContext = new FJBGContext(49, 0)
 
     val emitSource = debugLevel >= 1
     val emitLines  = debugLevel >= 2
     val emitVars   = debugLevel >= 3
 
-    /** Write a class to disk, adding the Scala signature (pickled type information) and
-     *  inner classes.
+    override def javaName(sym: Symbol): String = {
+      if (sym.isClass && !sym.rawowner.isPackageClass && !sym.isModuleClass)
+        innerClassBuffer += sym
+
+      super.javaName(sym)
+    }
+
+    /** Write a class to disk, adding the Scala signature (pickled type
+     *  information) and inner classes.
      *
      * @param jclass The FJBG class, where code was emitted
      * @param sym    The corresponding symbol, used for looking up pickled information
      */
     def emitClass(jclass: JClass, sym: Symbol) {
       addInnerClasses(jclass)
-      val outfile = getFile(sym, jclass, ".class")
-      val outstream = new DataOutputStream(outfile.bufferedOutput)
-      jclass.writeTo(outstream)
-      outstream.close()
-      informProgress("wrote " + outfile)
+      writeClass("" + sym.name, jclass, sym)
     }
 
-    /** Returns the ScalaSignature annotation if it must be added to this class, none otherwise; furthermore, it adds to
-      * jclass the ScalaSig marker attribute (marking that a scala signature annotation is present) or the Scala marker
-      * attribute (marking that the signature for this class is in another file). The annotation that is returned by
-      * this method must be added to the class' annotations list when generating them.
-      * @param jclass The class file that is being readied.
-      * @param sym    The symbol for which the signature has been entered in the symData map. This is different than the
-      *               symbol that is being generated in the case of a mirror class.
-      * @return       An option that is:
-      *                - defined and contains an annotation info of the ScalaSignature type, instantiated with the
-      *                  pickle signature for sym (a ScalaSig marker attribute has been written);
-      *                - undefined if the jclass/sym couple must not contain a signature (a Scala marker attribute has
-      *                  been written). */
+    /** Returns the ScalaSignature annotation if it must be added to this class,
+     *  none otherwise; furthermore, it adds to `jclass` the ScalaSig marker
+     *  attribute (marking that a scala signature annotation is present) or the
+     *  Scala marker attribute (marking that the signature for this class is in
+     *  another file). The annotation that is returned by this method must be
+     *  added to the class' annotations list when generating them.
+     *
+     *  @param jclass The class file that is being readied.
+     *  @param sym    The symbol for which the signature has been entered in
+     *                the symData map. This is different than the symbol
+     *                that is being generated in the case of a mirror class.
+     *  @return       An option that is:
+     *                - defined and contains an annotation info of the
+     *                  ScalaSignature type, instantiated with the pickle
+     *                  signature for sym (a ScalaSig marker attribute has
+     *                  been written);
+     *                - undefined if the jclass/sym couple must not contain a
+     *                  signature (a Scala marker attribute has been written).
+     */
     def scalaSignatureAddingMarker(jclass: JClass, sym: Symbol): Option[AnnotationInfo] =
-      currentRun.symData.get(sym) match {
+      currentRun.symData get sym match {
         case Some(pickle) if !jclass.getName().endsWith("$") =>
           val scalaAttr =
-            fjbgContext.JOtherAttribute(jclass, jclass, nme.ScalaSignatureATTR.toString,
+            fjbgContext.JOtherAttribute(jclass, jclass, tpnme.ScalaSignatureATTR.toString,
                                         versionPickle.bytes, versionPickle.writeIndex)
-          jclass.addAttribute(scalaAttr)
+          jclass addAttribute scalaAttr
           val scalaAnnot = {
             val sigBytes = ScalaSigBytes(pickle.bytes.take(pickle.writeIndex))
             AnnotationInfo(sigBytes.sigAnnot, Nil, List((nme.bytes, sigBytes)))
           }
-          pickledBytes = pickledBytes + pickle.writeIndex
+          pickledBytes += pickle.writeIndex
           currentRun.symData -= sym
           currentRun.symData -= sym.companionSymbol
           Some(scalaAnnot)
         case _ =>
           val markerAttr =
-            fjbgContext.JOtherAttribute(jclass, jclass, nme.ScalaATTR.toString, new Array[Byte](0), 0)
-          jclass.addAttribute(markerAttr)
+            fjbgContext.JOtherAttribute(jclass, jclass, tpnme.ScalaATTR.toString, new Array[Byte](0), 0)
+          jclass addAttribute markerAttr
           None
       }
 
     var serialVUID: Option[Long] = None
-    var remoteClass: Boolean = false
+    var isRemoteClass: Boolean = false
+    var isParcelableClass = false
+
+    private val innerClassBuffer = new mutable.ListBuffer[Symbol]
 
     def genClass(c: IClass) {
       clasz = c
-      innerClasses = ListSet.empty
+      innerClassBuffer.clear()
 
       var parents = c.symbol.info.parents
       var ifaces  = JClass.NO_INTERFACES
       val name    = javaName(c.symbol)
       serialVUID  = None
-      remoteClass = false
+      isRemoteClass = false
+      isParcelableClass = isAndroidParcelableClass(c.symbol)
 
       if (parents.isEmpty)
-        parents = definitions.ObjectClass.tpe :: parents;
+        parents = List(ObjectClass.tpe)
 
       for (annot <- c.symbol.annotations) annot match {
         case AnnotationInfo(tp, _, _) if tp.typeSymbol == SerializableAttr =>
-          parents = parents ::: List(definitions.SerializableClass.tpe)
+          parents :+= SerializableClass.tpe
         case AnnotationInfo(tp, _, _) if tp.typeSymbol == CloneableAttr =>
-          parents = parents ::: List(CloneableClass.tpe)
-        case AnnotationInfo(tp, Literal(const) :: _, _) if tp.typeSymbol == SerialVersionUID =>
+          parents :+= CloneableClass.tpe
+        case AnnotationInfo(tp, Literal(const) :: _, _) if tp.typeSymbol == SerialVersionUIDAttr =>
           serialVUID = Some(const.longValue)
         case AnnotationInfo(tp, _, _) if tp.typeSymbol == RemoteAttr =>
-          parents = parents ::: List(RemoteInterface.tpe)
-          remoteClass = true
-        case _ => ()
+          parents :+= RemoteInterface.tpe
+          isRemoteClass = true
+        case _ =>
       }
 
       parents = parents.distinct
 
-      if (parents.length > 1) {
-        ifaces = new Array[String](parents.length - 1)
-        parents.drop(1).map((s) => javaName(s.typeSymbol)).copyToArray(ifaces, 0)
-        ()
-      }
+      if (parents.tail.nonEmpty)
+        ifaces = parents drop 1 map (x => javaName(x.typeSymbol)) toArray;
 
       jclass = fjbgContext.JClass(javaFlags(c.symbol),
                                   name,
@@ -220,51 +262,85 @@ abstract class GenJVM extends SubComponent {
                                   ifaces,
                                   c.cunit.source.toString)
 
-      if (isStaticModule(c.symbol) || serialVUID != None || clasz.bootstrapClass.isDefined) {
+      if (isStaticModule(c.symbol) || serialVUID != None || isParcelableClass ||
+          clasz.bootstrapClass.isDefined) {
         if (isStaticModule(c.symbol))
-            addModuleInstanceField;
+          addModuleInstanceField
         addStaticInit(jclass, c.lookupStaticCtor)
 
         if (isTopLevelModule(c.symbol)) {
           if (c.symbol.companionClass == NoSymbol)
-            dumpMirrorClass(c.symbol, c.cunit.source.toString);
+            dumpMirrorClass(c.symbol, c.cunit.source.toString)
           else
             log("No mirror class for module with linked class: " +
                 c.symbol.fullName)
         }
       }
       else {
-        if (c.containsStaticCtor) addStaticInit(jclass, c.lookupStaticCtor)
+        c.lookupStaticCtor foreach (constructor => addStaticInit(jclass, Some(constructor)))
 
         // it must be a top level class (name contains no $s)
         def isCandidateForForwarders(sym: Symbol): Boolean =
-          atPhase (currentRun.picklerPhase.next) {
-            !(sym.name.toString contains '$') && (sym hasFlag Flags.MODULE) && !sym.isImplClass && !sym.isNestedClass
+          atPhase(currentRun.picklerPhase.next) {
+            !(sym.name.toString contains '$') && sym.hasModuleFlag && !sym.isImplClass && !sym.isNestedClass
           }
 
         val lmoc = c.symbol.companionModule
         // add static forwarders if there are no name conflicts; see bugs #363 and #1735
-        if (lmoc != NoSymbol && !c.symbol.hasFlag(Flags.INTERFACE)) {
+        if (lmoc != NoSymbol && !c.symbol.isInterface) {
           if (isCandidateForForwarders(lmoc) && !settings.noForwarders.value) {
-            log("Adding forwarders to existing class '%s' found in module '%s'".format(c.symbol, lmoc))
+            log("Adding static forwarders from '%s' to implementations in '%s'".format(c.symbol, lmoc))
             addForwarders(jclass, lmoc.moduleClass)
           }
         }
       }
 
-      if (clasz.bootstrapClass.isDefined) jclass.setBootstrapClass(clasz.bootstrapClass.get)
+      if (clasz.bootstrapClass.isDefined)
+        jclass setBootstrapClass clasz.bootstrapClass.get
+
       clasz.fields foreach genField
       clasz.methods foreach genMethod
 
       val ssa = scalaSignatureAddingMarker(jclass, c.symbol)
       addGenericSignature(jclass, c.symbol, c.symbol.owner)
       addAnnotations(jclass, c.symbol.annotations ++ ssa)
+
+      addEnclosingMethodAttribute(jclass, c.symbol)
       emitClass(jclass, c.symbol)
 
       if (c.symbol hasAnnotation BeanInfoAttr)
         genBeanInfoClass(c)
     }
 
+    private def addEnclosingMethodAttribute(jclass: JClass, clazz: Symbol) {
+      val sym = clazz.originalEnclosingMethod
+      if (sym.isMethod) {
+        log("enclosing method for %s is %s (in %s)".format(clazz, sym, sym.enclClass))
+        jclass addAttribute fjbgContext.JEnclosingMethodAttribute(
+          jclass,
+          javaName(sym.enclClass),
+          javaName(sym),
+          javaType(sym)
+        )
+      } else if (clazz.isAnonymousClass) {
+        val enclClass = clazz.rawowner
+        assert(enclClass.isClass, "" + enclClass)
+        val sym = enclClass.primaryConstructor
+        if (sym == NoSymbol)
+          log("Ran out of room looking for an enclosing method for %s: no constructor here.".format(
+            enclClass, clazz)
+          )
+        else {
+          log("enclosing method for %s is %s (in %s)".format(clazz, sym, enclClass))
+          jclass addAttribute fjbgContext.JEnclosingMethodAttribute(
+            jclass,
+            javaName(enclClass),
+            javaName(sym),
+            javaType(sym).asInstanceOf[JMethodType]
+          )
+        }
+      }
+    }
 
     /**
      * Generate a bean info class that describes the given class.
@@ -273,7 +349,7 @@ abstract class GenJVM extends SubComponent {
      */
     def genBeanInfoClass(c: IClass) {
       val description = c.symbol.annotations.find(_.atp.typeSymbol == BeanDescriptionAttr)
-      // informProgress(description.toString())
+      // informProgress(description.toString)
 
       val beanInfoClass = fjbgContext.JClass(javaFlags(c.symbol),
             javaName(c.symbol) + "BeanInfo",
@@ -295,38 +371,38 @@ abstract class GenJVM extends SubComponent {
 	         !m.symbol.isGetter &&
 	         !m.symbol.isSetter) yield javaName(m.symbol)
 
-      val constructor = beanInfoClass.addNewMethod(JAccessFlags.ACC_PUBLIC, "<init>", JType.VOID, javaTypes(Nil), javaNames(Nil))
+      val constructor = beanInfoClass.addNewMethod(ACC_PUBLIC, "<init>", JType.VOID, new Array[JType](0), new Array[String](0))
       val jcode = constructor.getCode().asInstanceOf[JExtendedCode]
-      val strKind = new JObjectType(javaName(definitions.StringClass))
+      val strKind = new JObjectType(javaName(StringClass))
       val stringArrayKind = new JArrayType(strKind)
-      val conType = new JMethodType(JType.VOID, Array(javaType(definitions.ClassClass), stringArrayKind, stringArrayKind))
+      val conType = new JMethodType(JType.VOID, Array(javaType(ClassClass), stringArrayKind, stringArrayKind))
 
       def push(lst:Seq[String]) {
         var fi = 0
         for (f <- lst) {
           jcode.emitDUP()
-          jcode.emitPUSH(fi)
+          jcode emitPUSH fi
           if (f != null)
-            jcode.emitPUSH(f)
+            jcode emitPUSH f
           else
             jcode.emitACONST_NULL()
-          jcode.emitASTORE(strKind)
+          jcode emitASTORE strKind
           fi += 1
         }
       }
 
       jcode.emitALOAD_0()
       // push the class
-      jcode.emitPUSH(javaType(c.symbol).asInstanceOf[JReferenceType])
+      jcode emitPUSH javaType(c.symbol).asInstanceOf[JReferenceType]
 
       // push the the string array of field information
-      jcode.emitPUSH(fieldList.length)
-      jcode.emitANEWARRAY(strKind)
+      jcode emitPUSH fieldList.length
+      jcode emitANEWARRAY strKind
       push(fieldList)
 
       // push the string array of method information
-      jcode.emitPUSH(methodList.length)
-      jcode.emitANEWARRAY(strKind)
+      jcode emitPUSH methodList.length
+      jcode emitANEWARRAY strKind
       push(methodList)
 
       // invoke the superclass constructor, which will do the
@@ -335,26 +411,21 @@ abstract class GenJVM extends SubComponent {
       jcode.emitRETURN()
 
       // write the bean information class file.
-      val outfile = getFile(c.symbol, beanInfoClass, ".class")
-      val outstream = new DataOutputStream(outfile.bufferedOutput)
-      beanInfoClass.writeTo(outstream)
-      outstream.close()
-      informProgress("wrote BeanInfo " + outfile)
+      writeClass("BeanInfo ", beanInfoClass, c.symbol)
     }
-
 
     /** Add the given 'throws' attributes to jmethod */
     def addExceptionsAttribute(jmethod: JMethod, excs: List[AnnotationInfo]) {
       if (excs.isEmpty) return
 
-      val cpool = jmethod.getConstantPool()
+      val cpool = jmethod.getConstantPool
       val buf: ByteBuffer = ByteBuffer.allocate(512)
       var nattr = 0
 
       // put some random value; the actual number is determined at the end
-      buf.putShort(0xbaba.toShort)
+      buf putShort 0xbaba.toShort
 
-      for (AnnotationInfo(tp, List(exc), _) <- excs.distinct if tp.typeSymbol == definitions.ThrowsClass) {
+      for (AnnotationInfo(tp, List(exc), _) <- excs.distinct if tp.typeSymbol == ThrowsClass) {
         val Literal(const) = exc
         buf.putShort(
           cpool.addClass(
@@ -364,90 +435,90 @@ abstract class GenJVM extends SubComponent {
 
       assert(nattr > 0)
       buf.putShort(0, nattr.toShort)
-      addAttribute(jmethod, nme.ExceptionsATTR, buf)
+      addAttribute(jmethod, tpnme.ExceptionsATTR, buf)
     }
 
     /** Whether an annotation should be emitted as a Java annotation
      *   .initialize: if 'annot' is read from pickle, atp might be un-initialized
      */
     private def shouldEmitAnnotation(annot: AnnotationInfo) =
-      (annot.atp.typeSymbol.initialize.hasFlag(Flags.JAVA) &&
-       annot.atp.typeSymbol.isNonBottomSubClass(definitions.ClassfileAnnotationClass) &&
-       annot.args.isEmpty)
+      annot.atp.typeSymbol.initialize.isJavaDefined &&
+      annot.atp.typeSymbol.isNonBottomSubClass(ClassfileAnnotationClass) &&
+      annot.args.isEmpty
 
     private def emitJavaAnnotations(cpool: JConstantPool, buf: ByteBuffer, annotations: List[AnnotationInfo]): Int = {
       def emitArgument(arg: ClassfileAnnotArg): Unit = arg match {
         case LiteralAnnotArg(const) =>
           const.tag match {
             case BooleanTag =>
-              buf.put('Z'.toByte)
-              buf.putShort(cpool.addInteger(if(const.booleanValue) 1 else 0).toShort)
+              buf put 'Z'.toByte
+              buf putShort cpool.addInteger(if(const.booleanValue) 1 else 0).toShort
             case ByteTag    =>
-              buf.put('B'.toByte)
-              buf.putShort(cpool.addInteger(const.byteValue).toShort)
+              buf put 'B'.toByte
+              buf putShort cpool.addInteger(const.byteValue).toShort
             case ShortTag   =>
-              buf.put('S'.toByte)
-              buf.putShort(cpool.addInteger(const.shortValue).toShort)
+              buf put 'S'.toByte
+              buf putShort cpool.addInteger(const.shortValue).toShort
             case CharTag    =>
-              buf.put('C'.toByte)
-              buf.putShort(cpool.addInteger(const.charValue).toShort)
+              buf put 'C'.toByte
+              buf putShort cpool.addInteger(const.charValue).toShort
             case IntTag     =>
-              buf.put('I'.toByte)
-              buf.putShort(cpool.addInteger(const.intValue).toShort)
+              buf put 'I'.toByte
+              buf putShort cpool.addInteger(const.intValue).toShort
             case LongTag    =>
-              buf.put('J'.toByte)
-              buf.putShort(cpool.addLong(const.longValue).toShort)
+              buf put 'J'.toByte
+              buf putShort cpool.addLong(const.longValue).toShort
             case FloatTag   =>
-              buf.put('F'.toByte)
-              buf.putShort(cpool.addFloat(const.floatValue).toShort)
+              buf put 'F'.toByte
+              buf putShort cpool.addFloat(const.floatValue).toShort
             case DoubleTag  =>
-              buf.put('D'.toByte)
-              buf.putShort(cpool.addDouble(const.doubleValue).toShort)
+              buf put 'D'.toByte
+              buf putShort cpool.addDouble(const.doubleValue).toShort
             case StringTag  =>
-              buf.put('s'.toByte)
-              buf.putShort(cpool.addUtf8(const.stringValue).toShort)
+              buf put 's'.toByte
+              buf putShort cpool.addUtf8(const.stringValue).toShort
             case ClassTag   =>
-              buf.put('c'.toByte)
-              buf.putShort(cpool.addUtf8(javaType(const.typeValue).getSignature()).toShort)
+              buf put 'c'.toByte
+              buf putShort cpool.addUtf8(javaType(const.typeValue).getSignature()).toShort
             case EnumTag =>
-              buf.put('e'.toByte)
-              buf.putShort(cpool.addUtf8(javaType(const.tpe).getSignature()).toShort)
-              buf.putShort(cpool.addUtf8(const.symbolValue.name.toString).toShort)
+              buf put 'e'.toByte
+              buf putShort cpool.addUtf8(javaType(const.tpe).getSignature()).toShort
+              buf putShort cpool.addUtf8(const.symbolValue.name.toString).toShort
           }
 
-        case sb@ScalaSigBytes(bytes) if (!sb.isLong) =>
-          buf.put('s'.toByte)
-          buf.putShort(cpool.addUtf8(sb.encodedBytes).toShort)
+        case sb@ScalaSigBytes(bytes) if !sb.isLong =>
+          buf put 's'.toByte
+          buf putShort cpool.addUtf8(sb.encodedBytes).toShort
 
-        case sb@ScalaSigBytes(bytes) if (sb.isLong) =>
-          buf.put('['.toByte)
+        case sb@ScalaSigBytes(bytes) if sb.isLong =>
+          buf put '['.toByte
           val stringCount = (sb.encodedBytes.length / 65534) + 1
-          buf.putShort(stringCount.toShort)
+          buf putShort stringCount.toShort
           for (i <- 0 until stringCount) {
-            buf.put('s'.toByte)
+            buf put 's'.toByte
             val j = i * 65535
             val string = sb.encodedBytes.slice(j, j + 65535)
-            buf.putShort(cpool.addUtf8(string).toShort)
+            buf putShort cpool.addUtf8(string).toShort
           }
 
         case ArrayAnnotArg(args) =>
-          buf.put('['.toByte)
-          buf.putShort(args.length.toShort)
+          buf put '['.toByte
+          buf putShort args.length.toShort
           args foreach emitArgument
 
         case NestedAnnotArg(annInfo) =>
-          buf.put('@'.toByte)
+          buf put '@'.toByte
           emitAnnotation(annInfo)
       }
 
       def emitAnnotation(annotInfo: AnnotationInfo) {
         val AnnotationInfo(typ, args, assocs) = annotInfo
         val jtype = javaType(typ)
-        buf.putShort(cpool.addUtf8(jtype.getSignature()).toShort)
+        buf putShort cpool.addUtf8(jtype.getSignature()).toShort
         assert(args.isEmpty, args.toString)
-        buf.putShort(assocs.length.toShort)
+        buf putShort assocs.length.toShort
         for ((name, value) <- assocs) {
-          buf.putShort(cpool.addUtf8(name.toString).toShort)
+          buf putShort cpool.addUtf8(name.toString).toShort
           emitArgument(value)
         }
       }
@@ -456,7 +527,7 @@ abstract class GenJVM extends SubComponent {
       val pos = buf.position()
 
       // put some random value; the actual number of annotations is determined at the end
-      buf.putShort(0xbaba.toShort)
+      buf putShort 0xbaba.toShort
 
       for (annot <- annotations if shouldEmitAnnotation(annot)) {
         nannots += 1
@@ -468,24 +539,70 @@ abstract class GenJVM extends SubComponent {
       nannots
     }
 
+    /** Run the signature parser to catch bogus signatures.
+     */
+    def isValidSignature(sym: Symbol, sig: String) = (
+      if (sym.isMethod) SigParser verifyMethod sig
+      else if (sym.isTerm) SigParser verifyType sig
+      else SigParser verifyClass sig
+    )
+
+    // @M don't generate java generics sigs for (members of) implementation
+    // classes, as they are monomorphic (TODO: ok?)
+    private def needsGenericSignature(sym: Symbol) = !(
+      // PP: This condition used to include sym.hasExpandedName, but this leads
+      // to the total loss of generic information if a private member is
+      // accessed from a closure: both the field and the accessor were generated
+      // without it.  This is particularly bad because the availability of
+      // generic information could disappear as a consequence of a seemingly
+      // unrelated change.
+         sym.isSynthetic
+      || sym.isLiftedMethod
+      || sym.isBridge
+      || (sym.ownerChain exists (_.isImplClass))
+    )
     def addGenericSignature(jmember: JMember, sym: Symbol, owner: Symbol) {
-      if (!sym.hasFlag(Flags.EXPANDEDNAME | Flags.SYNTHETIC)
-          && !(sym.isMethod && sym.hasFlag(Flags.LIFTED))
-          && !(sym.ownerChain exists (_.isImplClass))) {  // @M don't generate java generics sigs for (members of) implementation classes, as they are monomorphic (TODO: ok?)
+      if (needsGenericSignature(sym)) {
         val memberTpe = atPhase(currentRun.erasurePhase)(owner.thisType.memberInfo(sym))
         // println("addGenericSignature sym: " + sym.fullName + " : " + memberTpe + " sym.info: " + sym.info)
         // println("addGenericSignature: "+ (sym.ownerChain map (x => (x.name, x.isImplClass))))
-        erasure.javaSig(sym, memberTpe) match {
-          case Some(sig) =>
-            val index = jmember.getConstantPool().addUtf8(sig).toShort
-            if (settings.debug.value && settings.verbose.value)
-              atPhase(currentRun.erasurePhase) {
-                println("add generic sig "+sym+":"+sym.info+" ==> "+sig+" @ "+index)
-              }
-            val buf = ByteBuffer.allocate(2)
-            buf.putShort(index)
-            addAttribute(jmember, nme.SignatureATTR, buf)
-          case None =>
+        erasure.javaSig(sym, memberTpe) foreach { sig =>
+          /** Since we're using a sun internal class for signature validation,
+           *  we have to allow for it not existing or otherwise malfunctioning:
+           *  in which case we treat every signature as valid.  Medium term we
+           *  should certainly write independent signature validation.
+           */
+          if (SigParser.isParserAvailable && !isValidSignature(sym, sig)) {
+            clasz.cunit.warning(sym.pos,
+                """|compiler bug: created invalid generic signature for %s in %s
+                   |signature: %s
+                   |if this is reproducible, please report bug at http://lampsvn.epfl.ch/trac/scala
+                """.trim.stripMargin.format(sym, sym.owner.skipPackageObject.fullName, sig))
+            return
+          }
+          if ((settings.check.value contains "genjvm")) {
+            val normalizedTpe = atPhase(currentRun.erasurePhase)(erasure.prepareSigMap(memberTpe))
+            val bytecodeTpe = owner.thisType.memberInfo(sym)
+            if (!sym.isType && !sym.isConstructor && !(erasure.erasure(normalizedTpe) =:= bytecodeTpe)) {
+              clasz.cunit.warning(sym.pos,
+                  """|compiler bug: created generic signature for %s in %s that does not conform to its erasure
+                     |signature: %s
+                     |original type: %s
+                     |normalized type: %s
+                     |erasure type: %s
+                     |if this is reproducible, please report bug at http://lampsvn.epfl.ch/trac/scala
+                  """.trim.stripMargin.format(sym, sym.owner.skipPackageObject.fullName, sig, memberTpe, normalizedTpe, bytecodeTpe))
+               return
+            }
+          }
+          val index = jmember.getConstantPool.addUtf8(sig).toShort
+          if (opt.verboseDebug)
+            atPhase(currentRun.erasurePhase) {
+              println("add generic sig "+sym+":"+sym.info+" ==> "+sig+" @ "+index)
+            }
+          val buf = ByteBuffer.allocate(2)
+          buf putShort index
+          addAttribute(jmember, tpnme.SignatureATTR, buf)
         }
       }
     }
@@ -493,22 +610,22 @@ abstract class GenJVM extends SubComponent {
     def addAnnotations(jmember: JMember, annotations: List[AnnotationInfo]) {
       if (annotations.exists(_.atp.typeSymbol == definitions.DeprecatedAttr)) {
         val attr = jmember.getContext().JOtherAttribute(
-          jmember.getJClass(), jmember, nme.DeprecatedATTR.toString,
+          jmember.getJClass(), jmember, tpnme.DeprecatedATTR.toString,
           new Array[Byte](0), 0)
-        jmember.addAttribute(attr)
+        jmember addAttribute attr
       }
 
-      val toEmit = annotations.filter(shouldEmitAnnotation(_))
+      val toEmit = annotations filter shouldEmitAnnotation
       if (toEmit.isEmpty) return
 
       val buf: ByteBuffer = ByteBuffer.allocate(2048)
       emitJavaAnnotations(jmember.getConstantPool, buf, toEmit)
-      addAttribute(jmember, nme.RuntimeAnnotationATTR, buf)
+      addAttribute(jmember, tpnme.RuntimeAnnotationATTR, buf)
     }
 
     def addParamAnnotations(jmethod: JMethod, pannotss: List[List[AnnotationInfo]]) {
-      val annotations = pannotss map (annots => annots.filter(shouldEmitAnnotation(_)))
-      if (annotations.forall(_.isEmpty)) return;
+      val annotations = pannotss map (_ filter shouldEmitAnnotation)
+      if (annotations forall (_.isEmpty)) return
 
       val buf: ByteBuffer = ByteBuffer.allocate(2048)
 
@@ -517,92 +634,97 @@ abstract class GenJVM extends SubComponent {
       for (annots <- annotations)
         emitJavaAnnotations(jmethod.getConstantPool, buf, annots)
 
-      addAttribute(jmethod, nme.RuntimeParamAnnotationATTR, buf)
+      addAttribute(jmethod, tpnme.RuntimeParamAnnotationATTR, buf)
     }
 
     def addAttribute(jmember: JMember, name: Name, buf: ByteBuffer) {
       if (buf.position() < 2)
         return
 
-      val length = buf.position();
-      val arr = buf.array().slice(0, length);
+      val length = buf.position()
+      val arr = buf.array().slice(0, length)
 
       val attr = jmember.getContext().JOtherAttribute(jmember.getJClass(),
                                                       jmember,
                                                       name.toString,
                                                       arr,
                                                       length)
-      jmember.addAttribute(attr)
+      jmember addAttribute attr
     }
 
     def addInnerClasses(jclass: JClass) {
-      def addOwnInnerClasses(cls: Symbol) {
-        for (sym <- cls.info.decls.iterator if sym.isClass)
-          innerClasses = innerClasses + sym;
+      /** The outer name for this inner class. Note that it returns null
+       *  when the inner class should not get an index in the constant pool.
+       *  That means non-member classes (anonymous). See Section 4.7.5 in the JVMS.
+       */
+      def outerName(innerSym: Symbol): String = {
+        if (innerSym.originalEnclosingMethod != NoSymbol)
+          null
+        else {
+          val outerName = javaName(innerSym.rawowner)
+          if (isTopLevelModule(innerSym.rawowner)) outerName stripSuffix "$"
+          else outerName
+        }
       }
+
+      def innerName(innerSym: Symbol): String =
+        if (innerSym.isAnonymousClass || innerSym.isAnonymousFunction)
+          null
+        else
+          innerSym.rawname.toString
 
       // add inner classes which might not have been referenced yet
       atPhase(currentRun.erasurePhase.next) {
-        addOwnInnerClasses(clasz.symbol)
-        addOwnInnerClasses(clasz.symbol.linkedClassOfClass)
+        for (sym <- List(clasz.symbol, clasz.symbol.linkedClassOfClass) ; m <- sym.info.decls ; if m.isClass)
+          innerClassBuffer += m
       }
 
-      if (!innerClasses.isEmpty) {
+      val allInners = innerClassBuffer.toList
+      if (allInners.nonEmpty) {
         val innerClassesAttr = jclass.getInnerClasses()
         // sort them so inner classes succeed their enclosing class
         // to satisfy the Eclipse Java compiler
-        for (innerSym <- innerClasses.toList sortBy (_.name.length)) {
-          var outerName = javaName(innerSym.rawowner)
-          // remove the trailing '$'
-          if (outerName.endsWith("$") && isTopLevelModule(innerSym.rawowner))
-            outerName = outerName.substring(0, outerName.length - 1)
+        //for (innerSym <- innerClasses.toList sortBy (_.name.length)) {
+        for (innerSym <- allInners.distinct sortBy (_.name.length)) {
           var flags = javaFlags(innerSym)
-          if (innerSym.rawowner.hasFlag(Flags.MODULE))
-            flags |= JAccessFlags.ACC_STATIC
+          if (innerSym.rawowner.hasModuleFlag)
+            flags |= ACC_STATIC
 
-          innerClassesAttr.addEntry(javaName(innerSym),
-              outerName,
-              innerSym.rawname.toString,
-              (flags & INNER_CLASSES_FLAGS));
+          innerClassesAttr.addEntry(
+            javaName(innerSym),
+            outerName(innerSym),
+            innerName(innerSym),
+            flags & INNER_CLASSES_FLAGS
+          )
         }
       }
     }
 
-    def isTopLevelModule(sym: Symbol): Boolean =
-      atPhase (currentRun.picklerPhase.next) {
-        sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass
-      }
-
-    def isStaticModule(sym: Symbol): Boolean = {
-      sym.isModuleClass && !sym.isImplClass && !sym.hasFlag(Flags.LIFTED)
-    }
-
     def genField(f: IField) {
       if (settings.debug.value)
-        log("Adding field: " + f.symbol.fullName);
-      var attributes = 0
+        log("Adding field: " + f.symbol.fullName)
 
-      f.symbol.annotations foreach { a => a match {
-        case AnnotationInfo(tp, _, _) if tp.typeSymbol == TransientAtt =>
-          attributes = attributes | JAccessFlags.ACC_TRANSIENT
-        case AnnotationInfo(tp, _, _) if tp.typeSymbol == VolatileAttr =>
-          attributes = attributes | JAccessFlags.ACC_VOLATILE
-        case _ => ();
-      }}
+      val attributes = f.symbol.annotations.map(_.atp.typeSymbol).foldLeft(0) {
+        case (res, TransientAttr) => res | ACC_TRANSIENT
+        case (res, VolatileAttr)  => res | ACC_VOLATILE
+        case (res, _)             => res
+      }
+
       var flags = javaFlags(f.symbol)
-      if (!f.symbol.hasFlag(Flags.MUTABLE))
-        flags = flags | JAccessFlags.ACC_FINAL
+      if (!f.symbol.isMutable)
+        flags |= ACC_FINAL
 
       val jfield =
         jclass.addNewField(flags | attributes,
                            javaName(f.symbol),
-                           javaType(f.symbol.tpe));
+                           javaType(f.symbol.tpe))
+
       addGenericSignature(jfield, f.symbol, clasz.symbol)
       addAnnotations(jfield, f.symbol.annotations)
     }
 
     def genMethod(m: IMethod) {
-      if (m.isStaticCtor) return
+      if (m.symbol.isStaticConstructor) return
 
       log("Generating method " + m.symbol.fullName)
       method = m
@@ -611,38 +733,41 @@ abstract class GenJVM extends SubComponent {
 
       var resTpe = javaType(m.symbol.tpe.resultType)
       if (m.symbol.isClassConstructor)
-        resTpe = JType.VOID;
+        resTpe = JType.VOID
 
       var flags = javaFlags(m.symbol)
-      if (jclass.isInterface())
-        flags = flags | JAccessFlags.ACC_ABSTRACT;
+      if (jclass.isInterface)
+        flags |= ACC_ABSTRACT
+
+      if (m.symbol.isStrictFP)
+        flags |= ACC_STRICT
 
       // native methods of objects are generated in mirror classes
       if (method.native)
-        flags = flags | JAccessFlags.ACC_NATIVE
+        flags |= ACC_NATIVE
 
       jmethod = jclass.addNewMethod(flags,
                                     javaName(m.symbol),
                                     resTpe,
-                                    javaTypes(m.params map (_.kind)),
-                                    javaNames(m.params map (_.sym)));
+                                    m.params map (p => javaType(p.kind)) toArray,
+                                    m.params map (p => javaName(p.sym)) toArray)
 
       addRemoteException(jmethod, m.symbol)
 
       if (!jmethod.isAbstract() && !method.native) {
         val jcode = jmethod.getCode().asInstanceOf[JExtendedCode]
 
-        // add a fake local for debugging purpuses
+        // add a fake local for debugging purposes
         if (emitVars && isClosureApply(method.symbol)) {
-          val outerField = clasz.symbol.info.decl(nme.getterToLocal(nme.OUTER))
+          val outerField = clasz.symbol.info.decl(nme.OUTER_LOCAL)
           if (outerField != NoSymbol) {
             log("Adding fake local to represent outer 'this' for closure " + clasz)
             val _this = new Local(
-              method.symbol.newVariable(NoPosition, "this$"), toTypeKind(outerField.tpe), false)
+              method.symbol.newVariable(NoPosition, nme.FAKE_LOCAL_THIS), toTypeKind(outerField.tpe), false)
             m.locals = m.locals ::: List(_this)
             computeLocalVarsIndex(m) // since we added a new local, we need to recompute indexes
 
-            jcode.emitALOAD_0
+            jcode.emitALOAD_0()
             jcode.emitGETFIELD(javaName(clasz.symbol),
                                javaName(outerField),
                                javaType(outerField))
@@ -652,25 +777,33 @@ abstract class GenJVM extends SubComponent {
 
         for (local <- m.locals if ! m.params.contains(local)) {
           if (settings.debug.value)
-            log("add local var: " + local);
+            log("add local var: " + local)
           jmethod.addNewLocalVariable(javaType(local.kind), javaName(local.sym))
         }
 
         genCode(m)
         if (emitVars)
-          genLocalVariableTable(m, jcode);
+          genLocalVariableTable(m, jcode)
       }
 
       addGenericSignature(jmethod, m.symbol, clasz.symbol)
-      val (excs, others) = splitAnnotations(m.symbol.annotations, definitions.ThrowsClass)
+      val (excs, others) = splitAnnotations(m.symbol.annotations, ThrowsClass)
       addExceptionsAttribute(jmethod, excs)
       addAnnotations(jmethod, others)
       addParamAnnotations(jmethod, m.params.map(_.sym.annotations))
+
+      // check for code size
+      try jmethod.freeze()
+      catch {
+        case e: JCode.CodeSizeTooBigException =>
+          clasz.cunit.error(m.symbol.pos, "Code size exceeds JVM limits: %d".format(e.codeSize))
+          throw e
+      }
     }
 
     private def addRemoteException(jmethod: JMethod, meth: Symbol) {
       def isRemoteThrows(ainfo: AnnotationInfo) = ainfo match {
-        case AnnotationInfo(tp, List(arg), _) if tp.typeSymbol == definitions.ThrowsClass =>
+        case AnnotationInfo(tp, List(arg), _) if tp.typeSymbol == ThrowsClass =>
           arg match {
             case Literal(Constant(tpe: Type)) if tpe.typeSymbol == RemoteException.typeSymbol => true
             case _ => false
@@ -678,12 +811,12 @@ abstract class GenJVM extends SubComponent {
         case _ => false
       }
 
-      if (remoteClass ||
-          (meth.hasAnnotation(RemoteAttr) && jmethod.isPublic())) {
+      if (isRemoteClass ||
+          (meth.hasAnnotation(RemoteAttr) && jmethod.isPublic)) {
         val c = Constant(RemoteException)
-        val ainfo = AnnotationInfo(definitions.ThrowsClass.tpe, List(Literal(c).setType(c.tpe)), List())
+        val ainfo = AnnotationInfo(ThrowsClass.tpe, List(Literal(c).setType(c.tpe)), List())
         if (!meth.annotations.exists(isRemoteThrows)) {
-          meth.addAnnotation(ainfo)
+          meth addAnnotation ainfo
         }
       }
     }
@@ -701,23 +834,21 @@ abstract class GenJVM extends SubComponent {
 
     private def isClosureApply(sym: Symbol): Boolean = {
       (sym.name == nme.apply) &&
-      sym.owner.hasFlag(Flags.SYNTHETIC) &&
+      sym.owner.isSynthetic &&
       sym.owner.tpe.parents.exists { t =>
-        val TypeRef(_, sym, _) = t;
-        definitions.FunctionClass exists sym.==
+        val TypeRef(_, sym, _) = t
+        FunctionClass contains sym
       }
     }
 
-    def addModuleInstanceField {
-      import JAccessFlags._
-      jclass.addNewField(ACC_PUBLIC | ACC_FINAL | ACC_STATIC,
+    def addModuleInstanceField() {
+      jclass.addNewField(PublicStaticFinal,
                         nme.MODULE_INSTANCE_FIELD.toString,
                         jclass.getType())
     }
 
     def addStaticInit(cls: JClass, mopt: Option[IMethod]) {
-      import JAccessFlags._
-      val clinitMethod = cls.addNewMethod(ACC_PUBLIC | ACC_STATIC,
+      val clinitMethod = cls.addNewMethod(PublicStatic,
                                           "<clinit>",
                                           JType.VOID,
                                           JType.EMPTY_ARRAY,
@@ -734,182 +865,181 @@ abstract class GenJVM extends SubComponent {
 
           if (isStaticModule(clasz.symbol)) {
             // call object's private ctor from static ctor
-            lastBlock.emit(NEW(REFERENCE(m.symbol.enclClass)))
-            lastBlock.emit(CALL_METHOD(m.symbol.enclClass.primaryConstructor, Static(true)))
-	  }
+            lastBlock emit NEW(REFERENCE(m.symbol.enclClass))
+            lastBlock emit CALL_METHOD(m.symbol.enclClass.primaryConstructor, Static(true))
+          }
 
           // add serialVUID code
-          serialVUID match {
-            case Some(value) =>
-              import Flags._
-              import definitions._
-       	      val fieldName = "serialVersionUID"
-              val fieldSymbol = clasz.symbol.newValue(NoPosition, newTermName(fieldName))
-                                  .setFlag(STATIC | FINAL)
-                                  .setInfo(longType)
-              clasz.addField(new IField(fieldSymbol))
-              lastBlock.emit(CONSTANT(Constant(value)))
-              lastBlock.emit(STORE_FIELD(fieldSymbol, true))
-            case None => ()
+          serialVUID foreach { value =>
+            import Flags._, definitions._
+            val fieldName = "serialVersionUID"
+            val fieldSymbol = clasz.symbol.newValue(NoPosition, newTermName(fieldName))
+                                .setFlag(STATIC | FINAL)
+                                .setInfo(longType)
+            clasz addField new IField(fieldSymbol)
+            lastBlock emit CONSTANT(Constant(value))
+            lastBlock emit STORE_FIELD(fieldSymbol, true)
           }
+
+          if (isParcelableClass)
+            addCreatorCode(BytecodeGenerator.this, lastBlock)
 
           if (clasz.bootstrapClass.isDefined) {
             // emit bootstrap method install
             //emitBootstrapMethodInstall(block)
           }
 
-          lastBlock.emit(RETURN(UNIT))
+          lastBlock emit RETURN(UNIT)
           lastBlock.close
 
        	  method = m
        	  jmethod = clinitMethod
        	  genCode(m)
        	case None =>
-	  legacyStaticInitializer(cls, clinit)
+          legacyStaticInitializer(cls, clinit)
       }
     }
 
     private def legacyStaticInitializer(cls: JClass, clinit: JExtendedCode) {
       if (isStaticModule(clasz.symbol)) {
-        clinit.emitNEW(cls.getName())
+        clinit emitNEW cls.getName()
         clinit.emitINVOKESPECIAL(cls.getName(),
                                  JMethod.INSTANCE_CONSTRUCTOR_NAME,
                                  JMethodType.ARGLESS_VOID_FUNCTION)
       }
 
-      serialVUID match {
-        case Some(value) =>
-          val fieldName = "serialVersionUID"
-          jclass.addNewField(JAccessFlags.ACC_STATIC | JAccessFlags.ACC_PUBLIC | JAccessFlags.ACC_FINAL,
-                             fieldName,
-                             JType.LONG)
-          clinit.emitPUSH(value)
-          clinit.emitPUTSTATIC(jclass.getName(), fieldName, JType.LONG)
-        case None => ()
+      serialVUID foreach { value =>
+        val fieldName = "serialVersionUID"
+        jclass.addNewField(PublicStaticFinal, fieldName, JType.LONG)
+        clinit emitPUSH value
+        clinit.emitPUSH(value)
+        clinit.emitPUTSTATIC(jclass.getName(), fieldName, JType.LONG)
       }
 
-      if (clasz.bootstrapClass.isDefined) legacyEmitBootstrapMethodInstall(clinit)
+      if (isParcelableClass)
+        legacyAddCreatorCode(BytecodeGenerator.this, clinit)
+
+      if (clasz.bootstrapClass.isDefined)
+        legacyEmitBootstrapMethodInstall(clinit)
 
       clinit.emitRETURN()
     }
 
-    /** Emit code that installs a boostrap method for invoke dynamic. It installs the default
-     *  method, found in scala.runtime.DynamicDispatch.
+    /** Emit code that installs a boostrap method for invoke dynamic. It
+     *  installs the default method, found in scala.runtime.DynamicDispatch.
      */
     def legacyEmitBootstrapMethodInstall(jcode: JExtendedCode) {
-      jcode.emitPUSH(jclass.getType.asInstanceOf[JReferenceType])
-      jcode.emitPUSH(new JObjectType("scala.runtime.DynamicDispatch"))
-      jcode.emitPUSH("bootstrapInvokeDynamic")
+      jcode emitPUSH jclass.getType.asInstanceOf[JReferenceType]
+      jcode emitPUSH new JObjectType("scala.runtime.DynamicDispatch")
+      jcode emitPUSH "bootstrapInvokeDynamic"
       jcode.emitGETSTATIC("java.dyn.Linkage", "BOOTSTRAP_METHOD_TYPE", MethodTypeType)
       jcode.emitDUP
-      jcode.emitINVOKESTATIC("scala.Console", "println", new JMethodType(JType.VOID, Array(JObjectType.JAVA_LANG_OBJECT)))
+      jcode.emitINVOKESTATIC("scala.Console", "println", new JMethodType(JType.VOID, Array(JAVA_LANG_OBJECT)))
       jcode.emitINVOKESTATIC("java.dyn.MethodHandles", "findStatic",
-                              new JMethodType(MethodHandleType, Array(JavaLangClassType, JObjectType.JAVA_LANG_STRING, MethodTypeType)))
+                              new JMethodType(MethodHandleType, Array(JavaLangClassType, JAVA_LANG_STRING, MethodTypeType)))
       jcode.emitINVOKESTATIC("java.dyn.Linkage", "registerBootstrapMethod",
                               new JMethodType(JType.VOID, Array(JavaLangClassType, MethodHandleType)))
     }
 
     /** Add a forwarder for method m */
-    def addForwarder(jclass: JClass, module: Symbol, m: Symbol) {
-      import JAccessFlags._
-      val moduleName = javaName(module) // + "$"
-      val mirrorName = moduleName.substring(0, moduleName.length() - 1)
+    def addForwarder(jclass: JClass, module: Symbol, m: Symbol, accessFlags: Int) {
+      val moduleName     = javaName(module)
+      val methodInfo     = module.thisType.memberInfo(m)
+      val paramJavaTypes = methodInfo.paramTypes map javaType
+      val paramNames     = 0 until paramJavaTypes.length map ("x_" + _)
 
-      val methodInfo = module.thisType.memberInfo(m)
-
-      val paramJavaTypes = methodInfo.paramTypes map toTypeKind
-      val paramNames: Array[String] = new Array[String](paramJavaTypes.length);
-
-      for (i <- 0 until paramJavaTypes.length)
-        paramNames(i) = "x_" + i
-
-      val mirrorMethod = jclass.addNewMethod(ACC_PUBLIC | ACC_FINAL | ACC_STATIC,
+      val mirrorMethod = jclass.addNewMethod(
+        accessFlags,
         javaName(m),
         javaType(methodInfo.resultType),
-        javaTypes(paramJavaTypes),
-        paramNames);
-      val mirrorCode = mirrorMethod.getCode().asInstanceOf[JExtendedCode];
+        paramJavaTypes.toArray,
+        paramNames.toArray)
+      val mirrorCode = mirrorMethod.getCode().asInstanceOf[JExtendedCode]
       mirrorCode.emitGETSTATIC(moduleName,
                                nme.MODULE_INSTANCE_FIELD.toString,
-                               new JObjectType(moduleName));
+                               new JObjectType(moduleName))
+
       var i = 0
       var index = 0
       var argTypes = mirrorMethod.getArgumentTypes()
       while (i < argTypes.length) {
         mirrorCode.emitLOAD(index, argTypes(i))
-        index = index + argTypes(i).getSize()
+        index += argTypes(i).getSize()
         i += 1
       }
 
-      mirrorCode.emitINVOKEVIRTUAL(moduleName, mirrorMethod.getName(), javaType(m).asInstanceOf[JMethodType])
-      mirrorCode.emitRETURN(mirrorMethod.getReturnType())
+      mirrorCode.emitINVOKEVIRTUAL(moduleName, mirrorMethod.getName, javaType(m).asInstanceOf[JMethodType])
+      mirrorCode emitRETURN mirrorMethod.getReturnType()
 
       addRemoteException(mirrorMethod, m)
       // only add generic signature if the method is concrete; bug #1745
-      if (!m.hasFlag(Flags.DEFERRED))
+      if (!m.isDeferred)
         addGenericSignature(mirrorMethod, m, module)
 
-      val (throws, others) = splitAnnotations(m.annotations, definitions.ThrowsClass)
+      val (throws, others) = splitAnnotations(m.annotations, ThrowsClass)
       addExceptionsAttribute(mirrorMethod, throws)
       addAnnotations(mirrorMethod, others)
       addParamAnnotations(mirrorMethod, m.info.params.map(_.annotations))
     }
 
-    /** Add forwarders for all methods defined in `module' that don't conflict with
-     *  methods in the companion class of `module'. A conflict arises when a method
-     *  with the same name is defined both in a class and its companion object (method
-     *  signature is not taken into account).  If 3rd argument cond is supplied, only
-     *  symbols for which cond(sym) is true are given forwarders.
+    /** Add forwarders for all methods defined in `module' that don't conflict
+     *  with methods in the companion class of `module'. A conflict arises when
+     *  a method with the same name is defined both in a class and its companion
+     *  object: method signature is not taken into account.
      */
-    def addForwarders(jclass: JClass, module: Symbol) { addForwarders(jclass, module, _ => true) }
-    def addForwarders(jclass: JClass, module: Symbol, cond: (Symbol) => Boolean) {
-      def conflictsIn(cls: Symbol, name: Name) =
-        cls.info.members exists (_.name == name)
+    def addForwarders(jclass: JClass, moduleClass: Symbol) {
+      assert(moduleClass.isModuleClass)
+      if (settings.debug.value)
+        log("Dumping mirror class for object: " + moduleClass)
 
-      /** List of parents shared by both class and module, so we don't add forwarders
-       *  for methods defined there - bug #1804 */
-      lazy val commonParents = {
-        val cps = module.info.baseClasses
-        val mps = module.companionClass.info.baseClasses
-        cps.filter(mps contains)
-      }
-      /* The setter doesn't show up in members so we inspect the name
-       * ... and clearly it helps to know how the name is encoded, see ticket #3004.
-       * This logic is grossly inadequate! Name mangling needs a devotee.
+      val className    = jclass.getName
+      val linkedClass  = moduleClass.companionClass
+      val linkedModule = linkedClass.companionSymbol
+
+      /** If we use the usual algorithm for forwarders, we run into a problem if
+       *  an object extends its companion class.  However, there is an out: since
+       *  all the forwarders are static, inheriting from the class is no problem
+       *  so long as the methods aren't final (the JVM will not allow redefinition
+       *  of a final static method.) Thus the following.
        */
-      def conflictsInCommonParent(name: Name) =
-        commonParents exists { cp =>
-          (name startsWith (cp.name + "$")) || (name containsName ("$" + cp.name + "$"))
-        }
+      val isIncestuous = moduleClass.tpe <:< linkedClass.tpe
+      val accessFlags  = if (isIncestuous) PublicStatic else PublicStaticFinal
+
+      /** There was a bit of a gordian logic knot here regarding forwarders.
+       *  All we really have to do is exclude certain categories of symbols and
+       *  then all matching names.
+       */
+      def memberNames(sym: Symbol) = sym.info.members map (_.name.toString) toSet
+      lazy val membersInCommon     =
+        memberNames(linkedModule) intersect memberNames(linkedClass)
 
       /** Should method `m' get a forwarder in the mirror class? */
-      def shouldForward(m: Symbol): Boolean =
-        atPhase(currentRun.picklerPhase) (
-          m.owner != definitions.ObjectClass
-          && m.isMethod
-          && !m.hasFlag(Flags.CASE | Flags.PRIVATE | Flags.PROTECTED | Flags.DEFERRED | Flags.SPECIALIZED)
-          && !m.isConstructor
-          && !m.isStaticMember
-          && !(m.owner == definitions.AnyClass)
-          && !module.isSubClass(module.companionClass)
-          && !conflictsIn(definitions.ObjectClass, m.name)
-          && !conflictsInCommonParent(m.name)
-          && !conflictsIn(module.companionClass, m.name)
-        )
+      def shouldForward(m: Symbol): Boolean = (
+        m.owner != ObjectClass
+        && m.isMethod
+        && m.isPublic
+        && !m.hasFlag(Flags.CASE | Flags.DEFERRED | Flags.SPECIALIZED | Flags.LIFTED)
+        && !m.isConstructor
+        && !m.isStaticMember
+        && !membersInCommon(m.name.toString)
+      )
 
-      assert(module.isModuleClass)
-      if (settings.debug.value)
-        log("Dumping mirror class for object: " + module);
-
-      for (m <- module.info.nonPrivateMembers; if shouldForward(m) ; if cond(m)) {
-        log("Adding static forwarder '%s' to '%s'".format(m, module))
-        addForwarder(jclass, module, m)
+      for (m <- moduleClass.info.nonPrivateMembers) {
+        if (shouldForward(m)) {
+          log("Adding static forwarder for '%s' from %s to '%s'".format(m, className, moduleClass))
+          addForwarder(jclass, moduleClass, m, accessFlags)
+        }
+        else if (settings.debug.value) {
+          log("No forwarder for '%s' from %s to '%s'".format(m, className, moduleClass))
+        }
       }
     }
 
-    /** Dump a mirror class for a top-level module. A mirror class is a class containing
-     *  only static methods that forward to the corresponding method on the MODULE instance
-     *  of the given Scala object.
+    /** Dump a mirror class for a top-level module. A mirror class is a class
+     *  containing only static methods that forward to the corresponding method
+     *  on the MODULE instance of the given Scala object.  It will only be
+     *  generated if there is no companion class: if there is, an attempt will
+     *  instead be made to add the forwarder methods to the companion class.
      */
     def dumpMirrorClass(clasz: Symbol, sourceFile: String) {
       import JAccessFlags._
@@ -917,9 +1047,11 @@ abstract class GenJVM extends SubComponent {
       val mirrorName = moduleName.substring(0, moduleName.length() - 1)
       val mirrorClass = fjbgContext.JClass(ACC_SUPER | ACC_PUBLIC | ACC_FINAL,
                                            mirrorName,
-                                           "java.lang.Object",
+                                           JAVA_LANG_OBJECT.getName,
                                            JClass.NO_INTERFACES,
                                            sourceFile)
+
+      log("Dumping mirror class for '%s'".format(mirrorClass.getName))
       addForwarders(mirrorClass, clasz)
       val ssa = scalaSignatureAddingMarker(mirrorClass, clasz.companionSymbol)
       addAnnotations(mirrorClass, clasz.annotations ++ ssa)
@@ -928,36 +1060,6 @@ abstract class GenJVM extends SubComponent {
 
     var linearization: List[BasicBlock] = Nil
     var isModuleInitialized = false
-
-    private def genConstant(jcode: JExtendedCode, const: Constant) {
-      const.tag match {
-        case UnitTag    => ()
-        case BooleanTag => jcode.emitPUSH(const.booleanValue)
-        case ByteTag    => jcode.emitPUSH(const.byteValue)
-        case ShortTag   => jcode.emitPUSH(const.shortValue)
-        case CharTag    => jcode.emitPUSH(const.charValue)
-        case IntTag     => jcode.emitPUSH(const.intValue)
-        case LongTag    => jcode.emitPUSH(const.longValue)
-        case FloatTag   => jcode.emitPUSH(const.floatValue)
-        case DoubleTag  => jcode.emitPUSH(const.doubleValue)
-        case StringTag  => jcode.emitPUSH(const.stringValue)
-        case NullTag    => jcode.emitACONST_NULL()
-        case ClassTag   =>
-          val kind = toTypeKind(const.typeValue)
-          val toPush =
-            if (kind.isValueType) classLiteral(kind)
-            else javaType(kind).asInstanceOf[JReferenceType]
-
-          jcode emitPUSH toPush
-
-        case EnumTag   =>
-          val sym = const.symbolValue
-          jcode.emitGETSTATIC(javaName(sym.owner),
-                              javaName(sym),
-                              javaType(sym.tpe.underlying))
-        case _          => abort("Unknown constant value: " + const);
-      }
-    }
 
     /**
      *  @param m ...
@@ -969,7 +1071,7 @@ abstract class GenJVM extends SubComponent {
         if (settings.debug.value)
           log("Making labels for: " + method)
 
-        HashMap(bs map (_ -> jcode.newLabel) : _*)
+        mutable.HashMap(bs map (_ -> jcode.newLabel) : _*)
       }
 
       isModuleInitialized = false
@@ -977,7 +1079,7 @@ abstract class GenJVM extends SubComponent {
       linearization = linearizer.linearize(m)
       val labels = makeLabels(linearization)
       /** local variables whose scope appears in this block. */
-      var varsInBlock: collection.mutable.Set[Local] = new HashSet
+      val varsInBlock: mutable.Set[Local] = new mutable.HashSet
 
       var nextBlock: BasicBlock = linearization.head
 
@@ -988,7 +1090,7 @@ abstract class GenJVM extends SubComponent {
       }
 
     /** Generate exception handlers for the current method. */
-    def genExceptionHandlers {
+    def genExceptionHandlers() {
 
       /** Return a list of pairs of intervals where the handler is active.
        *  The intervals in the list have to be inclusive in the beginning and
@@ -1027,7 +1129,7 @@ abstract class GenJVM extends SubComponent {
         if (!covered.isEmpty)
           if (settings.debug.value)
             log("Some covered blocks were not found in method: " + method +
-                " covered: " + covered + " not in " + linearization);
+                " covered: " + covered + " not in " + linearization)
         ranges
       }
 
@@ -1036,7 +1138,7 @@ abstract class GenJVM extends SubComponent {
           if (settings.debug.value)
             log("Adding exception handler " + e + "at block: " + e.startBlock + " for " + method +
                 " from: " + p._1 + " to: " + p._2 + " catching: " + e.cls);
-          val cls = if (e.cls == NoSymbol || e.cls == definitions.ThrowableClass) null
+          val cls = if (e.cls == NoSymbol || e.cls == ThrowableClass) null
                     else javaName(e.cls)
           jcode.addExceptionHandler(p._1, p._2,
                                     labels(e.startBlock).getAnchor(),
@@ -1050,11 +1152,11 @@ abstract class GenJVM extends SubComponent {
       labels(b).anchorToNext()
 
       if (settings.debug.value)
-        log("Generating code for block: " + b + " at pc: " + labels(b).getAnchor());
+        log("Generating code for block: " + b + " at pc: " + labels(b).getAnchor())
       var lastMappedPC = 0
       var lastLineNr = 0
       var crtPC = 0
-      varsInBlock.clear
+      varsInBlock.clear()
 
       for (instr <- b) {
         class CompilationException(msg: String) extends Exception(msg) {
@@ -1067,7 +1169,8 @@ abstract class GenJVM extends SubComponent {
             method.dump
           }
         }
-        def assert(cond: Boolean, msg: String) = if (!cond) throw new CompilationException(msg)
+        def assert(cond: Boolean, msg: String) =
+          if (!cond) throw new CompilationException(msg)
 
         instr match {
           case THIS(clasz) =>
@@ -1082,9 +1185,8 @@ abstract class GenJVM extends SubComponent {
           case LOAD_LOCAL(local) =>
             jcode.emitLOAD(indexOf(local), javaType(local.kind))
 
-          case LOAD_FIELD(field, isStatic) =>
-            var owner = javaName(field.owner);
-//            if (field.owner.hasFlag(Flags.MODULE)) owner = owner + "$";
+          case lf @ LOAD_FIELD(field, isStatic) =>
+            var owner = javaName(lf.hostClass)
             if (settings.debug.value)
               log("LOAD_FIELD with owner: " + owner +
                   " flags: " + Flags.flagsToString(field.owner.flags))
@@ -1107,10 +1209,10 @@ abstract class GenJVM extends SubComponent {
             else
               jcode.emitGETSTATIC(javaName(module) /* + "$" */ ,
                                   nme.MODULE_INSTANCE_FIELD.toString,
-                                  javaType(module));
+                                  javaType(module))
 
           case STORE_ARRAY_ITEM(kind) =>
-            jcode.emitASTORE(javaType(kind))
+            jcode emitASTORE javaType(kind)
 
           case STORE_LOCAL(local) =>
             jcode.emitSTORE(indexOf(local), javaType(local.kind))
@@ -1121,7 +1223,7 @@ abstract class GenJVM extends SubComponent {
             jcode.emitASTORE_0()
 
           case STORE_FIELD(field, isStatic) =>
-            val owner = javaName(field.owner) // + (if (field.owner.hasFlag(Flags.MODULE)) "$" else "");
+            val owner = javaName(field.owner)
             if (isStatic)
               jcode.emitPUTSTATIC(owner,
                                   javaName(field),
@@ -1165,19 +1267,17 @@ abstract class GenJVM extends SubComponent {
                   jcode.emitINVOKESTATIC(owner, jname, jtype)
 
               case SuperCall(_) =>
-                  jcode.emitINVOKESPECIAL(owner, jname, jtype)
-                  // we initialize the MODULE$ field immediately after the super ctor
-                  if (isStaticModule(clasz.symbol) && !isModuleInitialized &&
-                      jmethod.getName() == JMethod.INSTANCE_CONSTRUCTOR_NAME &&
-                      jname == JMethod.INSTANCE_CONSTRUCTOR_NAME) {
-                        isModuleInitialized = true;
-                        jcode.emitALOAD_0();
-                        jcode.emitPUTSTATIC(jclass.getName(),
-                                            nme.MODULE_INSTANCE_FIELD.toString,
-                                            jclass.getType());
-                      }
-
-
+                jcode.emitINVOKESPECIAL(owner, jname, jtype)
+                // we initialize the MODULE$ field immediately after the super ctor
+                if (isStaticModule(clasz.symbol) && !isModuleInitialized &&
+                    jmethod.getName() == JMethod.INSTANCE_CONSTRUCTOR_NAME &&
+                    jname == JMethod.INSTANCE_CONSTRUCTOR_NAME) {
+                  isModuleInitialized = true
+                  jcode.emitALOAD_0()
+                  jcode.emitPUTSTATIC(jclass.getName(),
+                                      nme.MODULE_INSTANCE_FIELD.toString,
+                                      jclass.getType())
+                }
             }
 
           case BOX(kind) =>
@@ -1186,34 +1286,43 @@ abstract class GenJVM extends SubComponent {
             jcode.emitINVOKESTATIC(BoxesRunTime, "boxTo" + boxedType.decodedName, mtype)
 
           case UNBOX(kind) =>
-            val mtype = new JMethodType(javaType(kind), Array(JObjectType.JAVA_LANG_OBJECT))
+            val mtype = new JMethodType(javaType(kind), Array(JAVA_LANG_OBJECT))
             jcode.emitINVOKESTATIC(BoxesRunTime, "unboxTo" + kind.toType.typeSymbol.decodedName, mtype)
 
           case NEW(REFERENCE(cls)) =>
             val className = javaName(cls)
-            jcode.emitNEW(className)
+            jcode emitNEW className
 
           case CREATE_ARRAY(elem, 1) => elem match {
             case REFERENCE(_) | ARRAY(_) =>
-              jcode.emitANEWARRAY(javaType(elem).asInstanceOf[JReferenceType])
+              jcode emitANEWARRAY javaType(elem).asInstanceOf[JReferenceType]
             case _ =>
-              jcode.emitNEWARRAY(javaType(elem))
+              jcode emitNEWARRAY javaType(elem)
           }
+
           case CREATE_ARRAY(elem, dims) =>
             jcode.emitMULTIANEWARRAY(javaType(ArrayN(elem, dims)).asInstanceOf[JReferenceType], dims)
 
           case IS_INSTANCE(tpe) =>
             tpe match {
-              case REFERENCE(cls) => jcode.emitINSTANCEOF(new JObjectType(javaName(cls)))
-              case ARRAY(elem)    => jcode.emitINSTANCEOF(new JArrayType(javaType(elem)))
-              case _ => abort("Unknown reference type in IS_INSTANCE: " + tpe)
+              case REFERENCE(cls) =>
+                jcode emitINSTANCEOF new JObjectType(javaName(cls))
+              case ARRAY(elem) =>
+                jcode emitINSTANCEOF new JArrayType(javaType(elem))
+              case _ =>
+                abort("Unknown reference type in IS_INSTANCE: " + tpe)
             }
 
           case CHECK_CAST(tpe) =>
             tpe match {
-              case REFERENCE(cls) => jcode.emitCHECKCAST(new JObjectType(javaName(cls)))
-              case ARRAY(elem)    => jcode.emitCHECKCAST(new JArrayType(javaType(elem)))
-              case _ => abort("Unknown reference type in IS_INSTANCE: " + tpe)
+              case REFERENCE(cls) =>
+                // No need to checkcast for Objects
+                if (cls != ObjectClass)
+                  jcode emitCHECKCAST new JObjectType(javaName(cls))
+              case ARRAY(elem) =>
+                jcode emitCHECKCAST new JArrayType(javaType(elem))
+              case _ =>
+                abort("Unknown reference type in IS_INSTANCE: " + tpe)
             }
 
           case SWITCH(tags, branches) =>
@@ -1224,7 +1333,7 @@ abstract class GenJVM extends SubComponent {
             while (i < tagArray.length) {
               tagArray(i) = new Array[Int](caze.head.length)
               caze.head.copyToArray(tagArray(i), 0)
-              i = i + 1
+              i += 1
               caze = caze.tail
             }
             val branchArray = jcode.newLabels(tagArray.length)
@@ -1234,16 +1343,16 @@ abstract class GenJVM extends SubComponent {
               i += 1
             }
             if (settings.debug.value)
-              log("Emitting SWITHCH:\ntags: " + tags + "\nbranches: " + branches);
+              log("Emitting SWITCH:\ntags: " + tags + "\nbranches: " + branches)
             jcode.emitSWITCH(tagArray,
                              branchArray,
                              labels(branches.last),
-                             MIN_SWITCH_DENSITY);
+                             MIN_SWITCH_DENSITY)
             ()
 
           case JUMP(whereto) =>
             if (nextBlock != whereto)
-              jcode.emitGOTO_maybe_W(labels(whereto), false); // default to short jumps
+              jcode.emitGOTO_maybe_W(labels(whereto), false) // default to short jumps
 
           case CJUMP(success, failure, cond, kind) =>
             kind match {
@@ -1254,7 +1363,7 @@ abstract class GenJVM extends SubComponent {
                 } else {
                   jcode.emitIF_ICMP(conds(cond), labels(success))
                   if (nextBlock != failure)
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                 }
 
               case REFERENCE(_) | ARRAY(_) =>
@@ -1264,7 +1373,7 @@ abstract class GenJVM extends SubComponent {
                 } else {
                   jcode.emitIF_ACMP(conds(cond), labels(success))
                   if (nextBlock != failure)
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                 }
 
               case _ =>
@@ -1278,12 +1387,12 @@ abstract class GenJVM extends SubComponent {
                     else jcode.emitDCMPL()
                 }
                 if (nextBlock == success) {
-                  jcode.emitIF(conds(negate(cond)), labels(failure));
+                  jcode.emitIF(conds(negate(cond)), labels(failure))
                   // .. and fall through to success label
                 } else {
                   jcode.emitIF(conds(cond), labels(success));
                   if (nextBlock != failure)
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                 }
             }
 
@@ -1291,11 +1400,11 @@ abstract class GenJVM extends SubComponent {
             kind match {
               case BOOL | BYTE | CHAR | SHORT | INT =>
                 if (nextBlock == success) {
-                  jcode.emitIF(conds(negate(cond)), labels(failure));
+                  jcode.emitIF(conds(negate(cond)), labels(failure))
                 } else {
                   jcode.emitIF(conds(cond), labels(success))
                   if (nextBlock != failure)
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                 }
 
               case REFERENCE(_) | ARRAY(_) =>
@@ -1303,30 +1412,31 @@ abstract class GenJVM extends SubComponent {
                 val Failure = failure
                 (cond, nextBlock) match {
                   case (EQ, Success) =>
-                    jcode.emitIFNONNULL(labels(failure))
+                    jcode emitIFNONNULL labels(failure)
                   case (NE, Failure) =>
-                    jcode.emitIFNONNULL(labels(success))
+                    jcode emitIFNONNULL labels(success)
                   case (EQ, Failure) =>
-                    jcode.emitIFNULL(labels(success))
+                    jcode emitIFNULL labels(success)
                   case (NE, Success) =>
-                    jcode.emitIFNULL(labels(failure))
+                    jcode emitIFNULL labels(failure)
                   case (EQ, _) =>
-                    jcode.emitIFNULL(labels(success));
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode emitIFNULL labels(success)
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                   case (NE, _) =>
-                    jcode.emitIFNONNULL(labels(success));
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode emitIFNONNULL labels(success)
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                 }
 
               case _ =>
                 (kind: @unchecked) match {
-                  case LONG   => jcode.emitLCONST_0(); jcode.emitLCMP()
+                  case LONG   =>
+                    jcode.emitLCONST_0(); jcode.emitLCMP()
                   case FLOAT  =>
-                    jcode.emitFCONST_0();
+                    jcode.emitFCONST_0()
                     if (cond == LT || cond == LE) jcode.emitFCMPG()
                     else jcode.emitFCMPL()
                   case DOUBLE =>
-                    jcode.emitDCONST_0();
+                    jcode.emitDCONST_0()
                     if (cond == LT || cond == LE) jcode.emitDCMPG()
                     else jcode.emitDCMPL()
                 }
@@ -1335,14 +1445,14 @@ abstract class GenJVM extends SubComponent {
                 } else {
                   jcode.emitIF(conds(cond), labels(success))
                   if (nextBlock != failure)
-                    jcode.emitGOTO_maybe_W(labels(failure), false);
+                    jcode.emitGOTO_maybe_W(labels(failure), false)
                 }
             }
 
           case RETURN(kind) =>
-            jcode.emitRETURN(javaType(kind))
+            jcode emitRETURN javaType(kind)
 
-          case THROW() =>
+          case THROW(_) =>
             jcode.emitATHROW()
 
           case DROP(kind) =>
@@ -1368,16 +1478,17 @@ abstract class GenJVM extends SubComponent {
             lv.start = jcode.getPC()
 
           case SCOPE_EXIT(lv) =>
-            if (varsInBlock contains lv) {
+            if (varsInBlock(lv)) {
               lv.ranges = (lv.start, jcode.getPC()) :: lv.ranges
               varsInBlock -= lv
-            } else if (b.varsInScope contains lv) {
+            }
+            else if (b.varsInScope(lv)) {
               lv.ranges = (labels(b).getAnchor(), jcode.getPC()) :: lv.ranges
               b.varsInScope -= lv
             } else
               assert(false, "Illegal local var nesting: " + method)
 
-          case LOAD_EXCEPTION() =>
+          case LOAD_EXCEPTION(_) =>
             ()
         }
 
@@ -1394,7 +1505,7 @@ abstract class GenJVM extends SubComponent {
         }
 
         if (b.lastInstruction == instr)
-          endPC(b) = jcode.getPC();
+          endPC(b) = jcode.getPC()
 
         //System.err.println("CRTLINE: " + instr.pos + " " +
         //           /* (if (instr.pos < clasz.cunit.source.content.length) clasz.cunit.source.content(instr.pos) else '*') + */ " " + crtLine);
@@ -1426,7 +1537,6 @@ abstract class GenJVM extends SubComponent {
           kind match {
             case BOOL | BYTE | CHAR | SHORT | INT =>
               jcode.emitINEG()
-
             case LONG   => jcode.emitLNEG()
             case FLOAT  => jcode.emitFNEG()
             case DOUBLE => jcode.emitDNEG()
@@ -1553,34 +1663,34 @@ abstract class GenJVM extends SubComponent {
 
         case Conversion(src, dst) =>
           if (settings.debug.value)
-            log("Converting from: " + src + " to: " + dst);
+            log("Converting from: " + src + " to: " + dst)
           if (dst == BOOL) {
-            Console.println("Illegal conversion at: " + clasz +
-                            " at: " + pos.source + ":" + pos.line);
+            println("Illegal conversion at: " + clasz +
+                    " at: " + pos.source + ":" + pos.line)
           } else
-            jcode.emitT2T(javaType(src), javaType(dst));
+            jcode.emitT2T(javaType(src), javaType(dst))
 
         case ArrayLength(_) =>
           jcode.emitARRAYLENGTH()
 
         case StartConcat =>
-          jcode.emitNEW(StringBuilderClass)
+          jcode emitNEW StringBuilderClassName
           jcode.emitDUP()
-          jcode.emitINVOKESPECIAL(StringBuilderClass,
+          jcode.emitINVOKESPECIAL(StringBuilderClassName,
                                   JMethod.INSTANCE_CONSTRUCTOR_NAME,
                                   JMethodType.ARGLESS_VOID_FUNCTION)
 
         case StringConcat(el) =>
           val jtype = el match {
-            case REFERENCE(_) | ARRAY(_)=> JObjectType.JAVA_LANG_OBJECT
+            case REFERENCE(_) | ARRAY(_) => JAVA_LANG_OBJECT
             case _ => javaType(el)
           }
-          jcode.emitINVOKEVIRTUAL(StringBuilderClass,
+          jcode.emitINVOKEVIRTUAL(StringBuilderClassName,
                                   "append",
                                   new JMethodType(StringBuilderType,
                                   Array(jtype)))
         case EndConcat =>
-          jcode.emitINVOKEVIRTUAL(StringBuilderClass,
+          jcode.emitINVOKEVIRTUAL(StringBuilderClassName,
                                   "toString",
                                   toStringType)
 
@@ -1601,95 +1711,61 @@ abstract class GenJVM extends SubComponent {
      *  Synthetic locals are skipped. All variables are method-scoped.
      */
     private def genLocalVariableTable(m: IMethod, jcode: JCode) {
-        var vars = m.locals.filter(l => !l.sym.hasFlag(Flags.SYNTHETIC))
+      val vars = m.locals filterNot (_.sym.isSynthetic)
+      if (vars.isEmpty) return
 
-        if (vars.length == 0) return
+      val pool = jclass.getConstantPool
+      val pc = jcode.getPC()
+      var anonCounter = 0
+      var entries = 0
+      vars.foreach { lv =>
+        lv.ranges = mergeEntries(lv.ranges.reverse);
+        entries += lv.ranges.length
+      }
+      if (!jmethod.isStatic()) entries += 1
 
-        val pool = jclass.getConstantPool()
-        val pc = jcode.getPC()
-        var anonCounter = 0
-        var entries = 0
-        vars.foreach { lv =>
-          lv.ranges = mergeEntries(lv.ranges.reverse);
-          entries += lv.ranges.length
+      val lvTab = ByteBuffer.allocate(2 + 10 * entries)
+      def emitEntry(name: String, signature: String, idx: Short, start: Short, end: Short) {
+        lvTab putShort start
+        lvTab putShort end
+        lvTab putShort pool.addUtf8(name).toShort
+        lvTab putShort pool.addUtf8(signature).toShort
+        lvTab putShort idx
+      }
+
+      lvTab.putShort(entries.toShort)
+
+      if (!jmethod.isStatic()) {
+        emitEntry("this", jclass.getType().getSignature(), 0, 0.toShort, pc.toShort)
+      }
+
+      for (lv <- vars) {
+        val name = if (javaName(lv.sym) eq null) {
+          anonCounter += 1
+          "<anon" + anonCounter + ">"
+        } else javaName(lv.sym)
+
+        val index = indexOf(lv).toShort
+        val tpe   = javaType(lv.kind).getSignature()
+        for ((start, end) <- lv.ranges) {
+          emitEntry(name, tpe, index, start.toShort, (end - start).toShort)
         }
-        if (!jmethod.isStatic()) entries += 1
-
-        val lvTab = ByteBuffer.allocate(2 + 10 * entries)
-        def emitEntry(name: String, signature: String, idx: Short, start: Short, end: Short) {
-          lvTab.putShort(start)
-          lvTab.putShort(end)
-          lvTab.putShort(pool.addUtf8(name).toShort)
-          lvTab.putShort(pool.addUtf8(signature).toShort)
-          lvTab.putShort(idx)
-        }
-
-        lvTab.putShort(entries.toShort)
-
-        if (!jmethod.isStatic()) {
-          emitEntry("this", jclass.getType().getSignature(), 0, 0.toShort, pc.toShort)
-        }
-
-        for (lv <- vars) {
-            val name = if (javaName(lv.sym) eq null) {
-              anonCounter += 1
-              "<anon" + anonCounter + ">"
-            } else javaName(lv.sym)
-
-            val index = indexOf(lv).toShort
-            val tpe   = javaType(lv.kind).getSignature()
-            for ((start, end) <- lv.ranges) {
-              emitEntry(name, tpe, index, start.toShort, (end - start).toShort)
-            }
-        }
-        val attr =
-            fjbgContext.JOtherAttribute(jclass,
-                                        jmethod,
-                                        nme.LocalVariableTableATTR.toString,
-                                        lvTab.array())
-        jcode.addAttribute(attr)
+      }
+      val attr =
+        fjbgContext.JOtherAttribute(jclass,
+                                    jcode,
+                                    tpnme.LocalVariableTableATTR.toString,
+                                    lvTab.array())
+      jcode addAttribute attr
     }
 
 
     /** For each basic block, the first PC address following it. */
-    val endPC: HashMap[BasicBlock, Int] = new HashMap()
-    val conds: HashMap[TestOp, Int] = new HashMap()
-
-    conds += (EQ -> JExtendedCode.COND_EQ)
-    conds += (NE -> JExtendedCode.COND_NE)
-    conds += (LT -> JExtendedCode.COND_LT)
-    conds += (GT -> JExtendedCode.COND_GT)
-    conds += (LE -> JExtendedCode.COND_LE)
-    conds += (GE -> JExtendedCode.COND_GE)
-
-    val negate: HashMap[TestOp, TestOp] = new HashMap()
-
-    negate += (EQ -> NE)
-    negate += (NE -> EQ)
-    negate += (LT -> GE)
-    negate += (GT -> LE)
-    negate += (LE -> GT)
-    negate += (GE -> LT)
-
-    /** Map from type kinds to the Java reference types. It is used for
-     *  loading class constants. @see Predef.classOf. */
-    val classLiteral: Map[TypeKind, JObjectType] = new HashMap()
-
-    classLiteral += (UNIT   -> new JObjectType("java.lang.Void"))
-    classLiteral += (BOOL   -> new JObjectType("java.lang.Boolean"))
-    classLiteral += (BYTE   -> new JObjectType("java.lang.Byte"))
-    classLiteral += (SHORT  -> new JObjectType("java.lang.Short"))
-    classLiteral += (CHAR   -> new JObjectType("java.lang.Character"))
-    classLiteral += (INT    -> new JObjectType("java.lang.Integer"))
-    classLiteral += (LONG   -> new JObjectType("java.lang.Long"))
-    classLiteral += (FLOAT  -> new JObjectType("java.lang.Float"))
-    classLiteral += (DOUBLE -> new JObjectType("java.lang.Double"))
-
+    val endPC = new mutable.HashMap[BasicBlock, Int]
 
     ////////////////////// local vars ///////////////////////
 
     def sizeOf(sym: Symbol): Int = sizeOf(toTypeKind(sym.tpe))
-
 
     def sizeOf(k: TypeKind): Int = k match {
       case DOUBLE | LONG => 2
@@ -1697,7 +1773,7 @@ abstract class GenJVM extends SubComponent {
     }
 
     def indexOf(m: IMethod, sym: Symbol): Int = {
-      val Some(local) = m.lookupLocal(sym)
+      val Some(local) = m lookupLocal sym
       indexOf(local)
     }
 
@@ -1726,156 +1802,18 @@ abstract class GenJVM extends SubComponent {
 
     ////////////////////// Utilities ////////////////////////
 
-    /**
-     * <p>
-     *   Return the a name of this symbol that can be used on the Java
-     *   platform. It removes spaces from names.
-     * </p>
-     * <p>
-     *   Special handling: scala.Nothing and <code>scala.Null</code> are
-     *   <em>erased</em> to <code>scala.runtime.Nothing$</code> and
-     *   </code>scala.runtime.Null$</code>. This is needed because they are
-     *   not real classes, and they mean 'abrupt termination upon evaluation
-     *   of that expression' or <code>null</code> respectively. This handling is
-     *   done already in <a href="../icode/GenIcode.html" target="contentFrame">
-     *   <code>GenICode</code></a>, but here we need to remove references
-     *   from method signatures to these types, because such classes can
-     *   not exist in the classpath: the type checker will be very confused.
-     * </p>
-     */
-    def javaName(sym: Symbol): String = {
-      val suffix = moduleSuffix(sym)
-
-      if (sym == definitions.NothingClass)
-        return javaName(definitions.RuntimeNothingClass)
-      else if (sym == definitions.NullClass)
-        return javaName(definitions.RuntimeNullClass)
-      else if (definitions.primitiveCompanions(sym.companionModule))
-        return javaName(definitions.getModule("scala.runtime." + sym.name))
-
-      if (sym.isClass && !sym.rawowner.isPackageClass && !sym.isModuleClass) {
-        innerClasses = innerClasses + sym;
-      }
-
-      (if (sym.isClass || (sym.isModule && !sym.isMethod))
-        sym.fullName('/')
-      else
-        sym.simpleName.toString.trim()) + suffix
-    }
-
-    def javaNames(syms: List[Symbol]): Array[String] = {
-      val res = new Array[String](syms.length)
-      var i = 0
-      syms foreach (s => { res(i) = javaName(s); i += 1 })
-      res
-    }
-
-    /**
-     * Return the Java modifiers for the given symbol.
-     * Java modifiers for classes:
-     *  - public, abstract, final, strictfp (not used)
-     * for interfaces:
-     *  - the same as for classes, without 'final'
-     * for fields:
-     *  - public, private (*)
-     *  - static, final
-     * for methods:
-     *  - the same as for fields, plus:
-     *  - abstract, synchronized (not used), strictfp (not used), native (not used)
-     *
-     *  (*) protected cannot be used, since inner classes 'see' protected members,
-     *      and they would fail verification after lifted.
-     */
-    def javaFlags(sym: Symbol): Int = {
-      import JAccessFlags._
-
-      var jf: Int = 0
-      val f = sym.flags
-      /*
-       * The Java-level SYNTHETIC flag is disabled because it
-       * causes trouble for the jvm-src target.
-       */
-      //jf = jf | (if (sym hasFlag Flags.SYNTHETIC) ACC_SYNTHETIC else 0)
-/*      jf = jf | (if (sym hasFlag Flags.PRIVATE) ACC_PRIVATE else
-                  if (sym hasFlag Flags.PROTECTED) ACC_PROTECTED else ACC_PUBLIC)
-*/
-      jf = jf | (if (sym hasFlag Flags.PRIVATE) ACC_PRIVATE else  ACC_PUBLIC)
-      jf = jf | (if ((sym hasFlag Flags.ABSTRACT) ||
-                     (sym hasFlag Flags.DEFERRED)) ACC_ABSTRACT else 0)
-      jf = jf | (if (sym hasFlag Flags.INTERFACE) ACC_INTERFACE else 0)
-      jf = jf | (if ((sym hasFlag Flags.FINAL)
-                       && !sym.enclClass.hasFlag(Flags.INTERFACE)
-                       && !sym.isClassConstructor) ACC_FINAL else 0)
-      jf = jf | (if (sym.isStaticMember) ACC_STATIC else 0)
-      jf = jf | (if (sym hasFlag Flags.BRIDGE) ACC_BRIDGE | ACC_SYNTHETIC else 0)
-
-      if (sym.isClass && !sym.hasFlag(Flags.INTERFACE))
-        jf = jf | ACC_SUPER
-
-      // constructors of module classes should be private
-      if (sym.isPrimaryConstructor && isTopLevelModule(sym.owner)) {
-        jf |= ACC_PRIVATE
-        jf &= ~ACC_PUBLIC
-      }
-      jf
-    }
-
     /** Calls to methods in 'sym' need invokeinterface? */
     def needsInterfaceCall(sym: Symbol): Boolean = {
       log("checking for interface call: " + sym.fullName)
-      // the following call to 'info' may cause certain symbols to fail loading because we're
-      // too late in the compilation chain (aliases to overloaded symbols will not be properly
-      // resolved, see scala.Range, method super$++ that fails in UnPickler at LazyTypeRefAndAlias.complete
-      if (sym.isTrait) sym.info // needed so that the type is up to date (erasure may add lateINTERFACE to traits)
+      // the following call to 'info' may cause certain symbols to fail loading
+      // because we're too late in the compilation chain (aliases to overloaded
+      // symbols will not be properly resolved, see scala.Range, method
+      // `super$++` that fails in UnPickler at LazyTypeRefAndAlias.complete
+      if (sym.isTrait) sym.info // needed so that the type is up to date
+                                // (erasure may add lateINTERFACE to traits)
 
-      sym.hasFlag(Flags.INTERFACE) ||
-      (sym.hasFlag(Flags.JAVA) &&
-       sym.isNonBottomSubClass(definitions.ClassfileAnnotationClass))
-    }
-
-
-    def javaType(t: TypeKind): JType = (t: @unchecked) match {
-      case UNIT            => JType.VOID
-      case BOOL            => JType.BOOLEAN
-      case BYTE            => JType.BYTE
-      case SHORT           => JType.SHORT
-      case CHAR            => JType.CHAR
-      case INT             => JType.INT
-      case LONG            => JType.LONG
-      case FLOAT           => JType.FLOAT
-      case DOUBLE          => JType.DOUBLE
-      case REFERENCE(cls)  => new JObjectType(javaName(cls))
-      case ARRAY(elem)     => new JArrayType(javaType(elem))
-    }
-
-    def javaType(t: Type): JType = javaType(toTypeKind(t))
-
-    def javaType(s: Symbol): JType =
-      if (s.isMethod)
-        new JMethodType(
-          if (s.isClassConstructor) JType.VOID else javaType(s.tpe.resultType),
-          s.tpe.paramTypes.map(javaType).toArray)
-      else
-        javaType(s.tpe)
-
-    def javaTypes(ts: List[TypeKind]): Array[JType] = {
-      val res = new Array[JType](ts.length)
-      var i = 0
-      ts foreach ( t => { res(i) = javaType(t); i += 1 } );
-      res
-    }
-
-    /** Return an abstract file for the given class symbol, with the desired suffix.
-     *  Create all necessary subdirectories on the way.
-     */
-    def getFile(sym: Symbol, cls: JClass, suffix: String): AbstractFile = {
-      val sourceFile = atPhase(currentRun.flattenPhase.prev)(sym.sourceFile)
-      var dir: AbstractFile = settings.outputDirs.outputDirFor(sourceFile)
-      val pathParts = cls.getName().split("[./]").toList
-      for (part <- pathParts.init) {
-        dir = dir.subdirectoryNamed(part)
-      }
-      dir.fileNamed(pathParts.last + suffix)
+      sym.isInterface ||
+      (sym.isJavaDefined && sym.isNonBottomSubClass(ClassfileAnnotationClass))
     }
 
     /** Merge adjacent ranges. */
@@ -1893,4 +1831,49 @@ abstract class GenJVM extends SubComponent {
 
     def assert(cond: Boolean) { assert(cond, "Assertion failed.") }
   }
+
+  /**
+   * Return the Java modifiers for the given symbol.
+   * Java modifiers for classes:
+   *  - public, abstract, final, strictfp (not used)
+   * for interfaces:
+   *  - the same as for classes, without 'final'
+   * for fields:
+   *  - public, private (*)
+   *  - static, final
+   * for methods:
+   *  - the same as for fields, plus:
+   *  - abstract, synchronized (not used), strictfp (not used), native (not used)
+   *
+   *  (*) protected cannot be used, since inner classes 'see' protected members,
+   *      and they would fail verification after lifted.
+   */
+  def javaFlags(sym: Symbol): Int = {
+    def mkFlags(args: Int*) = args.foldLeft(0)(_ | _)
+    // constructors of module classes should be private
+    // PP: why are they only being marked private at this stage and not earlier?
+    val isConsideredPrivate =
+      sym.isPrivate || (sym.isPrimaryConstructor && isTopLevelModule(sym.owner))
+
+    mkFlags(
+      if (isConsideredPrivate) ACC_PRIVATE else ACC_PUBLIC,
+      if (sym.isDeferred || sym.hasAbstractFlag) ACC_ABSTRACT else 0,
+      if (sym.isInterface) ACC_INTERFACE else 0,
+      if (sym.isFinal && !sym.enclClass.isInterface && !sym.isClassConstructor) ACC_FINAL else 0,
+      if (sym.isStaticMember) ACC_STATIC else 0,
+      if (sym.isBridge || sym.hasFlag(Flags.MIXEDIN) && sym.isMethod) ACC_BRIDGE else 0,
+      if (sym.isClass && !sym.isInterface) ACC_SUPER else 0,
+      if (sym.isVarargsMethod) ACC_VARARGS else 0
+    )
+  }
+
+  def isTopLevelModule(sym: Symbol): Boolean =
+    atPhase (currentRun.picklerPhase.next) {
+      sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass
+    }
+
+  def isStaticModule(sym: Symbol): Boolean = {
+    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
+  }
+
 }

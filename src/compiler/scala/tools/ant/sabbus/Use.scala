@@ -1,21 +1,21 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
 
-package scala.tools.ant.sabbus
+package scala.tools.ant
+package sabbus
 
 import java.io.File
 
-import org.apache.tools.ant.taskdefs.MatchingTask
 import org.apache.tools.ant.types.{Path, Reference}
 import org.apache.tools.ant.util.{GlobPatternMapper, SourceFileScanner}
 
-class Use extends MatchingTask {
+class Use extends ScalaMatchingTask {
 
   def setId(input: String) {
     id = Some(input)
@@ -39,8 +39,8 @@ class Use extends MatchingTask {
   private var failOnError: Boolean = true
 
   override def execute() {
-    if (id.isEmpty) error("Mandatory attribute 'id' is not set.")
-    if (sourceDir.isEmpty) error("Mandatory attribute 'srcdir' is not set.")
+    if (id.isEmpty) sys.error("Mandatory attribute 'id' is not set.")
+    if (sourceDir.isEmpty) sys.error("Mandatory attribute 'srcdir' is not set.")
     val compiler = Compilers(id.get)
     if (!destinationDir.isEmpty) compiler.settings.d = destinationDir.get
     val mapper = new GlobPatternMapper()
@@ -58,7 +58,7 @@ class Use extends MatchingTask {
         log("Compiling " + includedFiles.size + " file" + (if (includedFiles.size > 1) "s" else "") + " to " + compiler.settings.d.getAbsolutePath)
         val (errors, warnings) = compiler.compile(includedFiles)
         if (errors > 0)
-          error("Compilation failed with " + errors + " error" + (if (errors > 1) "s" else "") + ".")
+          sys.error("Compilation failed with " + errors + " error" + (if (errors > 1) "s" else "") + ".")
         else if (warnings > 0)
           log("Compilation succeeded with " + warnings + " warning" + (if (warnings > 1) "s" else "") + ".")
       }
@@ -67,7 +67,7 @@ class Use extends MatchingTask {
           ex.printStackTrace
           val errorMsg =
             "Compilation failed because of an internal compiler error (" + msg + "); see the error output for details."
-          if (failOnError) error(errorMsg) else log(errorMsg)
+          if (failOnError) sys.error(errorMsg) else log(errorMsg)
       }
   }
 

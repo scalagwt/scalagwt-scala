@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -10,12 +10,8 @@
 
 package scala.util.automata
 
-
 import scala.util.regexp.{ Base }
-
 import scala.collection.{ mutable, immutable }
-import mutable.{ HashMap }
-import immutable.{ Set }
 
 // todo: replace global variable pos with acc
 
@@ -30,7 +26,7 @@ abstract class BaseBerrySethi {
   protected var pos = 0
 
   // results which hold all info for the NondetWordAutomaton
-  protected var follow: HashMap[Int, Set[Int]] = _
+  protected var follow: mutable.HashMap[Int, Set[Int]] = _
 
   protected var finalTag: Int = _
 
@@ -89,14 +85,12 @@ abstract class BaseBerrySethi {
     case x: Meta    => compFollow1(fol1, x.r)
     case x: Star    => compFollow1(fol1 ++ compFirst(x.r), x.r)
     case x: Sequ    =>
-      var first = emptySet
       x.rs.foldRight(fol1) { (p, fol) =>
         val first = compFollow1(fol, p)
 
         if (p.isNullable) fol ++ first
         else first
       }
-      first
     case _          => throw new IllegalArgumentException("unexpected pattern: " + r.getClass())
   }
 

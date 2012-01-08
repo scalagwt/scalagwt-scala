@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2006-2010 LAMP/EPFL
+ * Copyright 2006-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -7,7 +7,7 @@
 package scala.tools.nsc
 package util
 
-import Chars._
+import scala.reflect.internal.Chars._
 import scala.collection.mutable.{HashMap, ListBuffer, StringBuilder}
 
 /** Utilitity methods for doc comment strings

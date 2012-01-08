@@ -1,30 +1,38 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author Paul Phillips
  */
 
 package scala.tools.nsc
 
-package object interpreter {
-  /** Tracing */
-  def tracing[T](msg: String)(x: T): T = { println("(" + msg + ") " + x) ; x }
+/** The main REPL related classes and values are as follows.
+ *  In addition to standard compiler classes Global and Settings, there are:
+ *
+ *  History: an interface for session history.
+ *  Completion: an interface for tab completion.
+ *  ILoop (formerly InterpreterLoop): The umbrella class for a session.
+ *  IMain (formerly Interpreter): Handles the evolving state of the session
+ *    and handles submitting code to the compiler and handling the output.
+ *  InteractiveReader: how ILoop obtains input.
+ *  History: an interface for session history.
+ *  Completion: an interface for tab completion.
+ *  Power: a repository for more advanced/experimental features.
+ *
+ *  ILoop contains { in: InteractiveReader, intp: IMain, settings: Settings, power: Power }
+ *  InteractiveReader contains { history: History, completion: Completion }
+ *  IMain contains { global: Global }
+ */
+package object interpreter extends ReplConfig with ReplStrings {
+  type JFile          = java.io.File
+  type JClass         = java.lang.Class[_]
+  type JList[T]       = java.util.List[T]
+  type JCollection[T] = java.util.Collection[T]
+  type InputStream    = java.io.InputStream
+  type OutputStream   = java.io.OutputStream
 
-  /** Frequency counter */
-  def freq[T](seq: Seq[T]) = seq groupBy identity mapValues (_.length)
-
-  /** null becomes "", otherwise identity */
-  def onull(s: String) = if (s == null) "" else s
-
-  /** Heuristically strip interpreter wrapper prefixes
-   *  from an interpreter output string.
-   */
-  def stripWrapperGunk(str: String): String = {
-    val wrapregex = """(line[0-9]+\$object[$.])?(\$iw[$.])*"""
-    str.replaceAll(wrapregex, "")
+  private[nsc] implicit def enrichClass[T](clazz: Class[T]) = new RichClass[T](clazz)
+  private[interpreter] implicit def javaCharSeqCollectionToScala(xs: JCollection[_ <: CharSequence]): List[String] = {
+    import collection.JavaConverters._
+    xs.asScala.toList map ("" + _)
   }
-
-  /** Class objects */
-  def classForName(name: String): Option[Class[_]] =
-    try Some(Class forName name)
-    catch { case _: ClassNotFoundException | _: SecurityException => None }
 }

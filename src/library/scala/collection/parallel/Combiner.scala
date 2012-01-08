@@ -1,3 +1,12 @@
+/*                     __                                               *\
+**     ________ ___   / /  ___     Scala API                            **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
+** /____/\___/_/ |_/____/_/ | |                                         **
+**                          |/                                          **
+\*                                                                      */
+
+
 package scala.collection.parallel
 
 
@@ -8,20 +17,24 @@ import scala.collection.generic.Sizing
 
 
 /** The base trait for all combiners.
- *  A combiner lets one construct collections incrementally just like
+ *  A combiner incremental collection construction just like
  *  a regular builder, but also implements an efficient merge operation of two builders
  *  via `combine` method. Once the collection is constructed, it may be obtained by invoking
  *  the `result` method.
  *
+ *  The complexity of the `combine` method should be less than linear for best
+ *  performance. The `result` method doesn't have to be a constant time operation,
+ *  but may be performed in parallel.
+ *
  *  @tparam Elem   the type of the elements added to the builder
  *  @tparam To     the type of the collection the builder produces
  *
- *  @author prokopec
+ *  @author Aleksandar Prokopec
+ *  @since 2.9
  */
-trait Combiner[-Elem, +To] extends Builder[Elem, To] with Sizing with Parallel with TaskSupport {
-  self: EnvironmentPassingCombiner[Elem, To] =>
-
-  type EPC = EnvironmentPassingCombiner[Elem, To]
+trait Combiner[-Elem, +To] extends Builder[Elem, To] with Sizing with Parallel {
+//self: EnvironmentPassingCombiner[Elem, To] =>
+  private[collection] final val tasksupport = getTaskSupport
 
   /** Combines the contents of the receiver builder and the `other` builder,
    *  producing a new builder containing both their elements.
@@ -35,7 +48,13 @@ trait Combiner[-Elem, +To] extends Builder[Elem, To] with Sizing with Parallel w
    *  if they are to be used again.
    *
    *  Also, combining two combiners `c1` and `c2` for which `c1 eq c2` is `true`, that is,
-   *  they are the same objects in memories, always does nothing and returns the first combiner.
+   *  they are the same objects in memory:
+   *
+   *  {{{
+   *  c1.combine(c2)
+   *  }}}
+   *
+   *  always does nothing and returns `c1`.
    *
    *  @tparam N      the type of elements contained by the `other` builder
    *  @tparam NewTo  the type of collection produced by the `other` builder
@@ -47,14 +66,14 @@ trait Combiner[-Elem, +To] extends Builder[Elem, To] with Sizing with Parallel w
 }
 
 
-trait EnvironmentPassingCombiner[-Elem, +To] extends Combiner[Elem, To] {
+/*
+private[collection] trait EnvironmentPassingCombiner[-Elem, +To] extends Combiner[Elem, To] {
   abstract override def result = {
     val res = super.result
-//    res.environment = environment
     res
   }
 }
-
+*/
 
 
 

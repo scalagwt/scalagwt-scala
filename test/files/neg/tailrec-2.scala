@@ -17,10 +17,10 @@ class Bop4[+A](val element: A) extends Super[A] {
 }
 
 object Other {
-  def f[T] : Bop4[T] = error("")
+  def f[T] : Bop4[T] = sys.error("")
 }
 
 object Bop {
-  def m1[A] : Super[A] = error("")
-  def m2[A] : Bop2[A] = error("")
+  def m1[A] : Super[A] = sys.error("")
+  def m2[A] : Bop2[A] = sys.error("")
 }

@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2002-2010 LAMP/EPFL
+ * Copyright 2002-2011 LAMP/EPFL
  * @author Martin Odersky
  */
 
@@ -63,7 +63,6 @@ class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: Pr
         printSourceLine(pos)
     }
   }
-
   def print(pos: Position, msg: String, severity: Severity) {
     printMessage(pos, clabel(severity) + msg)
   }
@@ -95,7 +94,7 @@ class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: Pr
       print(pos, msg, severity)
   }
 
-  def displayPrompt: Unit = try {
+  def displayPrompt(): Unit = try {
     var continue = true
     while (continue) {
       writer.print("r)esume, a)bort: ")

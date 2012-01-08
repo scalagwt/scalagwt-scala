@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -28,7 +28,7 @@ import generic._
  *  @define thatinfo the class of the returned collection. In the standard library configuration,
  *    `That` is always `LinkedList[B]` because an implicit of type `CanBuildFrom[LinkedList, B, LinkedList[B]]`
  *    is defined in object `LinkedList`.
- *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *  @define bfinfo an implicit value of class `CanBuildFrom` which determines the
  *    result class `That` from the current representation type `Repr`
  *    and the new element type `B`. This is usually the `canBuildFrom` value
  *    defined in object `LinkedList`.
@@ -37,10 +37,11 @@ import generic._
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
-@serializable @SerialVersionUID(-7308240733518833071L)
+@SerialVersionUID(-7308240733518833071L)
 class LinkedList[A]() extends LinearSeq[A]
                          with GenericTraversableTemplate[A, LinkedList]
-                         with LinkedListLike[A, LinkedList[A]] {
+                         with LinkedListLike[A, LinkedList[A]]
+                         with Serializable {
   next = this
 
   def this(elem: A, next: LinkedList[A]) {
@@ -59,10 +60,9 @@ class LinkedList[A]() extends LinearSeq[A]
  *  @define coll linked list
  */
 object LinkedList extends SeqFactory[LinkedList] {
-
   override def empty[A]: LinkedList[A] = new LinkedList[A]
-
   implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, LinkedList[A]] = new GenericCanBuildFrom[A]
+
   def newBuilder[A]: Builder[A, LinkedList[A]] =
     (new MutableList) mapResult ((l: MutableList[A]) => l.toLinkedList)
 }

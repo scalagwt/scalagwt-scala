@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -7,17 +7,18 @@ package scala.tools.nsc
 package symtab
 package classfile
 
-import java.lang.{Float, Double}
-import util.{ Position, NoPosition, ShowPickled }
-import collection.mutable.Set
-import reflect.generic.{ PickleBuffer, PickleFormat }
+import java.lang.Float.floatToIntBits
+import java.lang.Double.doubleToLongBits
+import scala.io.Codec
+import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
+import scala.collection.mutable.LinkedHashMap
 import PickleFormat._
 import Flags._
 
 /**
  * Serialize a top-level module and/or class.
  *
- * @see <code>EntryTags.scala</code> for symbol table attribute format.
+ * @see EntryTags.scala for symbol table attribute format.
  *
  * @author Martin Odersky
  * @version 1.0
@@ -29,16 +30,17 @@ abstract class Pickler extends SubComponent {
 
   val phaseName = "pickler"
 
+  currentRun
+
   def newPhase(prev: Phase): StdPhase = new PicklePhase(prev)
 
   class PicklePhase(prev: Phase) extends StdPhase(prev) {
     def apply(unit: CompilationUnit) {
       def pickle(tree: Tree) {
-
         def add(sym: Symbol, pickle: Pickle) = {
           if (currentRun.compiles(sym) && !currentRun.symData.contains(sym)) {
             if (settings.debug.value) log("pickling " + sym)
-            pickle.putSymbol(sym)
+            pickle putSymbol sym
             currentRun.symData(sym) = pickle
           }
         }
@@ -48,28 +50,34 @@ abstract class Pickler extends SubComponent {
             stats foreach pickle
           case ClassDef(_, _, _, _) | ModuleDef(_, _, _) =>
             val sym = tree.symbol
-            val pickle = new Pickle(sym, sym.name.toTermName, sym.owner)
+            val pickle = new Pickle(sym)
             add(sym, pickle)
             add(sym.companionSymbol, pickle)
-            pickle.finish
+            pickle.writeArray()
+            currentRun registerPickle sym
           case _ =>
         }
       }
+      // If there are any erroneous types in the tree, then we will crash
+      // when we pickle it: so let's report an erorr instead.  We know next
+      // to nothing about what happened, but our supposition is a lot better
+      // than "bad type: <error>" in terms of explanatory power.
+      for (t <- unit.body ; if t.isErroneous) {
+        unit.error(t.pos, "erroneous or inaccessible type")
+        return
+      }
+
       pickle(unit.body)
     }
   }
 
-  private class Pickle(root: Symbol, rootName: Name, rootOwner: Symbol)
-        extends PickleBuffer(new Array[Byte](4096), -1, 0) {
-    import scala.collection.mutable.LinkedHashMap
-    private var entries = new Array[AnyRef](256)
-    private var ep = 0
-    private val index = new LinkedHashMap[AnyRef, Int]
-
-    // collect higher-order type params
-    //private var locals: Set[Symbol] = Set()
-
-//    private var boundSyms: List[Symbol] = Nil
+  private class Pickle(root: Symbol) extends PickleBuffer(new Array[Byte](4096), -1, 0) {
+    private val rootName  = root.name.toTermName
+    private val rootOwner = root.owner
+    private var entries   = new Array[AnyRef](256)
+    private var ep        = 0
+    private val index     = new LinkedHashMap[AnyRef, Int]
+    private lazy val nonClassRoot = root.ownersIterator.find(! _.isClass) getOrElse NoSymbol
 
     private def isRootSym(sym: Symbol) =
       sym.name.toTermName == rootName && sym.owner == rootOwner
@@ -79,7 +87,11 @@ abstract class Pickler extends SubComponent {
      *  Question: Should this be done for refinement class symbols as well?
      */
     private def localizedOwner(sym: Symbol) =
-      if (isLocal(sym) && !isRootSym(sym) && !isLocal(sym.owner)) root
+      if (isLocal(sym) && !isRootSym(sym) && !isLocal(sym.owner))
+        // don't use a class as the localized owner for type parameters that are not owned by a class: those are not instantiated by asSeenFrom
+        // however, they would suddenly be considered by asSeenFrom if their localized owner became a class (causing the crashes of #4079, #2741)
+        (if(sym.isTypeParameter && !sym.owner.isClass) nonClassRoot
+         else root)
       else sym.owner
 
     /** Is root in symbol.owner*, or should it be treated as a local symbol
@@ -91,7 +103,7 @@ abstract class Pickler extends SubComponent {
       (isRootSym(sym) ||
        sym.isRefinementClass ||
        sym.isAbstractType && sym.hasFlag(EXISTENTIAL) || // existential param
-       (sym hasFlag PARAM) ||
+       sym.isParameter ||
        isLocal(sym.owner))
 
     private def staticAnnotations(annots: List[AnnotationInfo]) =
@@ -100,11 +112,10 @@ abstract class Pickler extends SubComponent {
 
     // Phase 1 methods: Populate entries/index ------------------------------------
 
-    /** Store entry <code>e</code> in index at next available position unless
+    /** Store entry e in index at next available position unless
      *  it is already there.
      *
-     *  @param entry ...
-     *  @return      <code>true</code> iff entry is new.
+     *  @return      true iff entry is new.
      */
     private def putEntry(entry: AnyRef): Boolean = index.get(entry) match {
       case Some(_) => false
@@ -120,8 +131,7 @@ abstract class Pickler extends SubComponent {
         true
     }
 
-    /** Store symbol in <code>index</code>. If symbol is local, also store
-     * everything it refers to.
+    /** Store symbol in index. If symbol is local, also store everything it references.
      *
      *  @param sym ...
      */
@@ -136,15 +146,15 @@ abstract class Pickler extends SubComponent {
             putType(sym.typeOfThis);
           putSymbol(sym.alias)
           if (!sym.children.isEmpty) {
-            val (locals, globals) = sym.children.toList.partition(_.isLocalClass)
+            val (locals, globals) = sym.children partition (_.isLocalClass)
             val children =
               if (locals.isEmpty) globals
               else {
-                val localChildDummy = sym.newClass(sym.pos, nme.LOCALCHILD)
+                val localChildDummy = sym.newClass(sym.pos, tpnme.LOCAL_CHILD)
                 localChildDummy.setInfo(ClassInfoType(List(sym.tpe), EmptyScope, localChildDummy))
-                localChildDummy :: globals
+                globals + localChildDummy
               }
-            putChildren(sym, children sortBy (_.sealedSortName))
+            putChildren(sym, children.toList sortBy (_.sealedSortName))
           }
           for (annot <- staticAnnotations(sym.annotations.reverse))
             putAnnotation(sym, annot)
@@ -158,13 +168,11 @@ abstract class Pickler extends SubComponent {
     private def putSymbols(syms: List[Symbol]) =
       syms foreach putSymbol
 
-    /** Store type and everything it refers to in map <code>index</code>.
-     *
-     *  @param tp ...
+    /** Store type and everything it refers to in map index.
      */
     private def putType(tp: Type): Unit = if (putEntry(tp)) {
       tp match {
-        case NoType | NoPrefix | DeBruijnIndex(_, _) =>
+        case NoType | NoPrefix /*| DeBruijnIndex(_, _) */ =>
           ;
         case ThisType(sym) =>
           putSymbol(sym)
@@ -191,6 +199,8 @@ abstract class Pickler extends SubComponent {
           putSymbol(clazz); putTypes(parents); putSymbols(decls.toList)
         case MethodType(params, restpe) =>
           putType(restpe); putSymbols(params)
+        case NullaryMethodType(restpe) =>
+          putType(restpe)
         case PolyType(tparams, restpe) =>
           /** no longer needed since all params are now local
           tparams foreach { tparam =>
@@ -359,7 +369,7 @@ abstract class Pickler extends SubComponent {
           putTrees(args)
 
         case Super(qual, mix) =>
-          putEntry(qual:Name)
+          putTree(qual)
           putEntry(mix:Name)
 
         case This(qual) =>
@@ -416,8 +426,7 @@ abstract class Pickler extends SubComponent {
       putEntry(privateWithin)
     }
 
-    /** Store a constant in map <code>index</code> along with
-     *  anything it references.
+    /** Store a constant in map index, along with anything it references.
      */
     private def putConstant(c: Constant) {
       if (putEntry(c)) {
@@ -479,10 +488,7 @@ abstract class Pickler extends SubComponent {
 
     // Phase 2 methods: Write all entries to byte array ------------------------------
 
-    /** Write a reference to object, i.e., the object's number in the map
-     *  <code>index</code>.
-     *
-     *  @param ref ...
+    /** Write a reference to object, i.e., the object's number in the map index.
      */
     private def writeRef(ref: AnyRef) { writeNat(index(ref)) }
     private def writeRefs(refs: List[AnyRef]) { refs foreach writeRef }
@@ -497,14 +503,16 @@ abstract class Pickler extends SubComponent {
       writeRef(sym.name)
       writeRef(localizedOwner(sym))
       writeLongNat((rawFlagsToPickled(sym.flags & PickledFlags)))
-      if (sym.privateWithin != NoSymbol) writeRef(sym.privateWithin)
+      if (sym.hasAccessBoundary) writeRef(sym.privateWithin)
       writeRef(sym.info)
     }
 
     /** Write a name in UTF8 format. */
     private def writeName(name: Name) {
       ensureCapacity(name.length * 3)
-      writeIndex = name.copyUTF8(bytes, writeIndex)
+      val utfBytes = Codec toUTF8 name.toString
+      compat.Platform.arraycopy(utfBytes, 0, bytes, writeIndex, utfBytes.length)
+      writeIndex += utfBytes.length
     }
 
     /** Write an annotation */
@@ -585,20 +593,24 @@ abstract class Pickler extends SubComponent {
         case ClassInfoType(parents, decls, clazz) =>
           writeRef(clazz); writeRefs(parents); CLASSINFOtpe
         case mt @ MethodType(formals, restpe) =>
-          writeRef(restpe); writeRefs(formals)
-          if (mt.isImplicit) IMPLICITMETHODtpe
-          else METHODtpe
-        case PolyType(tparams, restpe) =>
+          writeRef(restpe); writeRefs(formals) ; METHODtpe
+        case mt @ NullaryMethodType(restpe) =>
+          // reuse POLYtpe since those can never have an empty list of tparams.
+          // TODO: is there any way this can come back and bite us in the bottom?
+          // ugliness and thrift aside, this should make this somewhat more backward compatible
+          // (I'm not sure how old scalac's would deal with nested PolyTypes, as these used to be folded into one)
+          writeRef(restpe); writeRefs(Nil); POLYtpe
+        case PolyType(tparams, restpe) => // invar: tparams nonEmpty
           writeRef(restpe); writeRefs(tparams); POLYtpe
         case ExistentialType(tparams, restpe) =>
           writeRef(restpe); writeRefs(tparams); EXISTENTIALtpe
-        case DeBruijnIndex(l, i) =>
-          writeNat(l); writeNat(i); DEBRUIJNINDEXtpe
+        // case DeBruijnIndex(l, i) =>
+        //   writeNat(l); writeNat(i); DEBRUIJNINDEXtpe
         case c @ Constant(_) =>
           if (c.tag == BooleanTag) writeLong(if (c.booleanValue) 1 else 0)
           else if (ByteTag <= c.tag && c.tag <= LongTag) writeLong(c.longValue)
-          else if (c.tag == FloatTag) writeLong(Float.floatToIntBits(c.floatValue))
-          else if (c.tag == DoubleTag) writeLong(Double.doubleToLongBits(c.doubleValue))
+          else if (c.tag == FloatTag) writeLong(floatToIntBits(c.floatValue))
+          else if (c.tag == DoubleTag) writeLong(doubleToLongBits(c.doubleValue))
           else if (c.tag == StringTag) writeRef(newTermName(c.stringValue))
           else if (c.tag == ClassTag) writeRef(c.typeValue)
           else if (c.tag == EnumTag) writeRef(c.symbolValue)
@@ -979,7 +991,8 @@ abstract class Pickler extends SubComponent {
     }
 
     /** Print entry for diagnostics */
-    private def printEntry(entry: AnyRef) {
+    def printEntryAtIndex(idx: Int) = printEntry(entries(idx))
+    def printEntry(entry: AnyRef) {
       def printRef(ref: AnyRef) {
         print(index(ref)+
               (if (ref.isInstanceOf[Name]) "("+ref+") " else " "))
@@ -990,7 +1003,7 @@ abstract class Pickler extends SubComponent {
         printRef(sym.name)
         printRef(localizedOwner(sym))
         print(flagsToString(sym.flags & PickledFlags)+" ")
-        if (sym.privateWithin != NoSymbol) printRef(sym.privateWithin)
+        if (sym.hasAccessBoundary) printRef(sym.privateWithin)
         printRef(sym.info)
       }
       def printBody(entry: AnyRef) = entry match {
@@ -1035,15 +1048,14 @@ abstract class Pickler extends SubComponent {
         case ClassInfoType(parents, decls, clazz) =>
           print("CLASSINFOtpe "); printRef(clazz); printRefs(parents);
         case mt @ MethodType(formals, restpe) =>
-          print(if (mt.isImplicit) "IMPLICITMETHODtpe " else "METHODtpe ");
-          printRef(restpe); printRefs(formals)
+          print("METHODtpe"); printRef(restpe); printRefs(formals)
         case PolyType(tparams, restpe) =>
           print("POLYtpe "); printRef(restpe); printRefs(tparams);
         case ExistentialType(tparams, restpe) =>
           print("EXISTENTIALtpe "); printRef(restpe); printRefs(tparams);
           print("||| "+entry)
-        case DeBruijnIndex(l, i) =>
-          print("DEBRUIJNINDEXtpe "); print(l+" "+i)
+        // case DeBruijnIndex(l, i) =>
+        //   print("DEBRUIJNINDEXtpe "); print(l+" "+i)
         case c @ Constant(_) =>
           print("LITERAL ")
           if (c.tag == BooleanTag) print("Boolean "+(if (c.booleanValue) 1 else 0))
@@ -1088,27 +1100,15 @@ abstract class Pickler extends SubComponent {
     }
 
     /** Write byte array */
-    def finish {
+    def writeArray() {
       assert(writeIndex == 0)
       writeNat(MajorVersion)
       writeNat(MinorVersion)
       writeNat(ep)
-      if (showSig) {
-        println("Pickled info for "+rootName+" V"+MajorVersion+"."+MinorVersion)
-      }
-      for (i <- 0 until ep) {
-        if (showSig/* || rootName.toString == "StaticCompletion"*/) {
-          print((i formatted "%3d: ")+(writeIndex formatted "%5d: "))
-          printEntry(entries(i))
-        }
-        writeEntry(entries(i))
-      }
-      if (settings.Xshowcls.value == rootName.toString) {
-        readIndex = 0
-        ShowPickled.printFile(this, Console.out)
-      }
+
+      entries take ep foreach writeEntry
     }
 
-    override def toString() = "" + rootName + " in " + rootOwner
+    override def toString = "" + rootName + " in " + rootOwner
   }
 }

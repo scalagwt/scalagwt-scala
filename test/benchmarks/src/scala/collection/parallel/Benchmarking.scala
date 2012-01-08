@@ -64,6 +64,9 @@ trait BenchmarkRegister {
   register(parallel_array.PatchHalf)
   register(parallel_array.PadToDouble)
   register(parallel_array.AggregateLight)
+  register(parallel_array.ScanLight)
+  register(parallel_array.ScanMedium)
+  register(parallel_array.GroupByLight)
   register(parallel_array.MatrixMultiplication)
 
   // parallel views
@@ -71,6 +74,12 @@ trait BenchmarkRegister {
   register(parallel_view.DummyViewBenchList.MediumReduce)
   register(parallel_view.DummyViewBenchList.ModifyThenReduce)
   register(parallel_view.DummyViewBenchList.ModifyThenForce)
+  register(parallel_view.DummyViewBenchList.Iteration)
+  register(parallel_view.DummyViewBenchList.IterationS)
+  register(parallel_view.DummyViewBenchList.IterationM)
+  register(parallel_view.DummyViewBenchList.IterationA)
+  register(parallel_view.DummyViewBenchList.IterationZ)
+  register(parallel_view.DummyViewBenchList.IterationP)
 
   // parallel ranges
   register(parallel_range.RangeBenches.Reduce)
@@ -96,10 +105,38 @@ trait BenchmarkRegister {
   register(hashtries.MultipleCombine)
 
   // parallel hash trie benchmarks
-  register(hashtries.RefParallelHashTrieBenches.Reduce)
-  register(hashtries.RefParallelHashTrieBenches.ReduceMedium)
-  register(hashtries.RefParallelHashTrieBenches.Map)
-  register(hashtries.RefParallelHashTrieBenches.Map2)
+  register(hashtries.RefParHashTrieBenches.Reduce)
+  register(hashtries.RefParHashTrieBenches.ReduceMedium)
+  register(hashtries.RefParHashTrieBenches.Reduce2)
+  register(hashtries.RefParHashTrieBenches.Map)
+  register(hashtries.RefParHashTrieBenches.Map2)
+
+  // parallel hash table map benchmarks
+  register(hashtables.RefParHashTableBenches.Reduce)
+  register(hashtables.RefParHashTableBenches.Reduce2)
+  register(hashtables.RefParHashTableBenches.Foreach)
+  register(hashtables.RefParHashTableBenches.ForeachSet)
+  register(hashtables.RefParHashTableBenches.Map)
+  register(hashtables.RefParHashTableBenches.Map2)
+  register(hashtables.RefParHashTableBenches.HeavyMap)
+  register(hashtables.RefParHashTableBenches.Filter)
+  register(hashtables.RefParHashTableBenches.FlatMap)
+  register(hashtables.RefParHashTableBenches.FlatMap2)
+
+  // parallel hash table set benchmarks
+  register(hashtables.RefParHashTableSetBenches.Reduce)
+  register(hashtables.RefParHashTableSetBenches.Reduce2)
+  register(hashtables.RefParHashTableSetBenches.Foreach)
+  register(hashtables.RefParHashTableSetBenches.ForeachSet)
+  register(hashtables.RefParHashTableSetBenches.Map)
+  register(hashtables.RefParHashTableSetBenches.Map2)
+  register(hashtables.RefParHashTableSetBenches.HeavyMap)
+  register(hashtables.RefParHashTableSetBenches.Filter)
+  register(hashtables.RefParHashTableSetBenches.FlatMap)
+
+  // general examples
+  register(misc.Coder)
+  register(misc.Loader)
 }
 
 
@@ -110,8 +147,8 @@ object Benchmarking extends BenchmarkRegister {
 
   def printHelp {
     println("Must enter at least four arguments: <collection> <benchmark> <size of the collection> <type>")
-    println("  Example: ParallelArray reduce-light 50000 par")
-    println("  Example: ParallelArray -all 50000 par")
+    println("  Example: ParArray reduce-light 50000 par")
+    println("  Example: ParArray -all 50000 par")
     println
     println("General synthax: <collection> <benchmark> <size> <type> <parallelism-level>")
     println("          <collection>  - name of the collection to test, `-all` runs benchmarks for all collections")

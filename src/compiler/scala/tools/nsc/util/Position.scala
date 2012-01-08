@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  *
  */
@@ -96,7 +96,7 @@ trait Position {
   /** The end of the position's range, or point if not a range position */
   def endOrPoint: Int = point
 
-  @deprecated("use point instead")
+  @deprecated("use point instead", "2.9.0")
   def offset: Option[Int] = if (isDefined) Some(point) else None
 
   /** The same position with a different start value (if a range) */
@@ -132,8 +132,8 @@ trait Position {
   def focusEnd = this
 
   /** Does this position include the given position `pos`.
-   *  This holds this is a range position and its range [start..end]
-   *  is the same or covers the range of the given position.
+   *  This holds if `this` is a range position and its range [start..end]
+   *  is the same or covers the range of the given position, which may or may not be a range position.
    */
   def includes(pos: Position) = false
 
@@ -154,7 +154,7 @@ trait Position {
    *  do not share a common point).
    */
   def properlyPrecedes(pos: Position) =
-    isDefined && pos.isDefined && startOrPoint < pos.endOrPoint
+    isDefined && pos.isDefined && endOrPoint < pos.startOrPoint
 
   /** Does this position overlap with that position?
    *  This holds if both positions are ranges and there is an interval of
@@ -173,6 +173,9 @@ trait Position {
   def line: Int = throw new UnsupportedOperationException("Position.line")
 
   def column: Int = throw new UnsupportedOperationException("Position.column")
+
+  /** Convert this to a position around `point` that spans a single source line */
+  def toSingleLine: Position = this
 
   def lineContent: String =
     if (isDefined) source.lineToString(line - 1)
@@ -254,6 +257,15 @@ extends OffsetPosition(source, point) {
   override def includes(pos: Position) = pos.isDefined && start <= pos.startOrPoint && pos.endOrPoint <= end
   override def union(pos: Position) =
     if (pos.isRange) new RangePosition(source, start min pos.start, point, end max pos.end) else this
+
+  override def toSingleLine: Position = source match {
+    case bs: BatchSourceFile
+    if end > 0 && bs.offsetToLine(start) < bs.offsetToLine(end - 1) =>
+      val pointLine = bs.offsetToLine(point)
+      new RangePosition(source, bs.lineToOffset(pointLine), point, bs.lineToOffset(pointLine + 1))
+    case _ => this
+  }
+
   override def toString = "RangePosition("+source+", "+start+", "+point+", "+end+")"
   override def show = "["+start+":"+end+"]"
   private var focusCache: Position = NoPosition

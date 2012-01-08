@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -11,7 +11,7 @@ package scala.collection
 package generic
 
 import mutable.Builder
-
+import scala.annotation.implicitNotFound
 
 /** A base trait for builder factories.
  *
@@ -25,6 +25,7 @@ import mutable.Builder
  *  @author Adriaan Moors
  *  @since 2.8
  */
+@implicitNotFound(msg = "Cannot construct a collection of type ${To} with elements of type ${Elem} based on a collection of type ${From}.")
 trait CanBuildFrom[-From, -Elem, +To] {
 
   /** Creates a new builder on request of a collection.

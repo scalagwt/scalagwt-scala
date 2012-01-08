@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -12,7 +12,7 @@ package io
 
 import java.io.{
   FileInputStream, FileOutputStream, BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter,
-  BufferedInputStream, BufferedOutputStream, IOException, PrintStream, File => JFile }
+  BufferedInputStream, BufferedOutputStream, IOException, PrintStream, PrintWriter, Closeable => JCloseable }
 import java.nio.channels.{ Channel, FileChannel }
 import scala.io.Codec
 
@@ -22,12 +22,19 @@ object File {
 
   def apply(path: Path)(implicit codec: Codec) = new File(path.jfile)(codec)
 
-  // Create a temporary file
-  def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null) =
-    apply(JFile.createTempFile(prefix, suffix, dir))
+  // Create a temporary file, which will be deleted upon jvm exit.
+  def makeTemp(prefix: String = Path.randomPrefix, suffix: String = null, dir: JFile = null) = {
+    val jfile = JFile.createTempFile(prefix, suffix, dir)
+    jfile.deleteOnExit()
+    apply(jfile)
+  }
 
-  type Closeable = { def close(): Unit }
-  def closeQuietly(target: Closeable) {
+  type HasClose = { def close(): Unit }
+
+  def closeQuietly(target: HasClose) {
+    try target.close() catch { case e: IOException => }
+  }
+  def closeQuietly(target: JCloseable) {
     try target.close() catch { case e: IOException => }
   }
 
@@ -36,16 +43,23 @@ object File {
   // trigger java.lang.InternalErrors later when using it concurrently.  We ignore all
   // the exceptions so as not to cause spurious failures when no write access is available,
   // e.g. google app engine.
-  try {
-    val tmp = JFile.createTempFile("bug6503430", null, null)
-    val in = new FileInputStream(tmp).getChannel()
-    val out = new FileOutputStream(tmp, true).getChannel()
-    out.transferFrom(in, 0, 0)
-    tmp.delete()
-  }
-  catch {
-    case _: IllegalArgumentException | _: IllegalStateException | _: IOException | _: SecurityException => ()
-  }
+  //
+  // XXX need to put this behind a setting.
+  //
+  // try {
+  //   import Streamable.closing
+  //   val tmp = JFile.createTempFile("bug6503430", null, null)
+  //   try closing(new FileInputStream(tmp)) { in =>
+  //     val inc = in.getChannel()
+  //     closing(new FileOutputStream(tmp, true)) { out =>
+  //       out.getChannel().transferFrom(inc, 0, 0)
+  //     }
+  //   }
+  //   finally tmp.delete()
+  // }
+  // catch {
+  //   case _: IllegalArgumentException | _: IllegalStateException | _: IOException | _: SecurityException => ()
+  // }
 }
 import File._
 import Path._
@@ -97,6 +111,9 @@ class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) w
   def bufferedWriter(append: Boolean, codec: Codec): BufferedWriter =
     new BufferedWriter(writer(append, codec))
 
+  def printWriter(): PrintWriter = new PrintWriter(bufferedWriter(), true)
+  def printWriter(append: Boolean): PrintWriter = new PrintWriter(bufferedWriter(append), true)
+
   /** Creates a new file and writes all the Strings to it. */
   def writeAll(strings: String*): Unit = {
     val out = bufferedWriter()
@@ -104,11 +121,28 @@ class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) w
     finally out close
   }
 
+  def writeBytes(bytes: Array[Byte]): Unit = {
+    val out = bufferedOutput()
+    try out write bytes
+    finally out close
+  }
+
   def appendAll(strings: String*): Unit = {
     val out = bufferedWriter(append = true)
     try strings foreach (out write _)
+    finally out.close()
+  }
+
+  /** Calls println on each string (so it adds a newline in the PrintWriter fashion.) */
+  def printlnAll(strings: String*): Unit = {
+    val out = printWriter()
+    try strings foreach (out println _)
     finally out close
   }
+
+  def safeSlurp(): Option[String] =
+    try Some(slurp())
+    catch { case _: IOException => None }
 
   def copyTo(destPath: Path, preserveFileDate: Boolean = false): Boolean = {
     val CHUNK = 1024 * 1024 * 16  // 16 MB
@@ -132,7 +166,7 @@ class File(jfile: JFile)(implicit constructorCodec: Codec) extends Path(jfile) w
         pos += out.transferFrom(in, pos, count)
       }
     }
-    finally List[Closeable](out, out_s, in, in_s) foreach closeQuietly
+    finally List[HasClose](out, out_s, in, in_s) foreach closeQuietly
 
     if (this.length != dest.length)
       fail("Failed to completely copy %s to %s".format(name, dest.name))

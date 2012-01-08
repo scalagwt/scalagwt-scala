@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -7,11 +7,10 @@ package scala.tools.nsc
 package typechecker
 
 import symtab.Flags._
-import transform.{InfoTransform, TypingTransformers}
-import scala.tools.nsc.util.{Position, NoPosition}
+import transform.{ InfoTransform, TypingTransformers }
 import scala.collection.mutable.ListBuffer
 
-abstract class DeVirtualize extends InfoTransform with TypingTransformers {
+abstract class DeVirtualize /* extends InfoTransform with TypingTransformers {
 
   import global._
   import definitions._
@@ -233,7 +232,7 @@ abstract class DeVirtualize extends InfoTransform with TypingTransformers {
     val param = clazz.newMethod(clazz.pos, paramFieldName(clazz, index))
       .setFlag(PROTECTED | LOCAL | DEFERRED | EXPANDEDNAME | SYNTHETIC | STABLE)
     atPhase(ownPhase.next) {
-      param.setInfo(PolyType(List(), tpe))
+      param.setInfo(NullaryMethodType(tpe))
     }
     param
   }
@@ -295,7 +294,7 @@ abstract class DeVirtualize extends InfoTransform with TypingTransformers {
     factory setInfo new PolyTypeCompleter(factory, clazz) {
       private def copyType(tpe: Type): Type = tpe match {
         case MethodType(formals, restpe) => MethodType(formals, copyType(restpe))
-        case PolyType(List(), restpe) => PolyType(List(), copyType(restpe))
+        case NullaryMethodType(restpe) => NullaryMethodType(copyType(restpe))
         case PolyType(_, _) => abort("bad case: "+tpe)
         case _ => owner.thisType.memberType(abstractType(clazz))
       }
@@ -395,7 +394,7 @@ abstract class DeVirtualize extends InfoTransform with TypingTransformers {
           case (pt, i) =>
             val pfield = cclazz.newMethod(cclazz.pos, paramFieldName(clazz, i))
               .setFlag(PROTECTED | LOCAL | EXPANDEDNAME | SYNTHETIC | STABLE)
-              .setInfo(PolyType(List(), pt))
+              .setInfo(NullaryMethodType(pt))
             cclazz.info.decls enter pfield
             atPos(factory.pos) {
               DefDef(pfield, Ident(fixParamName(i)))
@@ -464,7 +463,7 @@ abstract class DeVirtualize extends InfoTransform with TypingTransformers {
       val bridge = meth.cloneSymbol(cclazz)
         .resetFlag(notOVERRIDE | notFINAL)
       cclazz.info.decls.enter(bridge)
-      val superRef: Tree = Select(Super(cclazz, nme.EMPTY.toTypeName), meth)
+      val superRef: Tree = Select(Super(cclazz, tpnme.EMPTY), meth)
       DefDef(bridge, gen.mkForwarder(superRef, bridge.paramss))
     }
 
@@ -640,5 +639,7 @@ maps to:
 
     def newD(z:Int): D = new DC2(z).asInstanceOf[D]
   }
+
+*/
 
 */

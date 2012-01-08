@@ -2,7 +2,7 @@ package scala.collection.parallel.benchmarks.parallel_array
 
 
 import scala.collection.parallel.benchmarks._
-import scala.collection.parallel.mutable.ParallelArray
+import scala.collection.parallel.mutable.ParArray
 import extra166y.{ParallelArray => JSR166Array}
 
 
@@ -67,7 +67,7 @@ extends Bench with SequentialOps[T] {
   val papool = new jsr166y.ForkJoinPool(parallelism)
   papool.setMaximumPoolSize(parallelism)
 
-  var pa: ParallelArray[T] = null
+  var pa: ParArray[T] = null
   var jsrarr: JSR166Array[T] = null
   reset
 
@@ -76,8 +76,8 @@ extends Bench with SequentialOps[T] {
       arr = arrcreator(size)
       for (i <- 0 until size) arr(i) = elemcreator(i)
     case "par" =>
-      pa = new ParallelArray[T](size)
-      pa.environment = forkjoinpool
+      pa = new ParArray[T](size)
+      collection.parallel.tasksupport.environment = forkjoinpool
       for (i <- 0 until size) pa(i) = elemcreator(i)
     case "jsr" =>
       jsrarr  = JSR166Array.create(size, cls, papool)

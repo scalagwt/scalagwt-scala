@@ -45,13 +45,11 @@ public abstract class Assembly extends CustomAttributeProvider {
 // 	    dir = dir.getCanonicalFile();
 // 	} catch (java.io.IOException e) {}
 
-	if (name.endsWith(".exe") || name.endsWith(".EXE") ||
-	    name.endsWith(".dll") || name.endsWith(".DLL"))
-	    {
+	if (name.toUpperCase().endsWith(".EXE") || name.toUpperCase().endsWith(".DLL")) {
 		file = new File(dir, name);
 		pefile = getPEFile(file);
 		name = name.substring(0, name.length() - 4);
-	    }
+	}
 
 	File adir = pefile == null ? new File(dir, name) : null;
 
@@ -118,7 +116,9 @@ public abstract class Assembly extends CustomAttributeProvider {
 	PEFile pefile = null;
 	try { pefile = new PEFile(f.getAbsolutePath()); }
 	catch (FileNotFoundException e) {}
-	catch (RuntimeException e) {}
+	catch (RuntimeException e) {
+            java.lang.System.out.println("swallowed RuntimeException at getPEFile");
+    }
 	return pefile;
     }
 

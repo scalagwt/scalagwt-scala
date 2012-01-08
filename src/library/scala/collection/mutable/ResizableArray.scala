@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -16,7 +16,7 @@ import generic._
 /** This class is used internally to implement data structures that
  *  are based on resizable arrays.
  *
- *  @tparam A    type of the elements contained in this resizeable array.
+ *  @tparam A    type of the elements contained in this resizable array.
  *
  *  @author  Matthias Zenger, Burak Emir
  *  @author Martin Odersky
@@ -30,8 +30,7 @@ trait ResizableArray[A] extends IndexedSeq[A]
   override def companion: GenericCompanion[ResizableArray] = ResizableArray
 
   protected def initialSize: Int = 16
-  protected var array: Array[AnyRef] = new Array[AnyRef](initialSize max 1)
-
+  protected var array: Array[AnyRef] = new Array[AnyRef](math.max(initialSize, 1))
   protected var size0: Int = 0
 
   //##########################################################################
@@ -51,9 +50,13 @@ trait ResizableArray[A] extends IndexedSeq[A]
     array(idx) = elem.asInstanceOf[AnyRef]
   }
 
-  override def foreach[U](f: A =>  U) {
+  override def foreach[U](f: A => U) {
     var i = 0
-    while (i < size) {
+    // size is cached here because profiling reports a lot of time spent calling
+    // it on every iteration.  I think it's likely a profiler ghost but it doesn't
+    // hurt to lift it into a local.
+    val top = size
+    while (i < top) {
       f(array(i).asInstanceOf[A])
       i += 1
     }
@@ -91,12 +94,10 @@ trait ResizableArray[A] extends IndexedSeq[A]
       var newsize = array.length * 2
       while (n > newsize)
         newsize = newsize * 2
-    // println("Internal array before, size " + size0 + ": " + array.toList)
+
       val newar: Array[AnyRef] = new Array(newsize)
-      Array.copy(array, 0, newar, 0, size0)
-    // println("Internal array after,  size " + size0 + ": " + array.toList)
+      compat.Platform.arraycopy(array, 0, newar, 0, size0)
       array = newar
-    // println("New array after,  size      " + size0 + ": " + newar.toList)
     }
   }
 
@@ -111,7 +112,7 @@ trait ResizableArray[A] extends IndexedSeq[A]
   /** Move parts of the array.
    */
   protected def copy(m: Int, n: Int, len: Int) {
-    Array.copy(array, m, array, n, len)
+    compat.Platform.arraycopy(array, m, array, n, len)
   }
 }
 

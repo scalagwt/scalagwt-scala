@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -84,7 +84,7 @@ abstract class Models {
       }
     } else {
       val ddef = tree.asInstanceOf[ValOrDefDef];
-      if (ddef.mods.hasFlag(symtab.Flags.MUTABLE)) VAR;
+      if (ddef.mods.isMutable) VAR;
       else VAL;
     }
   }

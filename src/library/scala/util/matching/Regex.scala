@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -10,9 +10,7 @@
 
 package scala.util.matching
 
-import java.util.regex.{Pattern, Matcher}
-import collection.immutable.List
-import collection.{Iterator, Seq}
+import java.util.regex.{ Pattern, Matcher }
 
 /** This class provides methods for creating and using regular expressions.
  *  It is based on the regular expressions of the JDK since 1.4.
@@ -31,9 +29,8 @@ import collection.{Iterator, Seq}
  *  @param regex      A string representing a regular expression
  *  @param groupNames A mapping from names to indices in capture groups
  */
-@serializable
 @SerialVersionUID(-2094783597747625537L)
-class Regex(regex: String, groupNames: String*) {
+class Regex(regex: String, groupNames: String*) extends Serializable {
 
   import Regex._
 
@@ -115,20 +112,15 @@ class Regex(regex: String, groupNames: String*) {
    */
   def replaceAllIn(target: java.lang.CharSequence, replacer: Match => String): String = {
     val it = new Regex.MatchIterator(target, this, groupNames).replacementData
-    while (it.hasNext) {
-      val matchdata = it.next
-      it.replace(replacer(matchdata))
-    }
+    it foreach (md => it replace replacer(md))
     it.replaced
   }
 
   def replaceSomeIn(target: java.lang.CharSequence, replacer: Match => Option[String]): String = {
     val it = new Regex.MatchIterator(target, this, groupNames).replacementData
-    while (it.hasNext) {
-      val matchdata = it.next
-      val replaceopt = replacer(matchdata)
-      if (replaceopt != None) it.replace(replaceopt.get)
-    }
+    for (matchdata <- it ; replacement <- replacer(matchdata))
+      it replace replacement
+
     it.replaced
   }
 
@@ -364,6 +356,3 @@ object Regex {
     def replace(rs: String) = matcher.appendReplacement(sb, rs)
   }
 }
-
-
-

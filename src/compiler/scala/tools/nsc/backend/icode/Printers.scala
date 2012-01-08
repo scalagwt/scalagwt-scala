@@ -1,5 +1,5 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -26,8 +26,8 @@ trait Printers { self: ICodes =>
 
     def setWriter(w: PrintWriter) { out = w }
 
-    def indent { margin += TAB }
-    def undent { margin -= TAB }
+    def indent() { margin += TAB }
+    def undent() { margin -= TAB }
 
     def print(s: String) { out.print(s) }
     def print(o: Any) { print(o.toString()) }
@@ -37,7 +37,7 @@ trait Printers { self: ICodes =>
       println
     }
 
-    def println {
+    def println() {
       out.println()
       var i = 0
       while (i < margin) {
@@ -58,9 +58,7 @@ trait Printers { self: ICodes =>
       case x :: xs  => pr(x); print(sep); printList(pr)(xs, sep)
     }
 
-    private var clazz: IClass = _
     def printClass(cls: IClass) {
-      this.clazz = cls;
       print(cls.symbol.toString()); print(" extends ");
       printList(cls.symbol.info.parents, ", ");
       indent; println(" {");
@@ -83,7 +81,7 @@ trait Printers { self: ICodes =>
       print("("); printList(printParam)(m.params, ", "); print(")");
       print(": "); print(m.symbol.info.resultType)
 
-      if (!m.isDeferred) {
+      if (!m.isAbstractMethod) {
         println(" {")
         println("locals: " + m.locals.mkString("", ", ", ""))
         println("startBlock: " + m.code.startBlock)
@@ -120,14 +118,14 @@ trait Printers { self: ICodes =>
       print(": ");
       if (settings.debug.value) print("pred: " + bb.predecessors + " succs: " + bb.successors + " flags: " + bb.flagsString)
       indent; println
-      bb foreach printInstruction
+      bb.toList foreach printInstruction
       undent; println
     }
 
     def printInstruction(i: Instruction) {
 //      if (settings.Xdce.value)
 //        print(if (i.useful) "   " else " * ");
-      if (i.pos.isDefined) print(i.pos.line.toString + "\t") else print("undef\t")
+      if (i.pos.isDefined) print(i.pos.line.toString + "\t") else print("?\t")
       println(i.toString())
     }
   }

@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author Paul Phillips
  */
 
@@ -12,10 +12,10 @@ package interpreter
  *  as is also in progress with error messages.
  */
 trait CompletionOutput {
-  self: Completion =>
+  val global: Global
 
   import global._
-  import definitions.{ NothingClass, AnyClass, isTupleType, isFunctionType, isRepeatedParamType }
+  import definitions.{ NothingClass, AnyClass, isTupleTypeOrSubtype, isFunctionType, isRepeatedParamType }
 
   /** Reducing fully qualified noise for some common packages.
    */
@@ -49,7 +49,7 @@ trait CompletionOutput {
     def typeToString(tp: Type): String = relativize(
       tp match {
         case x if isFunctionType(x)           => functionString(x)
-        case x if isTupleType(x)              => tupleString(x)
+        case x if isTupleTypeOrSubtype(x)     => tupleString(x)
         case x if isRepeatedParamType(x)      => typeToString(x.typeArgs.head) + "*"
         case mt @ MethodType(_, _)            => methodTypeToString(mt)
         case x                                => x.toString
@@ -77,12 +77,10 @@ trait CompletionOutput {
 
     def methodString() =
       method.keyString + " " + method.nameString + (method.info.normalize match {
-        case PolyType(Nil, resType)             => ": " + typeToString(resType) // nullary method
+        case NullaryMethodType(resType)         => ": " + typeToString(resType)
         case PolyType(tparams, resType)         => tparamsString(tparams) + typeToString(resType)
         case mt @ MethodType(_, _)              => methodTypeToString(mt)
-        case x                                  =>
-          DBG("methodString(): %s / %s".format(x.getClass, x))
-          x.toString
+        case x                                  => x.toString
       })
   }
 }

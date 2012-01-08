@@ -1,5 +1,5 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Iulian Dragos
  */
 
@@ -7,9 +7,8 @@
 package scala.tools.nsc
 package backend.opt
 
-import scala.collection._
-import scala.collection.immutable.{Map, HashMap, Set, HashSet}
-import scala.tools.nsc.symtab._
+import scala.collection.{ mutable, immutable }
+import symtab._
 
 /**
  */
@@ -47,13 +46,14 @@ abstract class DeadCodeElimination extends SubComponent {
       cls.methods.foreach { m =>
         this.method = m
         dieCodeDie(m)
+        global.closureElimination.peephole(m)
       }
     }
 
     val rdef = new reachingDefinitions.ReachingDefinitionsAnalysis;
 
     /** Use-def chain: give the reaching definitions at the beginning of given instruction. */
-    var defs: Map[(BasicBlock, Int), Set[rdef.lattice.Definition]] = HashMap.empty
+    var defs: immutable.Map[(BasicBlock, Int), immutable.Set[rdef.lattice.Definition]] = immutable.HashMap.empty
 
     /** Useful instructions which have not been scanned yet. */
     val worklist: mutable.Set[(BasicBlock, Int)] = new mutable.LinkedHashSet
@@ -90,7 +90,7 @@ abstract class DeadCodeElimination extends SubComponent {
 
     /** collect reaching definitions and initial useful instructions for this method. */
     def collectRDef(m: IMethod): Unit = if (m.code ne null) {
-      defs = HashMap.empty; worklist.clear; useful.clear;
+      defs = immutable.HashMap.empty; worklist.clear; useful.clear;
       rdef.init(m);
       rdef.run;
 
@@ -103,8 +103,8 @@ abstract class DeadCodeElimination extends SubComponent {
               defs = defs + Pair(((bb, idx)), rd.vars)
 //              Console.println(i + ": " + (bb, idx) + " rd: " + rd + " and having: " + defs)
             case RETURN(_) | JUMP(_) | CJUMP(_, _, _, _) | CZJUMP(_, _, _, _) | STORE_FIELD(_, _) |
-                 THROW()   | STORE_ARRAY_ITEM(_) | SCOPE_ENTER(_) | SCOPE_EXIT(_) | STORE_THIS(_) |
-                 LOAD_EXCEPTION() | SWITCH(_, _) | MONITOR_ENTER() | MONITOR_EXIT() => worklist += ((bb, idx))
+                 THROW(_)   | STORE_ARRAY_ITEM(_) | SCOPE_ENTER(_) | SCOPE_EXIT(_) | STORE_THIS(_) |
+                 LOAD_EXCEPTION(_) | SWITCH(_, _) | MONITOR_ENTER() | MONITOR_EXIT() => worklist += ((bb, idx))
             case CALL_METHOD(m1, _) if isSideEffecting(m1) => worklist += ((bb, idx)); log("marking " + m1)
             case CALL_METHOD(m1, SuperCall(_)) =>
               worklist += ((bb, idx)) // super calls to constructor
@@ -113,7 +113,7 @@ abstract class DeadCodeElimination extends SubComponent {
                 val (bb1, idx1) = p
                 bb1(idx1) match {
                   case CALL_METHOD(m1, _) if isSideEffecting(m1) => true
-                  case LOAD_EXCEPTION() | DUP(_) | LOAD_MODULE(_) => true
+                  case LOAD_EXCEPTION(_) | DUP(_) | LOAD_MODULE(_) => true
                   case _ =>
                     dropOf((bb1, idx1)) = (bb, idx)
 //                    println("DROP is innessential: " + i + " because of: " + bb1(idx1) + " at " + bb1 + ":" + idx1)
@@ -131,7 +131,7 @@ abstract class DeadCodeElimination extends SubComponent {
     /** Mark useful instructions. Instructions in the worklist are each inspected and their
      *  dependencies are marked useful too, and added to the worklist.
      */
-    def mark {
+    def mark() {
 //      log("Starting with worklist: " + worklist)
       while (!worklist.isEmpty) {
         val (bb, idx) = worklist.iterator.next
@@ -159,7 +159,16 @@ abstract class DeadCodeElimination extends SubComponent {
               if (inliner.isClosureClass(sym)) {
                 liveClosures += sym
               }
-            case LOAD_EXCEPTION() =>
+
+            // it may be better to move static initializers from closures to
+            // the enclosing class, to allow the optimizer to remove more closures.
+            // right now, the only static fields in closures are created when caching
+            // 'symbol literals.
+            case LOAD_FIELD(sym, true) if inliner.isClosureClass(sym.owner) =>
+              log("added closure class for field " + sym)
+              liveClosures += sym.owner
+
+            case LOAD_EXCEPTION(_) =>
               ()
 
             case _ =>
@@ -206,10 +215,8 @@ abstract class DeadCodeElimination extends SubComponent {
           }
         }
 
-        if (bb.size > 0)
-          bb.close
-        else
-          log("empty block encountered")
+        if (bb.nonEmpty) bb.close
+        else log("empty block encountered")
       }
     }
 
@@ -247,36 +254,27 @@ abstract class DeadCodeElimination extends SubComponent {
     }
 
     private def withClosed[a](bb: BasicBlock)(f: => a): a = {
-      if (bb.size > 0) bb.close
+      if (bb.nonEmpty) bb.close
       val res = f
-      if (bb.size > 0) bb.open
+      if (bb.nonEmpty) bb.open
       res
     }
 
     private def findInstruction(bb: BasicBlock, i: Instruction): (BasicBlock, Int) = {
-      def find(bb: BasicBlock): Option[(BasicBlock, Int)] = {
-        var xs = bb.toList
-        xs.zipWithIndex find { hd => hd._1 eq i } match {
-          case Some((_, idx)) => Some(bb, idx)
-          case None => None
-        }
+      for (b <- linearizer.linearizeAt(method, bb)) {
+        val idx = b.toList indexWhere (_ eq i)
+        if (idx != -1)
+          return (b, idx)
       }
-
-      for (b <- linearizer.linearizeAt(method, bb))
-        find(b) match {
-          case Some(p) => return p
-          case None => ()
-        }
       abort("could not find init in: " + method)
     }
 
-    lazy val RuntimePackage = definitions.getModule("scala.runtime")
     /** Is 'sym' a side-effecting method? TODO: proper analysis.  */
     private def isSideEffecting(sym: Symbol): Boolean = {
-      !((sym.isGetter && !sym.hasFlag(Flags.LAZY))
+      !((sym.isGetter && sym.isFinal && !sym.isLazy)
        || (sym.isConstructor
            && !(sym.owner == method.symbol.owner && method.symbol.isConstructor) // a call to another constructor
-           && sym.owner.owner == RuntimePackage.moduleClass)
+           && sym.owner.owner == definitions.RuntimePackage.moduleClass)
        || (sym.isConstructor && inliner.isClosureClass(sym.owner))
 /*       || definitions.isBox(sym)
        || definitions.isUnbox(sym)*/)

@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -39,11 +39,25 @@ class Breaks {
     }
   }
 
+  trait TryBlock {
+    def catchBreak(onBreak: => Unit): Unit
+  }
+
+  def tryBreakable(op: => Unit) = new TryBlock {
+    def catchBreak(onBreak: => Unit) = try {
+      op
+    } catch {
+      case ex: BreakControl =>
+        if (ex ne breakException) throw ex
+        onBreak
+    }
+  }
+
   /* Break from dynamically closest enclosing breakable block
    * @note this might be different than the statically closest enclosing
    * block!
    */
-  def break { throw breakException }
+  def break() { throw breakException }
 }
 
 /** An object that can be used for the break control abstraction.

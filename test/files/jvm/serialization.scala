@@ -22,6 +22,7 @@ object Serialize {
     println("x = " + x)
     println("y = " + y)
     println("x equals y: " + (x equals y) + ", y equals x: " + (y equals x))
+    assert((x equals y) && (y equals x))
     println()
   }
 }
@@ -39,7 +40,6 @@ object Test1_scala {
     (a1.length == a2.length) &&
     (Iterator.range(0, a1.length) forall { i => a1(i) == a2(i) })
 
-  @serializable
   object WeekDay extends Enumeration {
     type WeekDay = Value
     val Monday, Tuesday, Wednesday, Thusday, Friday, Saturday, Sunday = Value
@@ -186,7 +186,6 @@ object Test1_scala {
 //############################################################################
 // Test classes in package "scala.collection.immutable"
 
-@serializable
 object Test2_immutable {
   import scala.collection.immutable.{
     BitSet, HashMap, HashSet, ListMap, ListSet, Queue, Range, SortedMap,
@@ -294,7 +293,7 @@ object Test2_immutable {
 object Test3_mutable {
   import scala.reflect.ClassManifest
   import scala.collection.mutable.{
-    ArrayBuffer, ArrayBuilder, ArrayStack, BitSet, DoubleLinkedList,
+    ArrayBuffer, ArrayBuilder, ArraySeq, ArrayStack, BitSet, DoubleLinkedList,
     HashMap, HashSet, History, LinkedList, ListBuffer, Publisher, Queue,
     Stack, StringBuilder, WrappedArray}
 
@@ -314,6 +313,11 @@ object Test3_mutable {
     val abu2 = ArrayBuilder.make[Float]
     val _abu2: ArrayBuilder[ClassManifest[Float]] = read(write(abu2))
     check(abu2, _abu2)
+
+    // ArraySeq
+    val aq1 = ArraySeq(1, 2, 3)
+    val _aq1: ArraySeq[Int] = read(write(aq1))
+    check(aq1, _aq1)
 
     // ArrayStack
     val as1 = new ArrayStack[Int]
@@ -347,10 +351,6 @@ object Test3_mutable {
     val _hs1: HashSet[String] = read(write(hs1))
     check(hs1, _hs1)
 
-    // History
-    @serializable
-    class Feed extends Publisher[String]
-
     val h1 = new History[String, Int]
     val _h1: History[String, Int] = read(write(h1))
     check(h1, _h1)
@@ -366,8 +366,6 @@ object Test3_mutable {
     lb1 ++= List("white", "black")
     val _lb1: ListBuffer[String] = read(write(lb1))
     check(lb1, _lb1)
-
-    // Publisher
 
     // Queue
     val q1 = new Queue[Int]
@@ -398,6 +396,7 @@ object Test3_mutable {
       throw e
   }
 }
+
 
 //############################################################################
 // Test classes in package "scala.xml"
@@ -465,8 +464,7 @@ object Test4_xml {
 //############################################################################
 // Test user-defined classes WITHOUT nesting
 
-@serializable
-class Person(_name: String) {
+class Person(_name: String) extends Serializable {
   private var name = _name
   override def toString() = name
   override def equals(that: Any): Boolean =
@@ -474,12 +472,11 @@ class Person(_name: String) {
     (name == that.asInstanceOf[Person].name)
 }
 
-@serializable
-class Employee(_name: String) {
+class Employee(_name: String) extends Serializable {
   private var name = _name
   override def toString() = name
 }
-@serializable
+
 object bob extends Employee("Bob")
 
 object Test5 {
@@ -502,13 +499,10 @@ object Test5 {
 //############################################################################
 // Test user-defined classes WITH nesting
 
-@serializable
 object Test6 {
-  @serializable
   object bill extends Employee("Bill") {
     val x = paul
   }
-  @serializable
   object paul extends Person("Paul") {
     val x = 4  //  bill; => StackOverflowException !!!
   }
@@ -532,6 +526,56 @@ object Test6 {
 }
 
 //############################################################################
+// Nested objects cannot get readresolve automatically because after deserialization
+// they would be null (they are treated as lazy vals)
+class Outer extends Serializable {
+    object Inner extends Serializable
+}
+
+object Test7 {
+  val x = new Outer
+  x.Inner // initialize
+  try {
+    val y:Outer = read(write(x))
+    if (y.Inner == null)
+      println("Inner object is null")
+  }
+  catch {
+  case e: Exception =>
+    println("Error in Test7: " + e)
+  }
+
+}
+
+
+// Verify that transient lazy vals don't get serialized
+class WithTransient extends Serializable {
+  @transient lazy val a1 = 1
+  @transient private lazy val a2 = 2
+  @transient object B extends Serializable
+
+  def test = {
+    println(a1)
+    println(a2)
+    if (B == null)
+     println("Transient nested object failed to serialize properly")
+  }
+}
+
+object Test8 {
+    val x = new WithTransient
+    x.test
+  try {
+    val y:WithTransient = read(write(x))
+    y.test
+  }
+  catch {
+  case e: Exception =>
+    println("Error in Test8: " + e)
+  }
+}
+
+//############################################################################
 // Test code
 
 object Test {
@@ -542,8 +586,66 @@ object Test {
     Test4_xml
     Test5
     Test6
+    Test7
+    Test8
+    Test9_parallel
   }
 }
 
 //############################################################################
 
+
+//############################################################################
+// Test classes in package "scala.collection.parallel" and subpackages
+object Test9_parallel {
+  import scala.collection.parallel._
+
+  try {
+    println()
+
+    // UnrolledBuffer
+    val ub = new collection.mutable.UnrolledBuffer[String]
+    ub ++= List("one", "two")
+    val _ub: collection.mutable.UnrolledBuffer[String] = read(write(ub))
+    check(ub, _ub)
+
+    // mutable.ParArray
+    val pa = mutable.ParArray("abc", "def", "etc")
+    val _pa: mutable.ParArray[String] = read(write(pa))
+    check(pa, _pa)
+
+    // mutable.ParHashMap
+    val mpm = mutable.ParHashMap(1 -> 2, 2 -> 4)
+    val _mpm: mutable.ParHashMap[Int, Int] = read(write(mpm))
+    check(mpm, _mpm)
+
+    // mutable.ParHashSet
+    val mps = mutable.ParHashSet(1, 2, 3)
+    val _mps: mutable.ParHashSet[Int] = read(write(mps))
+    check(mps, _mps)
+
+    // immutable.ParRange
+    val pr1 = immutable.ParRange(0, 4, 1, true)
+    val _pr1: immutable.ParRange = read(write(pr1))
+    check(pr1, _pr1)
+
+    val pr2 = immutable.ParRange(0, 4, 1, false)
+    val _pr2: immutable.ParRange = read(write(pr2))
+    check(pr2, _pr2)
+
+    // immutable.ParHashMap
+    val ipm = immutable.ParHashMap(5 -> 1, 10 -> 2)
+    val _ipm: immutable.ParHashMap[Int, Int] = read(write(ipm))
+    check(ipm, _ipm)
+
+    // immutable.ParHashSet
+    val ips = immutable.ParHashSet("one", "two")
+    val _ips: immutable.ParHashSet[String] = read(write(ips))
+    check(ips, _ips)
+
+  } catch {
+    case e: Exception =>
+      println("Error in Test5_parallel: " + e)
+      throw e
+  }
+}

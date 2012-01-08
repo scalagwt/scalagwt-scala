@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -25,7 +25,7 @@ import generic._
  *    pairs of type `(A, B)`. This is because an implicit of type `CanBuildFrom[ListMap, (A, B), ListMap[A, B]]`
  *    is defined in object `ListMap`. Otherwise, `That` resolves to the most specific type that doesn't have
  *    to contain pairs of type `(A, B)`, which is `Iterable`.
- *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *  @define bfinfo an implicit value of class `CanBuildFrom` which determines the
  *    result class `That` from the current representation type `Repr`
  *    and the new element type `B`. This is usually the `canBuildFrom` value
  *    defined in object `ListMap`.
@@ -34,8 +34,7 @@ import generic._
  *  @define orderDependent
  *  @define orderDependentFold
  */
-@serializable
-class ListMap[A, B] extends Map[A, B] with MapLike[A, B, ListMap[A, B]] {
+class ListMap[A, B] extends Map[A, B] with MapLike[A, B, ListMap[A, B]] with Serializable {
 
 
   override def empty = ListMap.empty[A, B]
@@ -53,7 +52,7 @@ class ListMap[A, B] extends Map[A, B] with MapLike[A, B, ListMap[A, B]] {
     else if (elems.head._1 == key) { siz -= 1; elems.tail }
     else elems.head :: remove(key, elems.tail)
 
-  override def clear() = elems = List()
+  override def clear() = { elems = List(); siz = 0 }
   override def size: Int = siz
 }
 

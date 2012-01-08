@@ -1,38 +1,41 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
 
-
 package scala.runtime
 
-import collection.immutable.Range
+import scala.collection.immutable.Range
+import annotation.bridge
 
+// Note that this does not implement IntegralProxy[Int] so that it can return
+// the Int-specific Range class from until/to.
+final class RichInt(val self: Int) extends ScalaNumberProxy[Int] with RangedProxy[Int] {
+  type ResultWithoutStep = Range
+  def isWhole() = true
 
-final class RichInt(val start: Int) extends Proxy with Ordered[Int] {
+  def until(end: Int): Range = Range(self, end)
+  def until(end: Int, step: Int): Range = Range(self, end, step)
 
-  // Proxy
-  def self: Any = start
+//  @bridge
+//  def until(end: Int): Range with Range.ByOne = new Range(self, end, 1) with Range.ByOne
 
-  // Ordered[Int]
-  def compare(that: Int): Int = if (start < that) -1 else if (start > that) 1 else 0
+  /** like `until`, but includes the last index */
+  def to(end: Int): Range.Inclusive = Range.inclusive(self, end)
+  def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self, end, step)
 
-  def until(end: Int): Range with Range.ByOne = Range(start, end)
-  def until(end: Int, step: Int): Range = Range(start, end, step)
+//  @bridge
+//  def to(end: Int): Range with Range.ByOne = new Range.Inclusive(self, end, 1) with Range.ByOne
 
-  /** like <code>until</code>, but includes the last index */
-  def to(end: Int): Range.Inclusive with Range.ByOne = Range.inclusive(start, end)
-  def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(start, end, step)
+  override def min(that: Int): Int = if (self < that) self else that
+  override def max(that: Int): Int = if (self > that) self else that
+  override def abs: Int = if (self < 0) -self else self
 
-  def min(that: Int): Int = if (start < that) start else that
-  def max(that: Int): Int = if (start > that) start else that
-  def abs: Int = if (start < 0) -start else start
-
-  def toBinaryString: String = java.lang.Integer.toBinaryString(start)
-  def toHexString: String = java.lang.Integer.toHexString(start)
-  def toOctalString: String = java.lang.Integer.toOctalString(start)
+  def toBinaryString: String = java.lang.Integer.toBinaryString(self)
+  def toHexString: String = java.lang.Integer.toHexString(self)
+  def toOctalString: String = java.lang.Integer.toOctalString(self)
 }

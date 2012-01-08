@@ -1,12 +1,12 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
 package scala.tools.nsc
 package typechecker
 
-import symtab.Flags._
+import symtab.Flags.{ VarianceFlags => VARIANCES, _ }
 
 /** Variances form a lattice, 0 <= COVARIANT <= Variances, 0 <= CONTRAVARIANT <= VARIANCES
  */
@@ -15,23 +15,12 @@ trait Variances {
   val global: Global
   import global._
 
-  /** Convert variance to string */
-  private def varianceString(variance: Int): String =
-    if (variance == COVARIANT) "covariant"
-    else if (variance == CONTRAVARIANT) "contravariant"
-    else "invariant"
-
   /** Flip between covariant and contravariant */
   private def flip(v: Int): Int = {
     if (v == COVARIANT) CONTRAVARIANT
     else if (v == CONTRAVARIANT) COVARIANT
     else v
   }
-
-  private def compose(v1: Int, v2: Int) =
-    if (v1 == 0) 0
-    else if (v1 == CONTRAVARIANT) flip(v2)
-    else v2;
 
   /** Map everything below VARIANCES to 0 */
   private def cut(v: Int): Int =
@@ -89,6 +78,8 @@ trait Variances {
       varianceInTypes(parents)(tparam) & varianceInSyms(defs.toList)(tparam)
     case MethodType(params, restpe) =>
       flip(varianceInSyms(params)(tparam)) & varianceInType(restpe)(tparam)
+    case NullaryMethodType(restpe) =>
+      varianceInType(restpe)(tparam)
     case PolyType(tparams, restpe) =>
       flip(varianceInSyms(tparams)(tparam)) & varianceInType(restpe)(tparam)
     case ExistentialType(tparams, restpe) =>

@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -15,9 +15,10 @@ import scala.collection.mutable.HashMap
 /**
  * @author Philipp Haller
  */
-@serializable
-private[remote] class Proxy(node: Node, name: Symbol, @transient var kernel: NetKernel) extends AbstractActor {
+private[remote] class Proxy(node: Node, name: Symbol, @transient var kernel: NetKernel) extends AbstractActor with Serializable {
   import java.io.{IOException, ObjectOutputStream, ObjectInputStream}
+
+  type Future[+P] = scala.actors.Future[P]
 
   @transient
   private[remote] var del: Actor = null
@@ -82,8 +83,7 @@ private[remote] class Proxy(node: Node, name: Symbol, @transient var kernel: Net
     name+"@"+node
 }
 
-@serializable
-class LinkToFun extends Function2[AbstractActor, Proxy, Unit] {
+class LinkToFun extends Function2[AbstractActor, Proxy, Unit] with Serializable {
   def apply(target: AbstractActor, creator: Proxy) {
     target.linkTo(creator)
   }
@@ -91,8 +91,7 @@ class LinkToFun extends Function2[AbstractActor, Proxy, Unit] {
     "<LinkToFun>"
 }
 
-@serializable
-class UnlinkFromFun extends Function2[AbstractActor, Proxy, Unit] {
+class UnlinkFromFun extends Function2[AbstractActor, Proxy, Unit] with Serializable {
   def apply(target: AbstractActor, creator: Proxy) {
     target.unlinkFrom(creator)
   }
@@ -100,8 +99,7 @@ class UnlinkFromFun extends Function2[AbstractActor, Proxy, Unit] {
     "<UnlinkFromFun>"
 }
 
-@serializable
-class ExitFun(reason: AnyRef) extends Function2[AbstractActor, Proxy, Unit] {
+class ExitFun(reason: AnyRef) extends Function2[AbstractActor, Proxy, Unit] with Serializable {
   def apply(target: AbstractActor, creator: Proxy) {
     target.exit(creator, reason)
   }

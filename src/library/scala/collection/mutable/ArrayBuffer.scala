@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -12,7 +12,7 @@ package scala.collection
 package mutable
 
 import generic._
-import parallel.mutable.ParallelArray
+import parallel.mutable.ParArray
 
 /** An implementation of the `Buffer` class using an array to
  *  represent the assembled sequence internally. Append, update and random
@@ -31,7 +31,7 @@ import parallel.mutable.ParallelArray
  *  @define thatinfo the class of the returned collection. In the standard library configuration,
  *    `That` is always `ArrayBuffer[B]` because an implicit of type `CanBuildFrom[ArrayBuffer, B, ArrayBuffer[B]]`
  *    is defined in object `ArrayBuffer`.
- *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *  @define bfinfo an implicit value of class `CanBuildFrom` which determines the
  *    result class `That` from the current representation type `Repr`
  *    and the new element type `B`. This is usually the `canBuildFrom` value
  *    defined in object `ArrayBuffer`.
@@ -40,7 +40,7 @@ import parallel.mutable.ParallelArray
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
-@serializable @SerialVersionUID(1529165946227428979L)
+@SerialVersionUID(1529165946227428979L)
 class ArrayBuffer[A](override protected val initialSize: Int)
   extends Buffer[A]
      with GenericTraversableTemplate[A, ArrayBuffer]
@@ -48,7 +48,8 @@ class ArrayBuffer[A](override protected val initialSize: Int)
      with IndexedSeqOptimized[A, ArrayBuffer[A]]
      with Builder[A, ArrayBuffer[A]]
      with ResizableArray[A]
-     with Parallelizable[ParallelArray[A]] {
+     with CustomParallelizable[A, ParArray[A]]
+     with Serializable {
 
   override def companion: GenericCompanion[ArrayBuffer] = ArrayBuffer
 
@@ -61,12 +62,12 @@ class ArrayBuffer[A](override protected val initialSize: Int)
   override def sizeHint(len: Int) {
     if (len > size && len >= 1) {
       val newarray = new Array[AnyRef](len)
-      Array.copy(array, 0, newarray, 0, size0)
+      compat.Platform.arraycopy(array, 0, newarray, 0, size0)
       array = newarray
     }
   }
 
-  def par = ParallelArray.handoff[A](array.asInstanceOf[Array[A]], size)
+  override def par = ParArray.handoff[A](array.asInstanceOf[Array[A]], size)
 
   /** Appends a single element to this buffer and returns
    *  the identity of the buffer. It takes constant amortized time.
@@ -175,6 +176,7 @@ class ArrayBuffer[A](override protected val initialSize: Int)
   /** Defines the prefix of the string representation.
    */
   override def stringPrefix: String = "ArrayBuffer"
+
 }
 
 /** Factory object for the `ArrayBuffer` class.

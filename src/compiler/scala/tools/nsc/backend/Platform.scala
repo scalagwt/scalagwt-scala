@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Paul Phillips
  */
 
@@ -29,3 +29,4 @@ trait Platform[T] {
   /** The various ways a boxed primitive might materialize at runtime. */
   def isMaybeBoxed(sym: Symbol): Boolean
 }
+

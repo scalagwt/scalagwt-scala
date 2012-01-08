@@ -1,45 +1,29 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-
 package scala.xml
 package pull
 
+import scala.io.Source
+import java.lang.Thread
 import java.util.concurrent.LinkedBlockingQueue
 import java.nio.channels.ClosedChannelException
-
-import scala.io.Source
 import scala.xml.parsing.{ ExternalSources, MarkupHandler, MarkupParser }
 
-/** <p>
- *   A pull parser that offers to view an XML document as a series of events.
- *   Example usage:
- *  </p><pre>
- *  <b>import</b> scala.xml.pull._
- *  <b>import</b> scala.io.Source
- *
- *  <b>object</b> reader {
- *    <b>val</b> src = Source.fromString("<hello><world/></hello>")
- *    <b>val</b> er = new XMLEventReader(src)
- *
- *    <b>def</b> main(args: Array[String]) {
- *      while (er.hasNext)
- *        Console.println(er.next)
- *    }
- *  }
- *  </pre>
+/**
+ * Main entry point into creating an event-based XML parser.  Treating this
+ * as a [[scala.collection.Iterator]] will provide access to the generated events.
+ * @param src A [[scala.io.Source]] for XML data to parse
  *
  *  @author Burak Emir
  *  @author Paul Phillips
  */
-
-class XMLEventReader(src: Source) extends ProducerConsumerIterator[XMLEvent]
-{
+class XMLEventReader(src: Source) extends ProducerConsumerIterator[XMLEvent] {
   // We implement a pull parser as an iterator, but since we may be operating on
   // a stream (e.g. XML over a network) there may be arbitrarily long periods when
   // the queue is empty.  Fortunately the ProducerConsumerIterator is ideally
@@ -64,13 +48,15 @@ class XMLEventReader(src: Source) extends ProducerConsumerIterator[XMLEvent]
   // fails for whatever reason the iterator correctness is not impacted,
   // only performance (because it will finish the entire XML document,
   // or at least as much as it can fit in the queue.)
-  def stop = {
+  def stop() = {
     produce(POISON)
     parserThread.interrupt()
   }
 
   private class Parser(val input: Source) extends MarkupHandler with MarkupParser with ExternalSources with Runnable {
     val preserveWS = XMLEventReader.this.preserveWS
+    // track level for elem memory usage optimization
+    private var level = 0
 
     // this is Parser's way to add to the queue - the odd return type
     // is to conform to MarkupHandler's interface
@@ -80,14 +66,19 @@ class XMLEventReader(src: Source) extends ProducerConsumerIterator[XMLEvent]
     }
 
     override def elemStart(pos: Int, pre: String, label: String, attrs: MetaData, scope: NamespaceBinding) {
+      level += 1
       setEvent(EvElemStart(pre, label, attrs, scope))
     }
     override def elemEnd(pos: Int, pre: String, label: String) {
       setEvent(EvElemEnd(pre, label))
+      level -= 1
     }
 
     // this is a dummy to satisfy MarkupHandler's API
-    final def elem(pos: Int, pre: String, label: String, attrs: MetaData, pscope: NamespaceBinding, nodes: NodeSeq): NodeSeq = <ignore/>
+    // memory usage optimization return one <ignore/> for top level to satisfy MarkupParser.document() otherwise NodeSeq.Empty
+    private var ignoreWritten = false
+    final def elem(pos: Int, pre: String, label: String, attrs: MetaData, pscope: NamespaceBinding, nodes: NodeSeq): NodeSeq =
+      if (level == 1 && !ignoreWritten) {ignoreWritten = true; <ignore/> } else NodeSeq.Empty
 
     def procInstr(pos: Int, target: String, txt: String)  = setEvent(EvProcInstr(target, txt))
     def comment(pos: Int, txt: String)                    = setEvent(EvComment(txt))
@@ -112,8 +103,7 @@ class XMLEventReader(src: Source) extends ProducerConsumerIterator[XMLEvent]
 // the next call hasNext is guaranteed not to block.
 //
 // This is not thread-safe for multiple consumers!
-trait ProducerConsumerIterator[T >: Null] extends Iterator[T]
-{
+trait ProducerConsumerIterator[T >: Null] extends Iterator[T] {
   // abstract - iterator-specific distinguished object for marking eos
   val EndOfStream: T
 

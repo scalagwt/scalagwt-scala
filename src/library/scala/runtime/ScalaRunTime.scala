@@ -1,23 +1,26 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-
 
 package scala.runtime
 
 import scala.reflect.ClassManifest
 import scala.collection.{ Seq, IndexedSeq, TraversableView }
 import scala.collection.mutable.WrappedArray
-import scala.collection.immutable.{ NumericRange, List, Stream, Nil, :: }
+import scala.collection.immutable.{ StringLike, NumericRange, List, Stream, Nil, :: }
+import scala.collection.generic.{ Sorted }
 import scala.xml.{ Node, MetaData }
 import scala.util.control.ControlThrowable
+import java.lang.Double.doubleToLongBits
+import java.lang.reflect.{ Modifier, Method => JMethod }
 
-/* The object <code>ScalaRunTime</code> provides ...
+/** The object ScalaRunTime provides support methods required by
+ *  the scala runtime.  All these methods should be considered
+ *  outside the API and subject to change or removal without notice.
  */
 object ScalaRunTime {
   def isArray(x: AnyRef): Boolean = isArray(x, 1)
@@ -100,7 +103,7 @@ object ScalaRunTime {
     dest
   }
 
-  def toArray[T](xs: scala.collection.Seq[T]) = {
+  def toArray[T](xs: collection.Seq[T]) = {
     val arr = new Array[AnyRef](xs.length)
     var i = 0
     for (x <- xs) {
@@ -108,6 +111,16 @@ object ScalaRunTime {
       i += 1
     }
     arr
+  }
+
+  // Java bug: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4071957
+  // More background at ticket #2318.
+  def ensureAccessible(m: JMethod): JMethod = {
+    if (!m.isAccessible) {
+      try m setAccessible true
+      catch { case _: SecurityException => () }
+    }
+    m
   }
 
   def checkInitialized[T <: AnyRef](x: T): T =
@@ -145,19 +158,21 @@ object ScalaRunTime {
   def _toString(x: Product): String =
     x.productIterator.mkString(x.productPrefix + "(", ",", ")")
 
-  // def _hashCodeJenkins(x: Product): Int =
-  //   scala.util.JenkinsHash.hashSeq(x.productPrefix.toSeq ++ x.productIterator.toSeq)
-
   def _hashCode(x: Product): Int = {
+    import scala.util.MurmurHash._
     val arr =  x.productArity
-    var code = arr
+    var h = startHash(arr)
+    var c = startMagicA
+    var k = startMagicB
     var i = 0
     while (i < arr) {
       val elem = x.productElement(i)
-      code = code * 41 + (if (elem == null) 0 else elem.##)
+      h = extendHash(h, elem.##, c, k)
+      c = nextMagicA(c)
+      k = nextMagicB(k)
       i += 1
     }
-    code
+    finalizeHash(h)
   }
 
   /** Fast path equality method for inlining; used when -optimise is set.
@@ -180,7 +195,8 @@ object ScalaRunTime {
   // must not call ## themselves.
 
   @inline def hash(x: Any): Int =
-    if (x.isInstanceOf[java.lang.Number]) BoxesRunTime.hashFromNumber(x.asInstanceOf[java.lang.Number])
+    if (x == null) 0
+    else if (x.isInstanceOf[java.lang.Number]) BoxesRunTime.hashFromNumber(x.asInstanceOf[java.lang.Number])
     else x.hashCode
 
   @inline def hash(dv: Double): Int = {
@@ -189,37 +205,43 @@ object ScalaRunTime {
 
     val lv = dv.toLong
     if (lv == dv) return lv.hashCode
-    else dv.hashCode
+
+    val fv = dv.toFloat
+    if (fv == dv) fv.hashCode else dv.hashCode
   }
   @inline def hash(fv: Float): Int = {
     val iv = fv.toInt
     if (iv == fv) return iv
 
     val lv = fv.toLong
-    if (lv == fv) return lv.hashCode
+    if (lv == fv) return hash(lv)
     else fv.hashCode
   }
   @inline def hash(lv: Long): Int = {
-    val iv = lv.toInt
-    if (iv == lv) iv else lv.hashCode
+    val low = lv.toInt
+    val lowSign = low >>> 31
+    val high = (lv >>> 32).toInt
+    low ^ (high + lowSign)
   }
   @inline def hash(x: Int): Int = x
   @inline def hash(x: Short): Int = x.toInt
   @inline def hash(x: Byte): Int = x.toInt
   @inline def hash(x: Char): Int = x.toInt
-
+  @inline def hash(x: Boolean): Int = if (x) trueHashcode else falseHashcode
+  @inline def hash(x: Unit): Int = 0
   @inline def hash(x: Number): Int  = runtime.BoxesRunTime.hashFromNumber(x)
-  @inline def hash(x: java.lang.Long): Int = {
-    val iv = x.intValue
-    if (iv == x.longValue) iv else x.hashCode
-  }
+
+  // These are so these values are constant folded into def hash(Boolean)
+  // rather than being recalculated all the time.
+  private final val trueHashcode = true.hashCode
+  private final val falseHashcode = false.hashCode
 
   /** A helper method for constructing case class equality methods,
    *  because existential types get in the way of a clean outcome and
    *  it's performing a series of Any/Any equals comparisons anyway.
    *  See ticket #2867 for specifics.
    */
-  def sameElements(xs1: Seq[Any], xs2: Seq[Any]) = xs1 sameElements xs2
+  def sameElements(xs1: collection.Seq[Any], xs2: collection.Seq[Any]) = xs1 sameElements xs2
 
   /** Given any Scala value, convert it to a String.
    *
@@ -230,39 +252,80 @@ object ScalaRunTime {
    * called on null and (b) depending on the apparent type of an
    * array, toString may or may not print it in a human-readable form.
    *
-   * @param arg the value to stringify
-   * @return a string representation of <code>arg</code>
-   *
+   * @param   arg   the value to stringify
+   * @return        a string representation of arg.
    */
-  def stringOf(arg: Any): String = {
-    import collection.{SortedSet, SortedMap}
-    def mapTraversable(x: Traversable[_], f: Any => String) = x match {
-      case ss: SortedSet[_] => ss.map(f)
-      case ss: SortedMap[_, _] => ss.map(f)
-      case _ => x.map(f)
-    }
-    def inner(arg: Any): String = arg match {
-      case null                     => "null"
-      // Node extends NodeSeq extends Seq[Node] strikes again
-      case x: Node                  => x toString
-      // Not to mention MetaData extends Iterable[MetaData]
-      case x: MetaData              => x toString
+  def stringOf(arg: Any): String = stringOf(arg, scala.Int.MaxValue)
+  def stringOf(arg: Any, maxElements: Int): String = {
+    def isScalaClass(x: AnyRef) =
+      Option(x.getClass.getPackage) exists (_.getName startsWith "scala.")
+
+    def isTuple(x: AnyRef) =
+      x.getClass.getName matches """^scala\.Tuple(\d+).*"""
+
+    // When doing our own iteration is dangerous
+    def useOwnToString(x: Any) = x match {
+      // Node extends NodeSeq extends Seq[Node] and MetaData extends Iterable[MetaData]
+      case _: Node | _: MetaData => true
       // Range/NumericRange have a custom toString to avoid walking a gazillion elements
-      case x: Range                 => x toString
-      case x: NumericRange[_]       => x toString
-      case x: AnyRef if isArray(x)  => WrappedArray make x map inner mkString ("Array(", ", ", ")")
-      case x: TraversableView[_, _] => x.toString
-      case x: Traversable[_] if !x.hasDefiniteSize => x.toString
-      case x: Traversable[_]        =>
-        // Some subclasses of AbstractFile implement Iterable, then throw an
-        // exception if you call iterator.  What a world.
-        // And they can't be infinite either.
-        if (x.getClass.getName startsWith "scala.tools.nsc.io") x.toString
-        else (mapTraversable(x, inner)) mkString (x.stringPrefix + "(", ", ", ")")
-      case x                        => x toString
+      case _: Range | _: NumericRange[_] => true
+      // Sorted collections to the wrong thing (for us) on iteration - ticket #3493
+      case _: Sorted[_, _]  => true
+      // StringBuilder(a, b, c) and similar not so attractive
+      case _: StringLike[_] => true
+      // Don't want to evaluate any elements in a view
+      case _: TraversableView[_, _] => true
+      // Don't want to a) traverse infinity or b) be overly helpful with peoples' custom
+      // collections which may have useful toString methods - ticket #3710
+      case x: Traversable[_]  => !x.hasDefiniteSize || !isScalaClass(x)
+      // Otherwise, nothing could possibly go wrong
+      case _ => false
     }
-    val s = inner(arg)
+
+    // A variation on inner for maps so they print -> instead of bare tuples
+    def mapInner(arg: Any): String = arg match {
+      case (k, v)   => inner(k) + " -> " + inner(v)
+      case _        => inner(arg)
+    }
+
+    // Special casing Unit arrays, the value class which uses a reference array type.
+    def arrayToString(x: AnyRef) = {
+      if (x.getClass.getComponentType == classOf[BoxedUnit])
+        0 until (array_length(x) min maxElements) map (_ => "()") mkString ("Array(", ", ", ")")
+      else
+        WrappedArray make x take maxElements map inner mkString ("Array(", ", ", ")")
+    }
+
+    // The recursively applied attempt to prettify Array printing.
+    // Note that iterator is used if possible and foreach is used as a
+    // last resort, because the parallel collections "foreach" in a
+    // random order even on sequences.
+    def inner(arg: Any): String = arg match {
+      case null                         => "null"
+      case ""                           => "\"\""
+      case x: String                    => if (x.head.isWhitespace || x.last.isWhitespace) "\"" + x + "\"" else x
+      case x if useOwnToString(x)       => x toString
+      case x: AnyRef if isArray(x)      => arrayToString(x)
+      case x: collection.Map[_, _]      => x.iterator take maxElements map mapInner mkString (x.stringPrefix + "(", ", ", ")")
+      case x: Iterable[_]               => x.iterator take maxElements map inner mkString (x.stringPrefix + "(", ", ", ")")
+      case x: Traversable[_]            => x take maxElements map inner mkString (x.stringPrefix + "(", ", ", ")")
+      case x: Product1[_] if isTuple(x) => "(" + inner(x._1) + ",)" // that special trailing comma
+      case x: Product if isTuple(x)     => x.productIterator map inner mkString ("(", ",", ")")
+      case x                            => x toString
+    }
+
+    // The try/catch is defense against iterables which aren't actually designed
+    // to be iterated, such as some scala.tools.nsc.io.AbstractFile derived classes.
+    try inner(arg)
+    catch {
+      case _: StackOverflowError | _: UnsupportedOperationException | _: AssertionError => "" + arg
+    }
+  }
+  /** stringOf formatted for use in a repl result. */
+  def replStringOf(arg: Any, maxElements: Int): String = {
+    val s  = stringOf(arg, maxElements)
     val nl = if (s contains "\n") "\n" else ""
+
     nl + s + "\n"
   }
 }

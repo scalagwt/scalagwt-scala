@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * Author: Paul Phillips
  */
 
@@ -9,6 +9,7 @@ package matching
 import transform.ExplicitOuter
 import ast.{ TreePrinters, Trees }
 import java.io.{ StringWriter, PrintWriter }
+import annotation.elidable
 
 /** Ancillary bits of ParallelMatching which are better off
  *  out of the way.
@@ -23,14 +24,14 @@ trait MatchSupport extends ast.TreeDSL { self: ParallelMatching =>
 
   def impossible:           Nothing = abort("this never happens")
 
+  def treeCollect[T](tree: Tree, pf: PartialFunction[Tree, T]): List[T] =
+    tree filter (pf isDefinedAt _) map (x => pf(x))
+
   object Types {
     import definitions._
     implicit def enrichType(x: Type): RichType = new RichType(x)
 
-    // A subtype test which creates fresh existentials for type
-    // parameters on the right hand side.
-    private[matching] def matches(arg1: Type, arg2: Type) =
-      decodedEqualsType(arg1) matchesPattern decodedEqualsType(arg2)
+    val subrangeTypes = Set(ByteClass, ShortClass, CharClass, IntClass)
 
     class RichType(undecodedTpe: Type) {
       def tpe = decodedEqualsType(undecodedTpe)
@@ -94,33 +95,23 @@ trait MatchSupport extends ast.TreeDSL { self: ParallelMatching =>
       })
     }
 
-    def ifDebug(body: => Unit): Unit          = { if (settings.debug.value) body }
-    def DBG(msg: => String): Unit             = { ifDebug(println(msg)) }
-
-    // @elidable(elidable.FINE)
-    def TRACE(f: String, xs: Any*): Unit      = {
+    @elidable(elidable.FINE) def ifDebug(body: => Unit): Unit     = { if (settings.debug.value) body }
+    @elidable(elidable.FINE) def DBG(msg: => String): Unit        = { ifDebug(println(msg)) }
+    @elidable(elidable.FINE) def TRACE(f: String, xs: Any*): Unit = {
       if (trace) {
         val msg = if (xs.isEmpty) f else f.format(xs map pp: _*)
         println(msg)
       }
     }
-
-    def tracing2[T](x: T)(category: String, xs: String*) = {
-      val preamble = "[" + """%10s""".format(category) + "]  "
-      if (xs.isEmpty) TRACE(preamble, x)
-      else TRACE(preamble + xs.head, xs.tail: _*)
+    @elidable(elidable.FINE) def traceCategory(cat: String, f: String, xs: Any*) = {
+      if (trace)
+        TRACE("[" + """%10s""".format(cat) + "]  " + f, xs: _*)
+    }
+    def tracing[T](s: String)(x: T): T = {
+      if (trace)
+        println(("[" + """%10s""".format(s) + "]  %s") format pp(x))
 
       x
-    }
-
-    def tracing[T](s: String, x: T): T = {
-      val format = "[" + """%10s""".format(s) + "]  %s"
-      TRACE(format, x)
-      x
-    }
-    def traceCategory(cat: String, f: String, xs: Any*) = {
-      val format = "[" + """%10s""".format(cat) + "]  " + f
-      TRACE(format, xs: _*)
     }
 
     def indent(s: Any) = s.toString() split "\n" map ("  " + _) mkString "\n"

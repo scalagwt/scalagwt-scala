@@ -1,33 +1,46 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala.reflect
 
-import scala.runtime._
-import scala.collection.mutable._
-import scala.collection.immutable.{List, Nil}
+import scala.collection.mutable.{ ArrayBuilder, WrappedArray }
 
-/** <p>
-  *   A <code>Manifest[T]</code> is an opaque descriptor for type <code>T</code>.
-  *   Currently, its only use is to give access to the erasure of the type as a
-  *   <code>Class</code> instance.
-  * </p>
-  * <p>
-  *   <b>BE AWARE</b>: The different type-relation operators are all forwarded
-  *   to the erased type as an approximation of the final semantics where
-  *   these operators should be on the unerased type.
-  * </p>
-  */
-@serializable
+/** A Manifest[T] is an opaque descriptor for type T.  Its
+ *  supported use is to give access to the erasure of the type
+ *  as a Class instance, as is necessary for the creation of native
+ *  Arrays if the class is not known at compile time.
+ *
+ *  The type-relation operators <:< and =:= should be considered
+ *  approximations only, as there are numerous aspects of type conformance
+ *  which are not yet adequately represented in manifests.
+ *
+ *  Example usages:
+{{{
+  def arr[T] = new Array[T](0)                          // does not compile
+  def arr[T](implicit m: Manifest[T]) = new Array[T](0) // compiles
+  def arr[T: Manifest] = new Array[T](0)                // shorthand for the preceding
+
+  // Methods manifest, classManifest, and optManifest are in [[scala.Predef]].
+  def isApproxSubType[T: Manifest, U: Manifest] = manifest[T] <:< manifest[U]
+  isApproxSubType[List[String], List[AnyRef]] // true
+  isApproxSubType[List[String], List[Int]]    // false
+
+  def methods[T: ClassManifest] = classManifest[T].erasure.getMethods
+  def retType[T: ClassManifest](name: String) =
+    methods[T] find (_.getName == name) map (_.getGenericReturnType)
+
+  retType[Map[_, _]]("values")  // Some(scala.collection.Iterable<B>)
+}}}
+ *
+ */
+@annotation.implicitNotFound(msg = "No Manifest available for ${T}.")
 trait Manifest[T] extends ClassManifest[T] with Equals {
-  override def typeArguments: List[Manifest[_]] = List()
+  override def typeArguments: List[Manifest[_]] = Nil
 
   override def arrayManifest: Manifest[Array[T]] =
     Manifest.classType[Array[T]](arrayClass[T](erasure))
@@ -36,17 +49,19 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
     case _: Manifest[_]   => true
     case _                => false
   }
+  /** Note: testing for erasure here is important, as it is many times
+   *  faster than <:< and rules out most comparisons.
+   */
   override def equals(that: Any): Boolean = that match {
-    case m: Manifest[_] if m canEqual this  => (this <:< m) && (m <:< this)
-    case _                                  => false
+    case m: Manifest[_] => (m canEqual this) && (this.erasure == m.erasure) && (this <:< m) && (m <:< this)
+    case _              => false
   }
   override def hashCode = this.erasure.##
 }
 
-@serializable
 trait AnyValManifest[T] extends Manifest[T] with Equals {
-  import Manifest.{ Any, AnyVal }
-  override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any) || (that eq AnyVal)
+  override def <:<(that: ClassManifest[_]): Boolean =
+    (that eq this) || (that eq Manifest.Any) || (that eq Manifest.AnyVal)
   override def canEqual(other: Any) = other match {
     case _: AnyValManifest[_] => true
     case _                    => false
@@ -55,18 +70,14 @@ trait AnyValManifest[T] extends Manifest[T] with Equals {
   override def hashCode = System.identityHashCode(this)
 }
 
-/** <ps>
-  *   This object is used by the compiler and <b>should not be used in client
-  *   code</b>. The object <code>Manifest</code> defines factory methods for
-  *   manifests.
-  * </p>
-  * <p>
-  *   <b>BE AWARE</b>: The factory for refinement types is missing and
-  *   will be implemented in a later version of this class.
-  * </p>
-  */
+/** The object Manifest defines factory methods for manifests.
+ *  It is intended for use by the compiler and should not be used
+ *  in client code.
+ */
 object Manifest {
-  val Byte: AnyValManifest[Byte] = new (AnyValManifest[Byte] @serializable) {
+  private def ObjectClass = classOf[java.lang.Object]
+
+  val Byte: AnyValManifest[Byte] = new AnyValManifest[scala.Byte] {
     def erasure = java.lang.Byte.TYPE
     override def toString = "Byte"
     override def newArray(len: Int): Array[Byte] = new Array[Byte](len)
@@ -75,7 +86,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Byte
   }
 
-  val Short: AnyValManifest[Short] = new (AnyValManifest[Short] @serializable) {
+  val Short: AnyValManifest[Short] = new AnyValManifest[scala.Short] {
     def erasure = java.lang.Short.TYPE
     override def toString = "Short"
     override def newArray(len: Int): Array[Short] = new Array[Short](len)
@@ -84,7 +95,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Short
   }
 
-  val Char: AnyValManifest[Char] = new (AnyValManifest[Char] @serializable) {
+  val Char: AnyValManifest[Char] = new AnyValManifest[scala.Char] {
     def erasure = java.lang.Character.TYPE
     override def toString = "Char"
     override def newArray(len: Int): Array[Char] = new Array[Char](len)
@@ -93,7 +104,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Char
   }
 
-  val Int: AnyValManifest[Int] = new (AnyValManifest[Int] @serializable) {
+  val Int: AnyValManifest[Int] = new AnyValManifest[scala.Int] {
     def erasure = java.lang.Integer.TYPE
     override def toString = "Int"
     override def newArray(len: Int): Array[Int] = new Array[Int](len)
@@ -102,7 +113,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Int
   }
 
-  val Long: AnyValManifest[Long] = new (AnyValManifest[Long] @serializable) {
+  val Long: AnyValManifest[Long] = new AnyValManifest[scala.Long] {
     def erasure = java.lang.Long.TYPE
     override def toString = "Long"
     override def newArray(len: Int): Array[Long] = new Array[Long](len)
@@ -111,7 +122,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Long
   }
 
-  val Float: AnyValManifest[Float] = new (AnyValManifest[Float] @serializable) {
+  val Float: AnyValManifest[Float] = new AnyValManifest[scala.Float] {
     def erasure = java.lang.Float.TYPE
     override def toString = "Float"
     override def newArray(len: Int): Array[Float] = new Array[Float](len)
@@ -120,7 +131,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Float
   }
 
-  val Double: AnyValManifest[Double] = new (AnyValManifest[Double] @serializable) {
+  val Double: AnyValManifest[Double] = new AnyValManifest[scala.Double] {
     def erasure = java.lang.Double.TYPE
     override def toString = "Double"
     override def newArray(len: Int): Array[Double] = new Array[Double](len)
@@ -129,7 +140,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Double
   }
 
-  val Boolean: AnyValManifest[Boolean] = new (AnyValManifest[Boolean] @serializable) {
+  val Boolean: AnyValManifest[Boolean] = new AnyValManifest[scala.Boolean] {
     def erasure = java.lang.Boolean.TYPE
     override def toString = "Boolean"
     override def newArray(len: Int): Array[Boolean] = new Array[Boolean](len)
@@ -138,7 +149,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Boolean
   }
 
-  val Unit: AnyValManifest[Unit] = new (AnyValManifest[Unit] @serializable) {
+  val Unit: AnyValManifest[Unit] = new AnyValManifest[scala.Unit] {
     def erasure = java.lang.Void.TYPE
     override def toString = "Unit"
     override def newArray(len: Int): Array[Unit] = new Array[Unit](len)
@@ -147,7 +158,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Unit
   }
 
-  val Any: Manifest[Any] = new ClassTypeManifest[Any](None, classOf[java.lang.Object], List()) {
+  val Any: Manifest[Any] = new ClassTypeManifest[scala.Any](None, ObjectClass, Nil) {
     override def toString = "Any"
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
@@ -155,7 +166,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Any
   }
 
-  val Object: Manifest[Object] = new ClassTypeManifest[Object](None, classOf[java.lang.Object], List()) {
+  val Object: Manifest[Object] = new ClassTypeManifest[java.lang.Object](None, ObjectClass, Nil) {
     override def toString = "Object"
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
@@ -163,7 +174,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Object
   }
 
-  val AnyVal: Manifest[AnyVal] = new ClassTypeManifest[AnyVal](None, classOf[java.lang.Object], List()) {
+  val AnyVal: Manifest[AnyVal] = new ClassTypeManifest[scala.AnyVal](None, ObjectClass, Nil) {
     override def toString = "AnyVal"
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
@@ -171,7 +182,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.AnyVal
   }
 
-  val Null: Manifest[Null] = new ClassTypeManifest[Null](None, classOf[java.lang.Object], List()) {
+  val Null: Manifest[Null] = new ClassTypeManifest[scala.Null](None, ObjectClass, Nil) {
     override def toString = "Null"
     override def <:<(that: ClassManifest[_]): Boolean =
       (that ne null) && (that ne Nothing) && !(that <:< AnyVal)
@@ -180,7 +191,7 @@ object Manifest {
     private def readResolve(): Any = Manifest.Null
   }
 
-  val Nothing: Manifest[Nothing] = new ClassTypeManifest[Nothing](None, classOf[java.lang.Object], List()) {
+  val Nothing: Manifest[Nothing] = new ClassTypeManifest[scala.Nothing](None, ObjectClass, Nil) {
     override def toString = "Nothing"
     override def <:<(that: ClassManifest[_]): Boolean = (that ne null)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
@@ -188,15 +199,14 @@ object Manifest {
     private def readResolve(): Any = Manifest.Nothing
   }
 
+  private class SingletonTypeManifest[T <: AnyRef](value: AnyRef) extends Manifest[T] {
+    lazy val erasure = value.getClass
+    override lazy val toString = value.toString + ".type"
+  }
+
   /** Manifest for the singleton type `value.type'. */
   def singleType[T <: AnyRef](value: AnyRef): Manifest[T] =
-    new (Manifest[T] @serializable) {
-      /** Note - this was doing a type match on value to exclude AnyVal, which does not work.
-       *  Pattern matching _: AnyRef matches everything because of boxing.
-       */
-      lazy val erasure = value.getClass
-      override lazy val toString = value.toString + ".type"
-    }
+    new SingletonTypeManifest[T](value)
 
   /** Manifest for the class type `clazz[args]', where `clazz' is
     * a top-level or static class.
@@ -221,7 +231,6 @@ object Manifest {
 
   /** Manifest for the class type `clazz[args]', where `clazz' is
     * a top-level or static class. */
-  @serializable
   private class ClassTypeManifest[T](prefix: Option[Manifest[_]],
                                      val erasure: Predef.Class[_],
                                      override val typeArguments: List[Manifest[_]]) extends Manifest[T] {
@@ -238,7 +247,7 @@ object Manifest {
     * strictly necessary as it could be obtained by reflection. It was
     * added so that erasure can be calculated without reflection. */
   def abstractType[T](prefix: Manifest[_], name: String, clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
-    new (Manifest[T] @serializable) {
+    new Manifest[T] {
       def erasure = clazz
       override val typeArguments = args.toList
       override def toString = prefix.toString+"#"+name+argString
@@ -247,7 +256,7 @@ object Manifest {
   /** Manifest for the unknown type `_ >: L <: U' in an existential.
     */
   def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
-    new (Manifest[T] @serializable) {
+    new Manifest[T] {
       def erasure = upperBound.erasure
       override def toString =
         "_" +
@@ -257,7 +266,7 @@ object Manifest {
 
   /** Manifest for the intersection type `parents_0 with ... with parents_n'. */
   def intersectionType[T](parents: Manifest[_]*): Manifest[T] =
-    new (Manifest[T] @serializable) {
+    new Manifest[T] {
       def erasure = parents.head.erasure
       override def toString = parents.mkString(" with ")
     }

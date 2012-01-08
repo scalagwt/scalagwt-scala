@@ -7,7 +7,12 @@ trait Symbols { self: Universe =>
 
   type Symbol >: Null <: AbsSymbol
 
-  abstract class AbsSymbol { this: Symbol =>
+  abstract class AbsSymbol extends HasFlags {
+    this: Symbol =>
+
+    type FlagsType          = Long
+    type AccessBoundaryType = Symbol
+    type AnnotationType     = AnnotationInfo
 
     /** The owner of this symbol.
      */
@@ -20,11 +25,11 @@ trait Symbols { self: Universe =>
      */
     def name: Name
 
-    /** The name of the symbol before decoding, e.g. `$eq$eq` instead of `==`.
+    /** The name of the symbol before decoding, e.g. `\$eq\$eq` instead of `==`.
      */
-    def encodedName: String
+    def encodedName: String = name.toString
 
-    /** The decoded name of the symbol, e.g. `==` instead of `$eq$eq`.
+    /** The decoded name of the symbol, e.g. `==` instead of `\$eq\$eq`.
      */
     def decodedName: String = stripLocalSuffix(NameTransformer.decode(encodedName))
 
@@ -55,6 +60,8 @@ trait Symbols { self: Universe =>
     /** Set when symbol has a modifier of the form private[X], NoSymbol otherwise.
      */
     def privateWithin: Symbol
+
+    final def hasAccessBoundary = (privateWithin != null) && (privateWithin != NoSymbol)
 
     /** The raw info of the type
      */
@@ -107,6 +114,11 @@ trait Symbols { self: Universe =>
      */
     def moduleClass: Symbol
 
+    /**
+     *  If symbol is a lazy val, it's lazy accessor
+     */
+    def lazyAccessor: Symbol
+
 // flags and kind tests
 
     def isTerm         = false  // to be overridden
@@ -116,51 +128,27 @@ trait Symbols { self: Universe =>
     def isAbstractType = false  // to be overridden
     private[scala] def isSkolem = false // to be overridden
 
-          def isTrait: Boolean = isClass && hasFlag(TRAIT) // refined later for virtual classes.
-    final def hasDefault = isParameter && hasFlag(DEFAULTPARAM)
+    override def isTrait: Boolean = isClass && hasFlag(TRAIT) // refined later for virtual classes.
     final def isAbstractClass = isClass && hasFlag(ABSTRACT)
-    // XXX This is unlikely to be correct: it's not looking for the ABSOVERRIDE flag?
-    final def isAbstractOverride = isTerm && hasFlag(ABSTRACT) && hasFlag(OVERRIDE)
     final def isBridge = hasFlag(BRIDGE)
-    final def isCase = hasFlag(CASE)
-    final def isCaseAccessor = hasFlag(CASEACCESSOR)
     final def isContravariant = isType && hasFlag(CONTRAVARIANT)
     final def isCovariant = isType && hasFlag(COVARIANT)
-    final def isDeferred = hasFlag(DEFERRED) && !isClass
     final def isEarlyInitialized: Boolean = isTerm && hasFlag(PRESUPER)
     final def isExistentiallyBound = isType && hasFlag(EXISTENTIAL)
-    final def isFinal = hasFlag(FINAL)
-    final def isGetterOrSetter = hasFlag(ACCESSOR)
     final def isImplClass = isClass && hasFlag(IMPLCLASS) // Is this symbol an implementation class for a mixin?
-    final def isImplicit = hasFlag(IMPLICIT)
-    final def isInterface = hasFlag(INTERFACE)
-    final def isJavaDefined = hasFlag(JAVA)
-    final def isLazy = hasFlag(LAZY)
+    final def isLazyAccessor = isLazy && lazyAccessor != NoSymbol
     final def isMethod = isTerm && hasFlag(METHOD)
+    final def isVarargsMethod = isMethod && hasFlag(VARARGS)
     final def isModule = isTerm && hasFlag(MODULE)
     final def isModuleClass = isClass && hasFlag(MODULE)
-    final def isMutable = hasFlag(MUTABLE)
     final def isOverloaded = hasFlag(OVERLOADED)
-    final def isOverride = hasFlag(OVERRIDE)
-    final def isParamAccessor = hasFlag(PARAMACCESSOR)
-    final def isParameter = hasFlag(PARAM)
-    final def isRefinementClass = isClass && name == mkTypeName(nme.REFINE_CLASS_NAME)
-    final def isSealed = isClass && (hasFlag(SEALED) || definitions.isValueClass(this))
-    final def isSourceMethod = isTerm && (flags & (METHOD | STABLE)) == METHOD // exclude all accessors!!!
-    final def isSuperAccessor = hasFlag(SUPERACCESSOR)
-    final def isSynthetic = hasFlag(SYNTHETIC)
+    final def isRefinementClass = isClass && name == tpnme.REFINE_CLASS_NAME
+    final def isSourceMethod = isMethod && !hasFlag(STABLE) // exclude all accessors!!!
     final def isTypeParameter = isType && isParameter && !isSkolem
-
-    /** Access tests */
-    final def isPrivate = hasFlag(PRIVATE)
-    final def isPrivateLocal = hasFlag(PRIVATE) && hasFlag(LOCAL)
-    final def isProtected = hasFlag(PROTECTED)
-    final def isProtectedLocal = hasFlag(PROTECTED) && hasFlag(LOCAL)
-    final def isPublic = !hasFlag(PRIVATE | PROTECTED) && privateWithin == NoSymbol
 
     /** Package tests */
     final def isEmptyPackage = isPackage && name == nme.EMPTY_PACKAGE_NAME
-    final def isEmptyPackageClass = isPackageClass && name == mkTypeName(nme.EMPTY_PACKAGE_NAME)
+    final def isEmptyPackageClass = isPackageClass && name == tpnme.EMPTY_PACKAGE_NAME
     final def isPackage = isModule && hasFlag(PACKAGE)
     final def isPackageClass = isClass && hasFlag(PACKAGE)
     final def isRoot = isPackageClass && owner == NoSymbol
@@ -170,15 +158,19 @@ trait Symbols { self: Universe =>
      */
     def isEffectiveRoot = isRoot || isEmptyPackageClass
 
+    /** If this is NoSymbol, evaluate the argument: otherwise, this.
+     */
+    def orElse[T](alt: => Symbol): Symbol = if (this ne NoSymbol) this else alt
+
     // creators
 
-    def newAbstractType(name: Name, pos: Position = NoPosition): Symbol
-    def newAliasType(name: Name, pos: Position = NoPosition): Symbol
-    def newClass(name: Name, pos: Position = NoPosition): Symbol
-    def newMethod(name: Name, pos: Position = NoPosition): Symbol
-    def newModule(name: Name, clazz: Symbol, pos: Position = NoPosition): Symbol
-    def newModuleClass(name: Name, pos: Position = NoPosition): Symbol
-    def newValue(name: Name, pos: Position = NoPosition): Symbol
+    def newAbstractType(name: TypeName, pos: Position = NoPosition): Symbol
+    def newAliasType(name: TypeName, pos: Position = NoPosition): Symbol
+    def newClass(name: TypeName, pos: Position = NoPosition): Symbol
+    def newMethod(name: TermName, pos: Position = NoPosition): Symbol
+    def newModule(name: TermName, clazz: Symbol, pos: Position = NoPosition): Symbol
+    def newModuleClass(name: TypeName, pos: Position = NoPosition): Symbol
+    def newValue(name: TermName, pos: Position = NoPosition): Symbol
 
     // access to related symbols
 

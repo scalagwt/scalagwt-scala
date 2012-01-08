@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -15,8 +15,7 @@ package scala.xml
  *  @author Burak Emir
  *  @param text the text contained in this node, may not be <code>null</code>.
  */
-@serializable
-class Atom[+A](val data: A) extends SpecialNode
+class Atom[+A](val data: A) extends SpecialNode with Serializable
 {
   if (data == null)
     throw new IllegalArgumentException("cannot construct Atom(null)")

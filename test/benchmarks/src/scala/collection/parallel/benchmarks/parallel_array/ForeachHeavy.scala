@@ -7,7 +7,9 @@ object ForeachHeavy extends Companion {
   def benchName = "foreach-heavy";
   def apply(sz: Int, parallelism: Int, what: String) = new ForeachHeavy(sz, parallelism, what)
   override def comparisons = List("jsr")
-  override def defaultSize = 16
+  override def defaultSize = 2048
+
+  @volatile var z = 0
 
   val fun = (a: Cont) => heavyOperation(a)
   val funjsr = new extra166y.Ops.Procedure[Cont] {
@@ -21,11 +23,12 @@ object ForeachHeavy extends Companion {
   def checkPrime(n: Int) = {
     var isPrime = true
     var i = 2
-    val until = scala.math.sqrt(n).toInt + 1
+    val until = 550
     while (i < until) {
       if (n % i == 0) isPrime = false
       i += 1
     }
+    if (isPrime && (n.toString == z)) z += 1
     isPrime
   }
 }
@@ -35,7 +38,7 @@ extends Resettable(sz, p, what, new Cont(_), new Array[Any](_), classOf[Cont]) {
   def companion = ForeachHeavy
   override def repetitionsPerRun = 250
 
-  def runpar = pa.foreach(ForeachHeavy.fun)
+  def runpar = pa.pforeach(ForeachHeavy.fun)
   def runseq = sequentialForeach(ForeachHeavy.fun, sz)
   def runjsr = jsrarr.apply(ForeachHeavy.funjsr)
   def comparisonMap = collection.Map("jsr" -> runjsr _)

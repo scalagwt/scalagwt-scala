@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2007-2010 LAMP/EPFL
+ * Copyright 2007-2011 LAMP/EPFL
  * @author  David Bernard, Manohar Jonnalagedda
  */
 
@@ -34,7 +34,7 @@ abstract class HtmlPage { thisPage =>
   protected def headers: NodeSeq
 
   /** The body of this page. */
-  protected def body: NodeSeq
+  def body: NodeSeq
 
   /** Writes this page as a file. The file's location is relative to the generator's site root, and the encoding is
     * also defined by the generator.
@@ -206,10 +206,18 @@ abstract class HtmlPage { thisPage =>
     case tpe :: tpes => typeToHtml(tpe, hasLinks) ++ sep ++ typesToHtml(tpes, hasLinks, sep)
   }
 
+  def hasPage(e: DocTemplateEntity) = {
+    e.isPackage || e.isTrait || e.isClass || e.isObject || e.isCaseClass
+  }
+
   /** Returns the HTML code that represents the template in `tpl` as a hyperlinked name. */
   def templateToHtml(tpl: TemplateEntity) = tpl match {
     case dTpl: DocTemplateEntity =>
-      <a href={ relativeLinkTo(dTpl) } class="extype" name={ dTpl.qualifiedName }>{ dTpl.name }</a>
+      if (hasPage(dTpl)) {
+        <a href={ relativeLinkTo(dTpl) } class="extype" name={ dTpl.qualifiedName }>{ dTpl.name }</a>
+      } else {
+        xml.Text(dTpl.name)
+      }
     case ndTpl: NoDocTemplate =>
       xml.Text(ndTpl.name)
   }
@@ -223,8 +231,21 @@ abstract class HtmlPage { thisPage =>
 
   def docEntityKindToString(ety: DocTemplateEntity) =
   	if (ety.isTrait) "trait"
+  	else if (ety.isCaseClass) "case class"
   	else if (ety.isClass) "class"
   	else if (ety.isObject) "object"
   	else if (ety.isPackage) "package"
   	else "class"	// FIXME: an entity *should* fall into one of the above categories, but AnyRef is somehow not
+
+  /** Returns the _big image name corresponding to the DocTemplate Entity (upper left icon) */
+  def docEntityKindToBigImage(ety: DocTemplateEntity) =
+    	if (ety.isTrait && !ety.companion.isEmpty && ety.companion.get.visibility.isPublic && ety.companion.get.inSource != None) "trait_to_object_big.png"
+    	else if (ety.isTrait) "trait_big.png"
+    	else if (ety.isClass && !ety.companion.isEmpty && ety.companion.get.visibility.isPublic && ety.companion.get.inSource != None) "class_to_object_big.png"
+    	else if (ety.isClass) "class_big.png"
+    	else if (ety.isObject && !ety.companion.isEmpty && ety.companion.get.visibility.isPublic && ety.companion.get.inSource != None && ety.companion.get.isClass) "object_to_class_big.png"
+    	else if (ety.isObject && !ety.companion.isEmpty && ety.companion.get.visibility.isPublic && ety.companion.get.inSource != None && ety.companion.get.isTrait) "object_to_trait_big.png"
+    	else if (ety.isObject) "object_big.png"
+    	else if (ety.isPackage) "package_big.png"
+    	else "class_big.png"	// FIXME: an entity *should* fall into one of the above categories, but AnyRef is somehow not
 }

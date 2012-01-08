@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -24,9 +24,8 @@ import annotation.migration
  *  @version 2.0, 01/01/2007
  *  @since   1
  */
-@serializable
 class ImmutableMapAdaptor[A, B](protected var imap: immutable.Map[A, B])
-extends Map[A, B]
+extends Map[A, B] with Serializable
 {
 
   override def size: Int = imap.size
@@ -55,7 +54,7 @@ extends Map[A, B]
 
   def iterator: Iterator[(A, B)] = imap.iterator
 
-  @deprecated("use `iterator' instead")
+  @deprecated("use `iterator' instead", "2.8.0")
   override def elements = iterator
 
   override def toList: List[(A, B)] = imap.toList

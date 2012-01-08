@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyrights 2005-2010 LAMP/EPFL
+ * Copyrights 2005-2011 LAMP/EPFL
  * @author Martin Odersky
  */
 
@@ -25,18 +25,29 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
     private val newStaticMembers = mutable.Buffer.empty[Tree]
     private val newStaticInits = mutable.Buffer.empty[Tree]
     private val symbolsStoredAsStatic = mutable.Map.empty[String, Symbol]
+    private def mkTerm(prefix: String): TermName = unit.freshTermName(prefix)
+
+    /** Kludge to provide a safe fix for #4560:
+     *  If we generate a reference in an implementation class, we
+     *  watch out for embedded This(..) nodes that point to the interface.
+     *  These must be wrong. We fix them by setting symbol and type to
+     *  the enclosing implementation class instead.
+     */
+    def safeREF(sym: Symbol) = {
+      def fix(tree: Tree): Unit = tree match {
+        case Select(qual @ This(_), name) if qual.symbol != currentClass =>
+          qual.setSymbol(currentClass).setType(currentClass.tpe)
+        case _ =>
+      }
+      val tree = REF(sym)
+      if (currentClass.isImplClass && sym.owner == currentClass) fix(tree)
+      tree
+    }
 
     //private val classConstantMeth = new HashMap[String, Symbol]
     //private val symbolStaticFields = new HashMap[String, (Symbol, Tree, Tree)]
 
     private var localTyper: analyzer.Typer = null
-
-    private lazy val serializableAnnotation =
-      AnnotationInfo(SerializableAttr.tpe, Nil, Nil)
-    private lazy val serialVersionUIDAnnotation = {
-      val attr = definitions.getClass("scala.SerialVersionUID")
-      AnnotationInfo(attr.tpe, List(Literal(Constant(0))), List())
-    }
 
     private object MethodDispatchType extends scala.Enumeration {
       val NO_CACHE, MONO_CACHE, POLY_CACHE = Value
@@ -50,9 +61,6 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
 
     private def typedWithPos(pos: Position)(tree: Tree) =
       localTyper typed { atPos(pos)(tree) }
-
-    override def transformUnit(unit: CompilationUnit) =
-      unit.body = transform(unit.body)
 
     /** A value class is defined to be only Java-compatible values: unit is
       * not part of it, as opposed to isValueClass in definitions. scala.Int is
@@ -98,10 +106,6 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
        *   refinement, where the refinement defines a parameter based on a
        *   type variable. */
       case ad@ApplyDynamic(qual0, params) =>
-        def mkName(s: String = "") =
-          if (s == "") unit.fresh newName ad.pos
-          else unit.fresh.newName(ad.pos, s)
-        def mkTerm(s: String = "") = newTermName(mkName(s))
         val typedPos = typedWithPos(ad.pos) _
 
         assert(ad.symbol.isPublic)
@@ -110,8 +114,8 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         /* ### CREATING THE METHOD CACHE ### */
 
         def addStaticVariableToClass(forName: String, forType: Type, forInit: Tree, isFinal: Boolean): Symbol = {
-          val varSym = currentClass.newVariable(ad.pos, mkName(forName))
-            .setFlag(PRIVATE | STATIC | MUTABLE | SYNTHETIC)
+          val varSym = currentClass.newVariable(ad.pos, mkTerm(forName))
+            .setFlag(PRIVATE | STATIC | SYNTHETIC)
             .setInfo(forType)
           if (isFinal) varSym setFlag FINAL else varSym addAnnotation AnnotationInfo(VolatileAttr.tpe, Nil, Nil)
           currentClass.info.decls enter varSym
@@ -119,7 +123,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
           val varDef = typedPos( VAL(varSym) === forInit )
           newStaticMembers append transform(varDef)
 
-          val varInit = typedPos( REF(varSym) === forInit )
+          val varInit = typedPos( safeREF(varSym) === forInit )
           newStaticInits append transform(varInit)
 
           varSym
@@ -127,7 +131,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
 
         def addStaticMethodToClass(forName: String, forArgsTypes: List[Type], forResultType: Type)
                                   (forBody: Pair[Symbol, List[Symbol]] => Tree): Symbol = {
-          val methSym = currentClass.newMethod(ad.pos, mkName(forName))
+          val methSym = currentClass.newMethod(ad.pos, mkTerm(forName))
             .setFlag(STATIC | SYNTHETIC)
 
           methSym.setInfo(MethodType(methSym.newSyntheticValueParams(forArgsTypes), forResultType))
@@ -142,8 +146,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         def fromTypesToClassArrayLiteral(paramTypes: List[Type]): Tree =
           ArrayValue(TypeTree(ClassClass.tpe), paramTypes map LIT)
 
-        def theTypeClassArray =
-          TypeRef(ArrayClass.tpe.prefix, ArrayClass, List(ClassClass.tpe))
+        def theTypeClassArray = arrayType(ClassClass.tpe)
 
         /* ... */
         def reflectiveMethodCache(method: String, paramTypes: List[Type]): Symbol = dispatchType match {
@@ -163,7 +166,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
 
               addStaticMethodToClass("reflMethod$Method", List(ClassClass.tpe), MethodClass.tpe) {
                 case Pair(reflMethodSym, List(forReceiverSym)) =>
-                  (REF(forReceiverSym) DOT Class_getMethod)(LIT(method), REF(reflParamsCacheSym))
+                  (REF(forReceiverSym) DOT Class_getMethod)(LIT(method), safeREF(reflParamsCacheSym))
               }
 
             case MONO_CACHE =>
@@ -199,17 +202,17 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
               def getMethodSym = ClassClass.tpe member nme.getMethod_
 
               def isCacheEmpty(receiver: Symbol): Tree =
-                reflClassCacheSym.IS_NULL() OR (reflClassCacheSym.GET() ANY_NE REF(receiver))
+                reflClassCacheSym.IS_NULL() OR (reflClassCacheSym.GET() OBJ_NE REF(receiver))
 
               addStaticMethodToClass("reflMethod$Method", List(ClassClass.tpe), MethodClass.tpe) {
                 case Pair(reflMethodSym, List(forReceiverSym)) =>
                   BLOCK(
                     IF (isCacheEmpty(forReceiverSym)) THEN BLOCK(
-                      REF(reflMethodCacheSym) === ((REF(forReceiverSym) DOT getMethodSym)(LIT(method), REF(reflParamsCacheSym))) ,
-                      REF(reflClassCacheSym) === gen.mkSoftRef(REF(forReceiverSym)),
+                      safeREF(reflMethodCacheSym) === ((REF(forReceiverSym) DOT getMethodSym)(LIT(method), safeREF(reflParamsCacheSym))) ,
+                      safeREF(reflClassCacheSym) === gen.mkSoftRef(REF(forReceiverSym)),
                       UNIT
                     ) ENDIF,
-                    REF(reflMethodCacheSym)
+                    safeREF(reflMethodCacheSym)
                   )
               }
 
@@ -228,8 +231,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
                   if (method != null)
                     return method
                   else {
-                    method = forReceiver.getMethod("xyz", reflParams$Cache)
-                    method.setAccessible(true) // issue #2381
+                    method = ScalaRunTime.ensureAccessible(forReceiver.getMethod("xyz", reflParams$Cache))
                     reflPoly$Cache = new SoftReference(reflPoly$Cache.get.add(forReceiver, method))
                     return method
                   }
@@ -242,24 +244,23 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
 
               def mkNewPolyCache = gen.mkSoftRef(NEW(TypeTree(EmptyMethodCacheClass.tpe)))
               val reflPolyCacheSym: Symbol = addStaticVariableToClass("reflPoly$Cache", SoftReferenceClass.tpe, mkNewPolyCache, false)
-              def getPolyCache = fn(REF(reflPolyCacheSym), nme.get) AS_ATTR MethodCacheClass.tpe
+              def getPolyCache = fn(safeREF(reflPolyCacheSym), nme.get) AS_ATTR MethodCacheClass.tpe
 
               addStaticMethodToClass("reflMethod$Method", List(ClassClass.tpe), MethodClass.tpe)
                 { case Pair(reflMethodSym, List(forReceiverSym)) =>
                   val methodSym = reflMethodSym.newVariable(ad.pos, mkTerm("method")) setInfo MethodClass.tpe
 
                   BLOCK(
-                    IF (getPolyCache ANY_EQ NULL) THEN (REF(reflPolyCacheSym) === mkNewPolyCache) ENDIF,
+                    IF (getPolyCache OBJ_EQ NULL) THEN (safeREF(reflPolyCacheSym) === mkNewPolyCache) ENDIF,
                     VAL(methodSym) === ((getPolyCache DOT methodCache_find)(REF(forReceiverSym))) ,
                     IF (REF(methodSym) OBJ_!= NULL) .
                       THEN (Return(REF(methodSym)))
                     ELSE {
-                      def methodSymRHS  = ((REF(forReceiverSym) DOT Class_getMethod)(LIT(method), REF(reflParamsCacheSym)))
+                      def methodSymRHS  = ((REF(forReceiverSym) DOT Class_getMethod)(LIT(method), safeREF(reflParamsCacheSym)))
                       def cacheRHS      = ((getPolyCache DOT methodCache_add)(REF(forReceiverSym), REF(methodSym)))
                       BLOCK(
-                        REF(methodSym)        === methodSymRHS,
-                        (REF(methodSym) DOT methodClass_setAccessible)(LIT(true)),
-                        REF(reflPolyCacheSym) === gen.mkSoftRef(cacheRHS),
+                        REF(methodSym)        === (REF(ensureAccessibleMethod) APPLY (methodSymRHS)),
+                        safeREF(reflPolyCacheSym) === gen.mkSoftRef(cacheRHS),
                         Return(REF(methodSym))
                       )
                     }
@@ -390,13 +391,13 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
           def genDefaultCall = {
             // reflective method call machinery
             val invokeName  = MethodClass.tpe member nme.invoke_                                // reflect.Method.invoke(...)
-            def cache       = REF(reflectiveMethodCache(ad.symbol.name.toString, paramTypes))   // cache Symbol
+            def cache       = safeREF(reflectiveMethodCache(ad.symbol.name.toString, paramTypes))   // cache Symbol
             def lookup      = Apply(cache, List(qual GETCLASS))                                 // get Method object from cache
             def invokeArgs  = ArrayValue(TypeTree(ObjectClass.tpe), params)                     // args for invocation
             def invocation  = (lookup DOT invokeName)(qual, invokeArgs)                         // .invoke(qual, ...)
 
             // exception catching machinery
-            val invokeExc   = currentOwner.newValue(ad.pos, mkTerm()) setInfo InvocationTargetExceptionClass.tpe
+            val invokeExc   = currentOwner.newValue(ad.pos, mkTerm("")) setInfo InvocationTargetExceptionClass.tpe
             def catchVar    = Bind(invokeExc, Typed(Ident(nme.WILDCARD), TypeTree(InvocationTargetExceptionClass.tpe)))
             def catchBody   = Throw(Apply(Select(Ident(invokeExc), nme.getCause), Nil))
 
@@ -440,7 +441,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         if (settings.refinementMethodDispatch.value == "invoke-dynamic") {
 /*          val guardCallSite: Tree = {
             val cachedClass = addStaticVariableToClass("cachedClass", definitions.ClassClass.tpe, EmptyTree)
-            val tmpVar = currentOwner.newVariable(ad.pos, unit.fresh.newName(ad.pos, "x")).setInfo(definitions.AnyRefClass.tpe)
+            val tmpVar = currentOwner.newVariable(ad.pos, unit.freshTermName(ad.pos, "x")).setInfo(definitions.AnyRefClass.tpe)
             atPos(ad.pos)(Block(List(
               ValDef(tmpVar, transform(qual))),
               If(Apply(Select(gen.mkAttributedRef(cachedClass), nme.EQ), List(getClass(Ident(tmpVar)))),
@@ -479,7 +480,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
               assert(params.length == mparams.length)
               typedPos {
                 val sym = currentOwner.newValue(ad.pos, mkTerm("qual")) setInfo qual0.tpe
-                qual = REF(sym)
+                qual = safeREF(sym)
 
                 BLOCK(
                   VAL(sym) === qual0,
@@ -505,8 +506,10 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
                   )
               case _ => ""
             }
-            Console.printf("""Dynamically application '%s.%s(%s)' %s - resulting code: '%s'""",
-                List(qual, ad.symbol.name, paramsToString(params), mstr, t) map (_.toString) : _*
+            log(
+              """Dynamically application '%s.%s(%s)' %s - resulting code: '%s'""".format(
+                qual, ad.symbol.name, paramsToString(params), mstr, t
+              )
             )
           }
 
@@ -526,24 +529,38 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
        * constructor. */
       case Template(parents, self, body) =>
         localTyper = typer.atOwner(tree, currentClass)
+        var savedNewStaticMembers : mutable.Buffer[Tree] = null
+        var savedNewStaticInits   : mutable.Buffer[Tree] = null
+        var savedSymbolsStoredAsStatic : mutable.Map[String, Symbol] = null
+        if(forMSIL) {
+          savedNewStaticMembers = newStaticMembers.clone
+          savedNewStaticInits = newStaticInits.clone
+          savedSymbolsStoredAsStatic = symbolsStoredAsStatic.clone
+        }
         newStaticMembers.clear
         newStaticInits.clear
         symbolsStoredAsStatic.clear
-        val transformedTemplate: Template =
-          if (!forMSIL) {
-            var newBody =
-              transformTrees(body)
-            treeCopy.Template(tree, parents, self, transformTrees(newStaticMembers.toList) ::: newBody)
-          }
-          else super.transform(tree).asInstanceOf[Template]
-        addStaticInits(transformedTemplate) // postprocess to include static ctors
+        val transformedTemplate: Template = {
+          var newBody = transformTrees(body)
+          treeCopy.Template(tree, parents, self, transformTrees(newStaticMembers.toList) ::: newBody)
+        }
+        val res = addStaticInits(transformedTemplate) // postprocess to include static ctors
+        newStaticMembers.clear
+        newStaticInits.clear
+        symbolsStoredAsStatic.clear
+        if(forMSIL) {
+          newStaticMembers      ++= savedNewStaticMembers
+          newStaticInits        ++= savedNewStaticInits
+          symbolsStoredAsStatic ++= savedSymbolsStoredAsStatic
+        }
+        res
 
       case Literal(c) if (c.tag == ClassTag) && !forMSIL=>
         val tpe = c.typeValue
         typedWithPos(tree.pos) {
           if (isValueClass(tpe.typeSymbol)) {
             if (tpe.typeSymbol == UnitClass)
-              Select(REF(BoxedUnit_TYPE), BoxedUnit_TYPE)
+              REF(BoxedUnit_TYPE)
             else
               Select(REF(boxedModule(tpe.typeSymbol)), nme.TYPE_)
           }
@@ -558,8 +575,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
       case theTry @ Try(block, catches, finalizer)
         if theTry.tpe.typeSymbol != definitions.UnitClass && theTry.tpe.typeSymbol != definitions.NothingClass =>
         val tpe = theTry.tpe.widen
-        val tempVar = currentOwner.newValue(theTry.pos, unit.fresh.newName(theTry.pos, "exceptionResult"))
-          .setInfo(tpe).setFlag(Flags.MUTABLE)
+        val tempVar = currentOwner.newVariable(theTry.pos, mkTerm(nme.EXCEPTION_RESULT_PREFIX)).setInfo(tpe)
         def assignBlock(rhs: Tree) = super.transform(BLOCK(Ident(tempVar) === transform(rhs)))
 
         val newBlock    = assignBlock(block)
@@ -567,19 +583,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
           (CASE(super.transform(pattern)) IF (super.transform(guard))) ==> assignBlock(body)
         val newTry      = Try(newBlock, newCatches, super.transform(finalizer))
 
-        localTyper typed { BLOCK(VAL(tempVar) === EmptyTree, newTry, Ident(tempVar)) }
-
-      /* Adds @serializable annotation to anonymous function classes */
-      case cdef @ ClassDef(mods, name, tparams, impl) =>
-        if (settings.target.value == "jvm-1.5") {
-          val sym = cdef.symbol
-          // is this an anonymous function class?
-          if (sym.isAnonymousFunction && !sym.hasAnnotation(SerializableAttr)) {
-            sym addAnnotation serializableAnnotation
-            sym addAnnotation serialVersionUIDAnnotation
-          }
-        }
-        super.transform(tree)
+        typedWithPos(theTry.pos)(BLOCK(VAL(tempVar) === EmptyTree, newTry, Ident(tempVar)))
 
      /*
       * This transformation should identify Scala symbol invocations in the tree and replace them
@@ -619,9 +623,19 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         val staticFieldSym = getSymbolStaticField(symapp.pos, symname, rhs, symapp)
 
         // create a reference to a static field
-        val ntree = typedWithPos(symapp.pos)(REF(staticFieldSym))
+        val ntree = typedWithPos(symapp.pos)(safeREF(staticFieldSym))
 
         super.transform(ntree)
+
+      // This transform replaces Array(Predef.wrapArray(Array(...)), <manifest>)
+      // with just Array(...)
+      case Apply(appMeth, List(Apply(wrapRefArrayMeth, List(array)), _))
+      if (wrapRefArrayMeth.symbol == Predef_wrapRefArray &&
+          appMeth.symbol == ArrayModule_overloadedApply.suchThat {
+            _.tpe.resultType.dealias.typeSymbol == ObjectClass
+          }) =>
+        super.transform(array)
+
       case _ =>
         super.transform(tree)
     }
@@ -632,18 +646,17 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
      */
     private def getSymbolStaticField(pos: Position, symname: String, rhs: Tree, tree: Tree): Symbol =
       symbolsStoredAsStatic.getOrElseUpdate(symname, {
-        val freshname = unit.fresh.newName(pos, "symbol$")
         val theTyper = typer.atOwner(tree, currentClass)
 
         // create a symbol for the static field
-        val stfieldSym = currentClass.newVariable(pos, freshname)
+        val stfieldSym = currentClass.newVariable(pos, mkTerm("symbol$"))
           .setFlag(PRIVATE | STATIC | SYNTHETIC | FINAL)
           .setInfo(symbolType)
         currentClass.info.decls enter stfieldSym
 
         // create field definition and initialization
         val stfieldDef = theTyper.typed { atPos(pos)(VAL(stfieldSym) === rhs) }
-        val stfieldInit = theTyper.typed { atPos(pos)(REF(stfieldSym) === rhs) }
+        val stfieldInit = theTyper.typed { atPos(pos)(safeREF(stfieldSym) === rhs) }
 
         // add field definition to new defs
         newStaticMembers append stfieldDef
@@ -655,7 +668,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
     /* finds the static ctor DefDef tree within the template if it exists. */
     private def findStaticCtor(template: Template): Option[Tree] =
       template.body find {
-        case defdef @ DefDef(mods, nme.CONSTRUCTOR, tparam, vparam, tp, rhs) => defdef.symbol hasFlag STATIC
+        case defdef @ DefDef(_, nme.CONSTRUCTOR, _, _, _, _) => defdef.symbol.hasStaticFlag
         case _ => false
       }
 

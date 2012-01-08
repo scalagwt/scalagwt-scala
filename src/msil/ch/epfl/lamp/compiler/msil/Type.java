@@ -21,6 +21,31 @@ import java.util.Arrays;
  */
 public abstract class Type extends MemberInfo {
 
+    private java.util.List /* GenericParamAndConstraints */ tVars = new java.util.LinkedList();
+    private GenericParamAndConstraints[] sortedTVars = null;
+
+    public void addTVar(GenericParamAndConstraints tvarAndConstraints) {
+        sortedTVars = null;
+        tVars.add(tvarAndConstraints);
+    }
+
+    public GenericParamAndConstraints[] getSortedTVars() {
+        if(sortedTVars == null) {
+            sortedTVars = new GenericParamAndConstraints[tVars.size()];
+            for (int i = 0; i < sortedTVars.length; i ++){
+                Iterator iter = tVars.iterator();
+                while(iter.hasNext()) {
+                    GenericParamAndConstraints tvC = (GenericParamAndConstraints)iter.next();
+                    if(tvC.Number == i) {
+                        sortedTVars[i] = tvC;
+                    }
+                }
+            }
+        }
+        return sortedTVars;
+    }
+
+
     //##########################################################################
     // public static members
 
@@ -90,7 +115,7 @@ public abstract class Type extends MemberInfo {
     // the underlying type of an enumeration. null if the type is not enum.
     protected Type underlyingType;
 
-    private int auxAttr;
+    protected int auxAttr;
 
     //##########################################################################
     // Map with all the types known so far and operations on it
@@ -102,6 +127,8 @@ public abstract class Type extends MemberInfo {
     }
 
     protected static Type addType(Type t) {
+        assert(!(t instanceof TMVarUsage));
+        assert(!(t instanceof ConstructedType));
 	Type oldType = (Type) types.put(t.FullName, t);
 // 	if (oldType != null)
 // 	    throw new RuntimeException("The type: [" + t.Assembly + "]" + t
@@ -127,7 +154,7 @@ public abstract class Type extends MemberInfo {
 				 fullName.length()),
 	      declType);
 
-	Module = module;
+	Module = module; // null only for TMVarUsage and for PrimitiveType
 	Attributes = attr;
 	this.baseType = baseType;
 	if (DeclaringType == null) {
@@ -258,9 +285,46 @@ public abstract class Type extends MemberInfo {
     public final boolean IsEnum() {
 	return BaseType() == ENUM();
     }
+    public boolean CanBeTakenAddressOf() {
+    /*  TODO should be overridden in TMVarUsage,
+        but there's currently no way to bind a TMVarUsage to its GenericParamAndConstraints definition. Why?
+        Because of the way the msil library is organized (e.g., mkArray() returns the same !0[] representation
+        for all !0[] usages, irrespective of the scope of the !0 type-param)
+        This  in turn is so because without generics there's no harm in using a type-def instance
+        where a type-ref should go (e.g., the ParameterType of a ParameterInfo nowadays may point to a PEType).
+        The net effect is that this method (CanBeTakenAddressOf) is conservative, it will answer "no"
+        for example for !0 where !0 refers to a type-param with the isValuetype constraint set.
+        The whole thing is ok at this point in time, where generics are not supported at the backend. */
+	    return IsValueType() && (this != ENUM());
+        /* ENUM() is a singleton, i.e. System.Enum is not generic */
+    }
+
+    /** IsGeneric, true for a PEType or TypeBuilder (i.e., a type definition)
+     * containing one or more type params. Not to be called on a reference
+     * to a constructed type. */
+    public final boolean IsGeneric() {
+        return tVars.size() > 0;
+    }
 
     public final boolean HasElementType() {
 	return IsArray() || IsPointer() || IsByRef();
+    }
+
+    public boolean IsTMVarUsage() {
+        // overridden in TMVarUsage
+        return false;
+    }
+
+    public boolean IsNestedType() {
+        return DeclaringType != null;
+    }
+
+    public boolean IsDefinitelyInternal() {
+      if(IsNestedType()) {
+        return IsNestedPrivate();
+      } else {
+        return IsNotPublic();
+      }
     }
 
     //public final boolean IsCOMObject;
@@ -281,19 +345,44 @@ public abstract class Type extends MemberInfo {
 
     //##########################################################################
 
-    static final class PrimitiveType extends Type {
-	public PrimitiveType(Module module,
-			     int attributes,
-			     String fullName,
-			     Type baseType,
-			     Type[] interfaces,
-			     Type declType,
-			     int auxAttr,
-			     Type elemType)
-	{
-	    super(module, attributes, fullName,
-		  baseType, interfaces, declType, auxAttr, elemType);
+    public static final class TMVarUsage extends Type {
+
+        public final int Number;
+        public final boolean isTVar;
+
+        /** Non-defining reference to either a TVar or an MVar.
+         *  An instance of GenericParamAndConstraints represents a TVar or an MVar definition. */
+        public TMVarUsage(int Number, boolean isTVar) {
+            super(null, 0, ((isTVar ? "!" : "!!") + Number), null, null, null, AuxAttr.None, null);
+            this.Number = Number;
+            this.isTVar = isTVar;
 	}
+
+        public String toString() {
+            return (isTVar ? "!" : "!!") + Number;
+    }
+
+        public final boolean IsTMVarUsage() {
+            return true;
+    }
+
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            TMVarUsage that = (TMVarUsage) o;
+
+            if (Number != that.Number) return false;
+            if (isTVar != that.isTVar) return false;
+
+            return true;
+        }
+
+        public int hashCode() {
+            int result = Number;
+            result = 31 * result + (isTVar ? 1 : 0);
+            return result;
+        }
     }
 
     protected static final class AuxAttr {
@@ -315,7 +404,7 @@ public abstract class Type extends MemberInfo {
 	if (array != null)
 	    return array;
 	array = new PrimitiveType(elemType.Module,
-				  TypeAttributes.Public
+				  elemType.Attributes
 				  | TypeAttributes.Sealed
 				  | TypeAttributes.Serializable,
 				  elemType.FullName + arrSig,
@@ -330,10 +419,22 @@ public abstract class Type extends MemberInfo {
 	Type type = getType(name);
 	if (type != null) return type;
 	type = new PrimitiveType(elemType.Module,
-				 TypeAttributes.NotPublic,
+				 elemType.Attributes,
 				 name, null, EmptyTypes, null,
 				 AuxAttr.Pointer, elemType);
 	return addType(type);
+    }
+
+    /***/
+    public static Type mkByRef(Type elemType) {
+        String name = elemType.FullName + "&";
+        Type type = getType(name);
+        if (type != null) return type;
+        type = new PrimitiveType(elemType.Module,
+                elemType.Attributes,
+                name, null, EmptyTypes, null,
+                AuxAttr.ByRef, elemType);
+        return addType(type);
     }
 
     //##########################################################################
@@ -812,7 +913,7 @@ public abstract class Type extends MemberInfo {
 	if (k >= 0)
 	    cname = cname.substring(k + 1);
 	return  "[" + t.Assembly().GetName() + "]" + t +
-	    "(" + cname + "#" + Integer.toHexString(t.##) + ")";
+	    "(" + cname + "#" + Integer.toHexString(t.hashCode()) + ")";
     }
     private static String dumpType(Type t) {
 	StringBuffer str = new StringBuffer();

@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * Author: Paul Phillips
  */
 
@@ -27,6 +27,16 @@ trait Patterns extends ast.TreeDSL {
   type PatternMatch       = MatchMatrix#PatternMatch
   private type PatternVar = MatrixContext#PatternVar
 
+  // private def unapplyArgs(x: Any) = x match {
+  //   case UnApply(Apply(TypeApply(_, targs), args), _) => (targs map (_.symbol), args map (_.symbol))
+  //   case _                                            => (Nil, Nil)
+  // }
+  //
+  // private def unapplyCall(x: Any) = x match {
+  //   case UnApply(t, _)  => treeInfo.methPart(t).symbol
+  //   case _              => NoSymbol
+  // }
+
   // Fresh patterns
   def emptyPatterns(i: Int): List[Pattern] = List.fill(i)(NoPattern)
   def emptyTrees(i: Int): List[Tree] = List.fill(i)(EmptyTree)
@@ -45,14 +55,12 @@ trait Patterns extends ast.TreeDSL {
     val Ident(name) = tree
     require(isVarPattern(tree) && name != nme.WILDCARD)
 
-    override def irrefutableFor(tpe: Type) = true
     override def description = "%s".format(name)
   }
 
   // 8.1.1 (b)
   case class WildcardPattern() extends Pattern {
     val tree = EmptyTree
-    override def irrefutableFor(tpe: Type) = true
     override def isDefault = true
     override def description = "_"
   }
@@ -60,15 +68,14 @@ trait Patterns extends ast.TreeDSL {
   // 8.1.2
   case class TypedPattern(tree: Typed) extends Pattern {
     private val Typed(expr, tpt) = tree
+    private lazy val exprPat = Pattern(expr)
 
     override def subpatternsForVars: List[Pattern] = List(Pattern(expr))
-
-    override def irrefutableFor(tpe: Type) = tpe <:< tree.tpe
     override def simplify(pv: PatternVar) = Pattern(expr) match {
-      case ExtractorPattern(ua) if pv.sym.tpe <:< tpt.tpe  => this rebindTo expr
-      case _                                                => this
+      case ExtractorPattern(ua) if pv.sym.tpe <:< tpt.tpe => this rebindTo expr
+      case _                                              => this
     }
-    override def description = "Typ(%s: %s)".format(Pattern(expr), tpt)
+    override def description = "%s: %s".format(exprPat.boundNameString, tpt)
   }
 
   // 8.1.3
@@ -98,7 +105,15 @@ trait Patterns extends ast.TreeDSL {
     require (args.isEmpty)
     val Apply(select: Select, _) = tree
 
-    override def sufficientType = mkSingletonFromQualifier
+    override lazy val sufficientType = qualifier.tpe match {
+      case t: ThisType  => singleType(t, sym)   // this.X
+      case _            =>
+        qualifier match {
+          case _: Apply => PseudoType(tree)
+          case _        => singleType(Pattern(qualifier).necessaryType, sym)
+        }
+    }
+
     override def simplify(pv: PatternVar) = this.rebindToObjectCheck()
     override def description = backticked match {
       case Some(s)  => "this." + s
@@ -129,7 +144,7 @@ trait Patterns extends ast.TreeDSL {
 
   // 8.1.5
   case class ConstructorPattern(tree: Apply) extends ApplyPattern with NamePattern {
-    require(fn.isType && this.isCaseClass)
+    require(fn.isType && this.isCaseClass, "tree: " + tree + " fn: " + fn)
     def name = tpe.typeSymbol.name
     def cleanName = tpe.typeSymbol.decodedName
     def hasPrefix = tpe.prefix.prefixString != ""
@@ -151,77 +166,69 @@ trait Patterns extends ast.TreeDSL {
       if (isColonColon) "%s :: %s".format(Pattern(args(0)), Pattern(args(1)))
       else "%s(%s)".format(name, toPats(args).mkString(", "))
     }
-
-    // XXX todo
-    // override def irrefutableFor(tpe: Type) = false
   }
   // 8.1.6
   case class TuplePattern(tree: Apply) extends ApplyPattern {
-    // XXX todo
-    // override def irrefutableFor(tpe: Type) = false
     override def description = "((%s))".format(args.size, toPats(args).mkString(", "))
   }
 
-  // 8.1.7
+  // 8.1.7 / 8.1.8 (unapply and unapplySeq calls)
   case class ExtractorPattern(tree: UnApply) extends UnapplyPattern {
-    private val Apply(fn, _) = unfn
-    private val MethodType(List(arg, _*), _) = fn.tpe
-    private def uaTyped = Typed(tree, TypeTree(arg.tpe)) setType arg.tpe
-
-    override def necessaryType = arg.tpe
-
-    override def simplify(pv: PatternVar) =
-      if (pv.sym.tpe <:< arg.tpe) this
-      else this rebindTo uaTyped
-
-    override def description = "UnApp(%s => %s)".format(necessaryType, resTypesString)
-  }
-
-  // 8.1.8 (unapplySeq calls)
-  case class SequenceExtractorPattern(tree: UnApply) extends UnapplyPattern with SequenceLikePattern {
-
-    lazy val UnApply(
-      Apply(TypeApply(Select(_, nme.unapplySeq), List(tptArg)), _),
-      List(ArrayValue(_, elems))
-    ) = tree
-
-    /** For folding a list into a well-typed x :: y :: etc :: tree. */
-    private def listFolder = {
-      val tpe = tptArg.tpe
-      val MethodType(_, TypeRef(pre, sym, _)) = ConsClass.primaryConstructor.tpe
-      val consRef                             = typeRef(pre, sym, List(tpe))
-      val listRef                             = typeRef(pre, ListClass, List(tpe))
-
-      def fold(x: Tree, xs: Tree) = unbind(x) match {
-        case _: Star  => Pattern(x) rebindTo WILD(x.tpe) boundTree  // this is using boundVariables instead of deepBoundVariables
-        case _        =>
-          val dummyMethod = new TermSymbol(NoSymbol, NoPosition, "matching$dummy")
-          val consType    = MethodType(dummyMethod newSyntheticValueParams List(tpe, listRef), consRef)
-
-          Apply(TypeTree(consType), List(x, xs)) setType consRef
+    override def simplify(pv: PatternVar) = {
+      if (pv.sym hasFlag NO_EXHAUSTIVE) ()
+      else {
+        TRACE("Setting NO_EXHAUSTIVE on " + pv.sym + " due to extractor " + tree)
+        pv.sym setFlag NO_EXHAUSTIVE
       }
 
-      fold _
+      if (pv.tpe <:< arg.tpe) this
+      else this rebindTo uaTyped
     }
 
-    // @pre: is not right-ignoring (no star pattern) ; no exhaustivity check
-    override def simplify(pv: PatternVar) = {
-      pv.sym setFlag Flags.TRANS_FLAG
-      this rebindTo elems.foldRight(gen.mkNil)(listFolder)
+    override def description = "Unapply(%s => %s)".format(necessaryType, resTypesString)
+  }
+
+  // Special List handling.  It was like that when I got here.
+  case class ListExtractorPattern(tree: UnApply, tpt: Tree, elems: List[Tree]) extends UnapplyPattern with SequenceLikePattern {
+    private val cons    = ConsClass.primaryConstructor.tpe.resultType
+    private val consRef = typeRef(cons.prefix, ConsClass, List(tpt.tpe))
+    private val listRef = typeRef(cons.prefix, ListClass, List(tpt.tpe))
+    private val seqRef  = typeRef(cons.prefix, SeqClass, List(tpt.tpe))
+    private def thisSeqRef = {
+      val tc = (tree.tpe baseType SeqClass).typeConstructor
+      if (tc.typeParams.size == 1) appliedType(tc, List(tpt.tpe))
+      else seqRef
     }
-    override def description = "UnSeq(%s => %s)".format(tptArg, resTypesString)
+
+    // Fold a list into a well-typed x :: y :: etc :: tree.
+    private def listFolder(x: Pattern, xs: Pattern): Pattern = x match {
+      case Pattern(Star(_)) => x rebindTo WILD(x.tpe)
+      case _        =>
+        val dummyMethod = new TermSymbol(NoSymbol, NoPosition, "matching$dummy")
+        val consType    = MethodType(dummyMethod newSyntheticValueParams List(tpt.tpe, listRef), consRef)
+
+        Pattern(Apply(TypeTree(consType), List(x.boundTree, xs.boundTree)) setType consRef)
+    }
+    private def foldedPatterns = elems.foldRight(NilPattern)((x, y) => listFolder(Pattern(x), y))
+    override def necessaryType = if (nonStarPatterns.nonEmpty) consRef else listRef
+
+    override def simplify(pv: PatternVar) = {
+      if (pv.tpe <:< necessaryType)
+        foldedPatterns
+      else
+        this rebindTo (Typed(tree, TypeTree(necessaryType)) setType necessaryType)
+    }
+    override def description = "List(%s => %s)".format(tpt.tpe, resTypesString)
   }
 
   trait SequenceLikePattern extends Pattern {
     def elems: List[Tree]
-    def elemPatterns = toPats(elems)
+    override def hasStar = elems.nonEmpty && isStar(elems.last)
 
-    def nonStarPatterns: List[Pattern] = if (hasStar) elemPatterns.init else elemPatterns
-    def nonStarLength = nonStarPatterns.length
-    def isAllDefaults = nonStarPatterns forall (_.isDefault)
-
-    def isShorter(other: SequenceLikePattern) = nonStarLength < other.nonStarLength
-    def isSameLength(other: SequenceLikePattern) = nonStarLength == other.nonStarLength
+    def elemPatterns    = toPats(elems)
+    def nonStarElems    = if (hasStar) elems.init else elems
+    def nonStarPatterns = toPats(nonStarElems)
+    def nonStarLength   = nonStarElems.length
   }
 
   // 8.1.8 (b) (literal ArrayValues)
@@ -263,16 +270,7 @@ trait Patterns extends ast.TreeDSL {
   object Pattern {
     // a small tree -> pattern cache
     private val cache = new collection.mutable.HashMap[Tree, Pattern]
-
-    def unadorn(x: Tree): Tree = x match {
-      case Typed(expr, _) => unadorn(expr)
-      case Bind(_, x)     => unadorn(x)
-      case _              => x
-    }
-
-    def isRightIgnoring(t: Tree) = cond(unadorn(t)) {
-      case ArrayValue(_, xs) if !xs.isEmpty => isStar(unadorn(xs.last))
-    }
+    def clear() = cache.clear()
 
     def apply(tree: Tree): Pattern = {
       if (cache contains tree)
@@ -300,33 +298,34 @@ trait Patterns extends ast.TreeDSL {
       p match {
         case WildcardPattern()  => p
         case _: LiteralPattern  => p
-        case _                  => tracing("Pattern", p)
+        case _                  => tracing("Pattern")(p)
       }
     }
-    def unapply(other: Any): Option[(Tree, List[Symbol])] = other match {
+    // matching on Pattern(...) always skips the bindings.
+    def unapply(other: Any): Option[Tree] = other match {
       case x: Tree    => unapply(Pattern(x))
-      case x: Pattern => Some((x.tree, x.boundVariables))
+      case x: Pattern => Some(x.tree)
       case _          => None
     }
   }
 
   object UnapplyPattern {
     private object UnapplySeq {
-      private object TypeApp {
-        def unapply(x: Any) = condOpt(x) {
-          case TypeApply(sel @ Select(stor, nme.unapplySeq), List(tpe)) if stor.symbol eq ListModule => tpe
-        }
-      }
-      def unapply(x: UnApply) = condOpt(x) {
-        case UnApply(Apply(TypeApp(tptArg), _), List(ArrayValue(_, xs))) => (tptArg, xs)
-      }
+      def unapply(x: UnApply) = x match {
+        case UnApply(
+        Apply(TypeApply(Select(qual, nme.unapplySeq), List(tpt)), _),
+        List(ArrayValue(_, elems))) =>
+          Some(qual.symbol, tpt, elems)
+        case _ =>
+          None
+       }
     }
 
-    def apply(x: UnApply): Pattern = {
-      x match {
-        case UnapplySeq(_, _) => SequenceExtractorPattern(x)
-        case _                => ExtractorPattern(x)
-      }
+    def apply(x: UnApply): Pattern = x match {
+      case UnapplySeq(ListModule, tpt, elems) =>
+        ListExtractorPattern(x, tpt, elems)
+      case _ =>
+        ExtractorPattern(x)
     }
   }
 
@@ -348,7 +347,7 @@ trait Patterns extends ast.TreeDSL {
     def apply(x: Apply): Pattern = {
       val Apply(fn, args) = x
       def isModule  = x.symbol.isModule || x.tpe.termSymbol.isModule
-      def isTuple   = isTupleType(fn.tpe)
+      def isTuple   = isTupleTypeOrSubtype(fn.tpe)
 
       if (fn.isType) {
         if (isTuple) TuplePattern(x)
@@ -381,16 +380,6 @@ trait Patterns extends ast.TreeDSL {
       case Apply(f, Nil)    => getPathSegments(f)
       case _                => Nil
     }
-    protected def mkSingletonFromQualifier = {
-      def pType = qualifier match {
-        case _: Apply => PseudoType(tree)
-        case _        => singleType(Pattern(qualifier).necessaryType, sym)
-      }
-      qualifier.tpe match {
-        case t: ThisType  => singleType(t, sym) // this.X
-        case _            => pType
-      }
-    }
   }
 
   sealed trait NamePattern extends Pattern {
@@ -402,20 +391,21 @@ trait Patterns extends ast.TreeDSL {
 
   sealed trait UnapplyPattern extends Pattern {
     lazy val UnApply(unfn, args) = tree
-    override def subpatternsForVars: List[Pattern] = toPats(args)
+    lazy val Apply(fn, _) = unfn
+    lazy val MethodType(List(arg, _*), _) = fn.tpe
+    protected def uaTyped = Typed(tree, TypeTree(arg.tpe)) setType arg.tpe
+
+    override def necessaryType = arg.tpe
+    override def subpatternsForVars = args match {
+      case List(ArrayValue(elemtpe, elems)) => toPats(elems)
+      case _                                => toPats(args)
+    }
 
     def resTypes = analyzer.unapplyTypeList(unfn.symbol, unfn.tpe)
     def resTypesString = resTypes match {
       case Nil  => "Boolean"
       case xs   => xs.mkString(", ")
     }
-
-    private def isSameFunction(f1: Tree, f2: Tree) =
-      (f1.symbol == f2.symbol) && (f1 equalsStructure f2)
-
-    // XXX args
-    def isSameUnapply(other: UnapplyPattern) =
-      isSameFunction(unfn, other.unfn)
   }
 
   sealed trait ApplyPattern extends Pattern {
@@ -434,22 +424,9 @@ trait Patterns extends ast.TreeDSL {
 
     // returns either a simplification of this pattern or identity.
     def simplify(pv: PatternVar): Pattern = this
-    def simplify(): Pattern = this simplify null
 
     // the right number of dummies for this pattern
     def dummies: List[Pattern] = Nil
-
-    // 8.1.13
-    // A pattern p is irrefutable for type T if any of the following applies:
-    //   1) p is a variable pattern
-    //   2) p is a typed pattern x: T', and T <: T'
-    //   3) p is a constructor pattern C(p1,...,pn), the type T is an instance of class C,
-    //      the primary constructor of type T has argument types T1,...,Tn and and each
-    //      pi is irrefutable for Ti.
-    def irrefutableFor(tpe: Type) = false
-
-    // does this pattern completely cover that pattern (i.e. latter cannot be matched)
-    def completelyCovers(second: Pattern) = false
 
     // Is this a default pattern (untyped "_" or an EmptyTree inserted by the matcher)
     def isDefault = false
@@ -461,42 +438,31 @@ trait Patterns extends ast.TreeDSL {
     // (nullness and guards will still be checked.)
     def sufficientType = tpe
 
-    // XXX have to determine if this can be made useful beyond an extractor barrier.
-    // Default sufficient type might be NothingClass.tpe, tpe.narrow, ...
-
     // the subpatterns for this pattern (at the moment, that means constructor arguments)
     def subpatterns(pm: MatchMatrix#PatternMatch): List[Pattern] = pm.dummies
 
     def    sym  = tree.symbol
     def    tpe  = tree.tpe
-    def prefix  = tpe.prefix
     def isEmpty = tree.isEmpty
 
-    def isSymValid = (sym != null) && (sym != NoSymbol)
-    def isModule = sym.isModule || tpe.termSymbol.isModule
-    def isCaseClass = tpe.typeSymbol hasFlag Flags.CASE
-    def isObject = isSymValid && prefix.isStable  // XXX not entire logic
+    def isModule    = sym.isModule || tpe.termSymbol.isModule
+    def isCaseClass = tpe.typeSymbol.isCase
+    def isObject    = (sym != null) && (sym != NoSymbol) && tpe.prefix.isStable  // XXX not entire logic
 
-    def unadorn(t: Tree): Tree = Pattern unadorn t
-
-    private def isStar(x: Tree) = cond(unadorn(x)) { case Star(_) => true }
-    private def endsStar(xs: List[Tree]) = xs.nonEmpty && isStar(xs.last)
-
-    def isStarSequence = isSequence && hasStar
-    def isSequence = cond(unadorn(tree)) {
-      case ArrayValue(_, _) => true
-    }
-    def hasStar = cond(unadorn(tree)) {
-      case ArrayValue(_, xs) if endsStar(xs)  => true
-    }
+    def hasStar = false
 
     def setType(tpe: Type): this.type = {
       tree setType tpe
       this
     }
+    def boundName: Option[Name] = boundTree match {
+      case Bind(name, _)  => Some(name)
+      case _              => None
+    }
+    def boundNameString = "" + (boundName getOrElse "_")
 
     def equalsCheck =
-      tracing("equalsCheck",
+      tracing("equalsCheck")(
         if (sym.isValue) singleType(NoPrefix, sym)
         else tpe.narrow
       )

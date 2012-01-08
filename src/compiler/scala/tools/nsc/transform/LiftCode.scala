@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author Gilles Dubochet
  */
 
@@ -8,10 +8,9 @@ package transform
 
 import symtab._
 import Flags._
-import symtab.Flags._
-import scala.collection.immutable.ListMap
-import scala.collection.mutable.{HashMap, ListBuffer}
-import scala.tools.nsc.util.{FreshNameCreator, TreeSet}
+import scala.collection.{ mutable, immutable }
+import scala.collection.mutable.ListBuffer
+import scala.tools.nsc.util.FreshNameCreator
 
 /** Translate expressions of the form reflect.Code.lift(exp)
  *  to the lifted "reflect trees" representation of exp.
@@ -44,7 +43,7 @@ abstract class LiftCode extends Transform with Reifiers {
   }
 
 
-  type InjectEnvironment = ListMap[reflect.Symbol, Name]
+  type InjectEnvironment = immutable.ListMap[reflect.Symbol, Name]
 
   class Injector(env: InjectEnvironment, fresh: FreshNameCreator) {
 
@@ -52,9 +51,6 @@ abstract class LiftCode extends Transform with Reifiers {
     def className(value: AnyRef): String = value match {
       case _ :: _ => "scala.$colon$colon"
       case reflect.MethodType(_, _) =>
-        if (value.isInstanceOf[reflect.ImplicitMethodType])
-          "scala.reflect.ImplicitMethodType"
-        else
           "scala.reflect.MethodType"
       case x:Product =>
         "scala.reflect."+x.productPrefix //caseName
@@ -109,7 +105,7 @@ abstract class LiftCode extends Transform with Reifiers {
 
 
   def inject(code: reflect.Tree): Tree =
-    new Injector(ListMap.empty, new FreshNameCreator.Default).inject(code)
+    new Injector(immutable.ListMap.empty, new FreshNameCreator.Default).inject(code)
 
   def codify (tree: Tree): Tree =
     New(TypeTree(appliedType(definitions.CodeClass.typeConstructor,

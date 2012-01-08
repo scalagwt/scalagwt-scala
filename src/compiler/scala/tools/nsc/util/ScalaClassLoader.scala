@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Paul Phillips
  */
 
@@ -32,20 +32,13 @@ trait ScalaClassLoader extends JavaClassLoader {
   /** Load, link and initialize a class with this classloader */
   def tryToInitializeClass[T <: AnyRef](path: String): Option[Class[T]] = tryClass(path, true)
 
-  private def tryBody[T <: AnyRef](body: => Any): Option[T] =
-    catching(classOf[ClassNotFoundException], classOf[SecurityException]) opt body.asInstanceOf[T]
-
   private def tryClass[T <: AnyRef](path: String, initialize: Boolean): Option[Class[T]] =
     catching(classOf[ClassNotFoundException], classOf[SecurityException]) opt
       Class.forName(path, initialize, this).asInstanceOf[Class[T]]
 
   /** Create an instance of a class with this classloader */
-  def create(path: String): AnyRef = {
-    tryToInitializeClass(path) match {
-      case Some(clazz)    => clazz.newInstance()
-      case None           => null
-    }
-  }
+  def create(path: String): AnyRef =
+    tryToInitializeClass[AnyRef](path) map (_.newInstance()) orNull
 
   override def findClass(name: String) = {
     val result = super.findClass(name)
@@ -59,14 +52,18 @@ trait ScalaClassLoader extends JavaClassLoader {
     result
   }
 
-  /** The actual bytes for a class file, or an empty array if it can't be found. */
-  def findBytesForClassName(s: String): Array[Byte] = {
-    val name = s.replaceAll("""\.""", "/") + ".class"
-    val url = this.getResource(name)
+  def constructorsOf[T <: AnyRef : Manifest]: List[Constructor[T]] =
+    manifest[T].erasure.getConstructors.toList map (_.asInstanceOf[Constructor[T]])
 
-    if (url == null) Array()
-    else new io.Streamable.Bytes { def inputStream() = url.openStream } . toByteArray()
+  /** The actual bytes for a class file, or an empty array if it can't be found. */
+  def classBytes(className: String): Array[Byte] = classAsStream(className) match {
+    case null   => Array()
+    case stream => io.Streamable.bytes(stream)
   }
+
+  /** An InputStream representing the given class name, or null if not found. */
+  def classAsStream(className: String) =
+    getResourceAsStream(className.replaceAll("""\.""", "/") + ".class")
 
   /** Run the main method of a class to be loaded by this classloader */
   def run(objectName: String, arguments: Seq[String]) {
@@ -83,24 +80,36 @@ trait ScalaClassLoader extends JavaClassLoader {
 }
 
 object ScalaClassLoader {
+  implicit def apply(cl: JavaClassLoader): ScalaClassLoader = {
+    val loader = if (cl == null) JavaClassLoader.getSystemClassLoader() else cl
+    new JavaClassLoader(loader) with ScalaClassLoader
+  }
+
   class URLClassLoader(urls: Seq[URL], parent: JavaClassLoader)
       extends java.net.URLClassLoader(urls.toArray, parent)
       with ScalaClassLoader {
 
     private var classloaderURLs = urls.toList
+    private def classpathString = ClassPath.fromURLs(urls: _*)
 
     /** Override to widen to public */
     override def addURL(url: URL) = {
       classloaderURLs +:= url
       super.addURL(url)
     }
-
+    override def run(objectName: String, arguments: Seq[String]) {
+      try super.run(objectName, arguments)
+      catch { case x: ClassNotFoundException  =>
+        throw new ClassNotFoundException(objectName +
+          " (args = %s, classpath = %s)".format(arguments mkString ", ", classpathString))
+      }
+    }
     override def toString = urls.mkString("URLClassLoader(\n  ", "\n  ", "\n)\n")
   }
 
   def setContextLoader(cl: JavaClassLoader) = Thread.currentThread.setContextClassLoader(cl)
   def getContextLoader() = Thread.currentThread.getContextClassLoader()
-  def getSystemLoader(): ScalaClassLoader = new JavaClassLoader(JavaClassLoader.getSystemClassLoader()) with ScalaClassLoader
+  def getSystemLoader(): ScalaClassLoader = ScalaClassLoader(null)
   def defaultParentClassLoader() = findExtClassLoader()
 
   def fromURLs(urls: Seq[URL], parent: ClassLoader = defaultParentClassLoader()): URLClassLoader =

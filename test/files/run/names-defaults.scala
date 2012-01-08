@@ -1,4 +1,4 @@
-object Test extends Application {
+object Test extends App {
   def get[T](x: T) = { println("get: "+ x); x }
 
   // TESTS
@@ -274,6 +274,7 @@ object Test extends Application {
 
   // #2489
   class A2489 { def foo { def bar(a: Int = 1) = a; bar(); val u = 0 } }
+  class A2489x2 { def foo { val v = 10; def bar(a: Int = 1, b: Int = 2) = a; bar(); val u = 0 } }
 
   // a bug reported on the mailing lists, related to #2489
   class Test2489 {
@@ -350,6 +351,52 @@ object Test extends Application {
   class DBLAH(val y: String = "2") extends CBLAH()
   (new DBLAH())
 
+  // deprecated names
+  def deprNam1(@deprecatedName('x) a: Int, @deprecatedName('y) b: Int) = a + b
+  deprNam1(y = 10, a = 1)
+  deprNam1(b = 2, x = 10)
+
+  object deprNam2 {
+    def f(@deprecatedName('s) x: String) = 1
+    def f(s: Object) = 2
+
+    def g(@deprecatedName('x) s: Object) = 3
+    def g(s: String) = 4
+  }
+  println(deprNam2.f(s = "dlf"))
+  println(deprNam2.f(s = new Object))
+  println(deprNam2.g(x = "sljkfd"))
+
+
+  // #3697
+  object t3697 {
+    def a(x: Int*)(s: Int = 3) = s
+    def b(a: Int, b: Int, c: Int*) = a + b
+  }
+  println(t3697.a(Seq(3): _*)())
+  println(t3697.a(3)())
+  println(t3697.a()())
+  println(t3697.a(2,3,1)())
+  println(t3697.b(a = 1, b = 2))
+  println(t3697.b(a = 1, b = 2, 3))
+  println(t3697.b(b = 1, a = 2, c = 3))
+  println(t3697.b(a = 1, b = 2, 3, 4))
+  println(t3697.b(a = 1, b = 2, Seq(3, 4): _*))
+  println(t3697.b(b = 1, a = 2, c = Seq(3, 4): _*))
+
+
+  // #4041
+  object t4041 {
+    def _1 = (0, 0) copy (_1 = 1)
+    def _2 = (1, 1) copy (_2 = 2)
+  }
+  println(""+ t4041._1 +", "+ t4041._2)
+
+  // #4441
+  case class C4441a()
+  case class C4441b()()
+  C4441a().copy()
+  C4441b()().copy()()
 
   // DEFINITIONS
   def test1(a: Int, b: String) = println(a +": "+ b)

@@ -19,7 +19,7 @@ import ch.epfl.lamp.compiler.msil.util.Table
 
 /**
  * The MSIL printer Visitor. It prints a complete
- * assembly in a single file. Then this file can be compiled by ilasm.
+ * assembly in a single file that can be compiled by ilasm.
  *
  * @author Nikolay Mihaylov
  * @author Daniel Lorch
@@ -42,9 +42,9 @@ final class SingleFileILPrinterVisitor(_fileName: String) extends ILPrinterVisit
 
 	// all external assemblies
 	as = assemblyBuilder.getExternAssemblies()
-	Arrays.sort(as, assemblyNameComparator)
+  scala.util.Sorting.quickSort(as)(assemblyNameComparator) // Arrays.sort(as, assemblyNameComparator)
 
-        assemblyBuilder.generatedFiles.add(fileName)
+        assemblyBuilder.generatedFiles += fileName
 	printAssemblyBoilerplate()
 
 	// print each module

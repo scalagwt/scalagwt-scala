@@ -1,19 +1,18 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala
 
-import collection.immutable.StringOps
-import collection.mutable.ArrayOps
-import collection.generic.CanBuildFrom
-import annotation.elidable
+import scala.collection.{ mutable, immutable, generic }
+import immutable.StringOps
+import mutable.ArrayOps
+import generic.CanBuildFrom
+import annotation.{ elidable, implicitNotFound }
 import annotation.elidable.ASSERTION
 
 /** The <code>Predef</code> object provides definitions that are
@@ -35,34 +34,47 @@ object Predef extends LowPriorityImplicits {
 
   type Function[-A, +B] = Function1[A, B]
 
-  type Map[A, +B] = collection.immutable.Map[A, B]
-  type Set[A] = collection.immutable.Set[A]
-  val Map = collection.immutable.Map
-  val Set = collection.immutable.Set
+  type Map[A, +B] = immutable.Map[A, B]
+  type Set[A]     = immutable.Set[A]
+  val Map         = immutable.Map
+  val Set         = immutable.Set
+  val AnyRef      = new SpecializableCompanion {}   // a dummy used by the specialization annotation
 
-  type Manifest[T] = scala.reflect.Manifest[T]
+  // Manifest types, companions, and incantations for summoning
   type ClassManifest[T] = scala.reflect.ClassManifest[T]
-  def implicitly[T](implicit e: T) = e
-  def manifest[T](implicit m: Manifest[T]) = m
+  type Manifest[T]      = scala.reflect.Manifest[T]
+  type OptManifest[T]   = scala.reflect.OptManifest[T]
+  val ClassManifest     = scala.reflect.ClassManifest
+  val Manifest          = scala.reflect.Manifest
+  val NoManifest        = scala.reflect.NoManifest
+
+  def manifest[T](implicit m: Manifest[T])           = m
   def classManifest[T](implicit m: ClassManifest[T]) = m
+  def optManifest[T](implicit m: OptManifest[T])     = m
 
-  // @see `conforms` for the implicit version
-  def identity[A](x: A): A = x
+  // Minor variations on identity functions
+  def identity[A](x: A): A         = x    // @see `conforms` for the implicit version
+  def implicitly[T](implicit e: T) = e    // for summoning implicit values from the nether world
+  @inline def locally[T](x: T): T  = x    // to communicate intent and avoid unmoored statements
 
-  def currentThread = java.lang.Thread.currentThread()
+  // Apparently needed for the xml library
+  val $scope = scala.xml.TopScope
 
-  @inline def locally[T](x: T): T = x
+  // Deprecated
+
+  @deprecated("Use sys.error(message) instead", "2.9.0")
+  def error(message: String): Nothing = sys.error(message)
+
+  @deprecated("Use sys.exit() instead", "2.9.0")
+  def exit(): Nothing = sys.exit()
+
+  @deprecated("Use sys.exit(status) instead", "2.9.0")
+  def exit(status: Int): Nothing = sys.exit(status)
+
+  @deprecated("Use formatString.format(args: _*) or arg.formatted(formatString) instead", "2.9.0")
+  def format(text: String, xs: Any*) = augmentString(text).format(xs: _*)
 
   // errors and asserts -------------------------------------------------
-
-  def error(message: String): Nothing = throw new RuntimeException(message)
-
-  def exit(): Nothing = exit(0)
-
-  def exit(status: Int): Nothing = {
-    java.lang.System.exit(status)
-    throw new Throwable()
-  }
 
   /** Tests an expression, throwing an AssertionError if false.
    *  Calls to this method will not be generated if -Xelide-below
@@ -147,9 +159,9 @@ object Predef extends LowPriorityImplicits {
 
   final class Ensuring[A](val x: A) {
     def ensuring(cond: Boolean): A = { assert(cond); x }
-    def ensuring(cond: Boolean, msg: Any): A = { assert(cond, msg); x }
+    def ensuring(cond: Boolean, msg: => Any): A = { assert(cond, msg); x }
     def ensuring(cond: A => Boolean): A = { assert(cond(x)); x }
-    def ensuring(cond: A => Boolean, msg: Any): A = { assert(cond(x), msg); x }
+    def ensuring(cond: A => Boolean, msg: => Any): A = { assert(cond(x), msg); x }
   }
   implicit def any2Ensuring[A](x: A): Ensuring[A] = new Ensuring(x)
 
@@ -178,8 +190,7 @@ object Predef extends LowPriorityImplicits {
   def print(x: Any) = Console.print(x)
   def println() = Console.println()
   def println(x: Any) = Console.println(x)
-  def printf(text: String, xs: Any*) = Console.print(format(text, xs: _*))
-  def format(text: String, xs: Any*) = augmentString(text).format(xs: _*)
+  def printf(text: String, xs: Any*) = Console.print(text.format(xs: _*))
 
   def readLine(): String = Console.readLine()
   def readLine(text: String, args: Any*) = Console.readLine(text, args)
@@ -198,29 +209,30 @@ object Predef extends LowPriorityImplicits {
 
   // views --------------------------------------------------------------
 
-  implicit def byteWrapper(x: Byte)     = new runtime.RichByte(x)
-  implicit def shortWrapper(x: Short)   = new runtime.RichShort(x)
-  implicit def intWrapper(x: Int)       = new runtime.RichInt(x)
-  implicit def charWrapper(c: Char)     = new runtime.RichChar(c)
-  implicit def longWrapper(x: Long)     = new runtime.RichLong(x)
-  implicit def floatWrapper(x: Float)   = new runtime.RichFloat(x)
-  implicit def doubleWrapper(x: Double) = new runtime.RichDouble(x)
-  implicit def booleanWrapper(x: Boolean) = new runtime.RichBoolean(x)
-
   implicit def exceptionWrapper(exc: Throwable) = new runtime.RichException(exc)
 
-  implicit def genericArrayOps[T](xs: Array[T]): ArrayOps[T] = (xs: AnyRef) match { // !!! drop the AnyRef and get unreachable code errors!
-    case x: Array[AnyRef] => refArrayOps[AnyRef](x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Int] => intArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Double] => doubleArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Long] => longArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Float] => floatArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Char] => charArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Byte] => byteArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Short] => shortArrayOps(x).asInstanceOf[ArrayOps[T]]
+  implicit def zipped2ToTraversable[El1, El2](zz: Tuple2[_, _]#Zipped[_, El1, _, El2]): Traversable[(El1, El2)] =
+    new Traversable[(El1, El2)] {
+      def foreach[U](f: ((El1, El2)) => U): Unit = zz foreach Function.untupled(f)
+    }
+
+  implicit def zipped3ToTraversable[El1, El2, El3](zz: Tuple3[_, _, _]#Zipped[_, El1, _, El2, _, El3]): Traversable[(El1, El2, El3)] =
+    new Traversable[(El1, El2, El3)] {
+      def foreach[U](f: ((El1, El2, El3)) => U): Unit = zz foreach Function.untupled(f)
+    }
+
+  implicit def genericArrayOps[T](xs: Array[T]): ArrayOps[T] = xs match {
+    case x: Array[AnyRef]  => refArrayOps[AnyRef](x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Int]     => intArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Double]  => doubleArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Long]    => longArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Float]   => floatArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Char]    => charArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Byte]    => byteArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Short]   => shortArrayOps(x).asInstanceOf[ArrayOps[T]]
     case x: Array[Boolean] => booleanArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case x: Array[Unit] => unitArrayOps(x).asInstanceOf[ArrayOps[T]]
-    case null => null
+    case x: Array[Unit]    => unitArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case null              => null
   }
 
   implicit def refArrayOps[T <: AnyRef](xs: Array[T]): ArrayOps[T] = new ArrayOps.ofRef[T](xs)
@@ -261,7 +273,7 @@ object Predef extends LowPriorityImplicits {
 
   implicit def float2double(x: Float): Double = x.toDouble
 
-  // "Autoboxing" --------------------------------------------------------------
+  // "Autoboxing" and "Autounboxing" ---------------------------------------------------
 
   implicit def byte2Byte(x: Byte)           = java.lang.Byte.valueOf(x)
   implicit def short2Short(x: Short)        = java.lang.Short.valueOf(x)
@@ -272,6 +284,28 @@ object Predef extends LowPriorityImplicits {
   implicit def double2Double(x: Double)     = java.lang.Double.valueOf(x)
   implicit def boolean2Boolean(x: Boolean)  = java.lang.Boolean.valueOf(x)
 
+  // These next eight implicits exist solely to exclude AnyRef methods from the
+  // eight implicits above so that primitives are not coerced to AnyRefs.  They
+  // only create such conflict for AnyRef methods, so the methods on the java.lang
+  // boxed types are unambiguously reachable.
+  implicit def byte2ByteConflict(x: Byte)           = new AnyRef
+  implicit def short2ShortConflict(x: Short)        = new AnyRef
+  implicit def char2CharacterConflict(x: Char)      = new AnyRef
+  implicit def int2IntegerConflict(x: Int)          = new AnyRef
+  implicit def long2LongConflict(x: Long)           = new AnyRef
+  implicit def float2FloatConflict(x: Float)        = new AnyRef
+  implicit def double2DoubleConflict(x: Double)     = new AnyRef
+  implicit def boolean2BooleanConflict(x: Boolean)  = new AnyRef
+
+  implicit def Byte2byte(x: java.lang.Byte): Byte             = x.byteValue
+  implicit def Short2short(x: java.lang.Short): Short         = x.shortValue
+  implicit def Character2char(x: java.lang.Character): Char   = x.charValue
+  implicit def Integer2int(x: java.lang.Integer): Int         = x.intValue
+  implicit def Long2long(x: java.lang.Long): Long             = x.longValue
+  implicit def Float2float(x: java.lang.Float): Float         = x.floatValue
+  implicit def Double2double(x: java.lang.Double): Double     = x.doubleValue
+  implicit def Boolean2boolean(x: java.lang.Boolean): Boolean = x.booleanValue
+
   // Strings and CharSequences --------------------------------------------------------------
 
   implicit def any2stringadd(x: Any) = new runtime.StringAdd(x)
@@ -280,8 +314,8 @@ object Predef extends LowPriorityImplicits {
 
   implicit def stringCanBuildFrom: CanBuildFrom[String, Char, String] =
     new CanBuildFrom[String, Char, String] {
-      def apply(from: String) = new scala.collection.mutable.StringBuilder
-      def apply() = new scala.collection.mutable.StringBuilder
+      def apply(from: String) = apply()
+      def apply() = mutable.StringBuilder.newBuilder
     }
 
   implicit def seqToCharSequence(xs: collection.IndexedSeq[Char]): CharSequence = new CharSequence {
@@ -300,21 +334,35 @@ object Predef extends LowPriorityImplicits {
 
   // Type Constraints --------------------------------------------------------------
 
-  // used, for example, in the encoding of generalized constraints
-  // we need a new type constructor `<:<` and evidence `conforms`, as
-  // reusing `Function2` and `identity` leads to ambiguities (any2stringadd is inferred)
-  // to constrain any abstract type T that's in scope in a method's argument list (not just the method's own type parameters)
-  // simply add an implicit argument of type `T <:< U`, where U is the required upper bound (for lower-bounds, use: `U <: T`)
-  // in part contributed by Jason Zaugg
-  sealed abstract class <:<[-From, +To] extends (From => To)
-  implicit def conforms[A]: A <:< A = new (A <:< A) {def apply(x: A) = x} // not in the <:< companion object because it is also intended to subsume identity (which is no longer implicit)
+  /** An instance of `A <:< B` witnesses that `A` is a subtype of `B`.
+   *
+   * Requiring an implicit argument of the type `A <:< B` encodes the generalized constraint `A <: B`.
+   *
+   * @note we need a new type constructor `<:<` and evidence `conforms`, as
+   * reusing `Function2` and `identity` leads to ambiguities in case of type errors (any2stringadd is inferred)
+   * to constrain any abstract type T that's in scope in a method's argument list (not just the method's own type parameters)
+   * simply add an implicit argument of type `T <:< U`, where U is the required upper bound (for lower-bounds, use: `L <:< T`,
+   * where L is the required lower bound).
+   * in part contributed by Jason Zaugg
+   */
+  @implicitNotFound(msg = "Cannot prove that ${From} <:< ${To}.")
+  sealed abstract class <:<[-From, +To] extends (From => To) with Serializable
+  implicit def conforms[A]: A <:< A = new (A <:< A) { def apply(x: A) = x }
+  // not in the <:< companion object because it is also intended to subsume identity (which is no longer implicit)
 
-  sealed abstract class =:=[From, To] extends (From => To)
+  /** An instance of `A =:= B` witnesses that the types `A` and `B` are equal.
+   *
+   * @see <:< for expressing subtyping constraints
+   */
+  @implicitNotFound(msg = "Cannot prove that ${From} =:= ${To}.")
+  sealed abstract class =:=[From, To] extends (From => To) with Serializable
   object =:= {
     implicit def tpEquals[A]: A =:= A = new (A =:= A) {def apply(x: A) = x}
   }
 
-  sealed abstract class <%<[-From, +To] extends (From => To)
+  // less useful due to #2781
+  @deprecated("Use From => To instead", "2.9.0")
+  sealed abstract class <%<[-From, +To] extends (From => To) with Serializable
   object <%< {
     implicit def conformsOrViewsAs[A <% B, B]: A <%< B = new (A <%< B) {def apply(x: A) = x}
   }

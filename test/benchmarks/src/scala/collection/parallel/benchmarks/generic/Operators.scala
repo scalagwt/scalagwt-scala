@@ -7,13 +7,18 @@ package scala.collection.parallel.benchmarks.generic
 
 trait Operators[T] {
 
+  def foreachFun: T => Unit
   def reducer: (T, T) => T
   def mediumreducer: (T, T) => T
   def filterer: T => Boolean
   def mapper: T => T
   def mapper2: T => T = error("unsupported")
   def heavymapper: T => T
+  def flatmapper: T => Seq[T]
   def taker: T => Boolean
+  def eachFun: T => Unit
+  def eachPairFun: ((T, T)) => Unit = error("unsupported")
+  def sequence(sz: Int): Seq[T] = error("unsupported")
 
 }
 
@@ -21,6 +26,7 @@ trait Operators[T] {
 
 trait IntOperators extends Operators[Int] {
 
+  val foreachFun: Int => Unit = x => ()
   val reducer: (Int, Int) => Int = _ + _
   val mediumreducer: (Int, Int) => Int = (a: Int, b: Int) => {
     val result = if (b == 0) a else {
@@ -39,7 +45,13 @@ trait IntOperators extends Operators[Int] {
     }
     n + sum
   }
+  val flatmapper: Int => Seq[Int] = (n: Int) => {
+    List(n, n, n, n, n)
+  }
   val taker: Int => Boolean = _ < 10000
+  val eachFun: Int => Unit = { n =>
+    n % 2 == 0
+  }
 
 }
 

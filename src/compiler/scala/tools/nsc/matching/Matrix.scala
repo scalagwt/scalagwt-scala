@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * Author: Paul Phillips
  */
 
@@ -8,6 +8,7 @@ package matching
 
 import transform.ExplicitOuter
 import symtab.Flags
+import scala.collection.mutable
 
 trait Matrix extends MatrixAdditions {
   self: ExplicitOuter with ParallelMatching =>
@@ -16,7 +17,9 @@ trait Matrix extends MatrixAdditions {
   import analyzer.Typer
   import CODE._
   import Debug._
-  import Flags.{ TRANS_FLAG, SYNTHETIC }
+  import Flags.{ SYNTHETIC, MUTABLE }
+
+  private[matching] val NO_EXHAUSTIVE = Flags.TRANS_FLAG
 
   /** Translation of match expressions.
    *
@@ -76,7 +79,33 @@ trait Matrix extends MatrixAdditions {
   states. Otherwise,the error state is used after its reference count has been incremented.
   **/
 
+  /** Handles all translation of pattern matching.
+   */
+  def handlePattern(
+    selector: Tree,         // tree being matched upon (called scrutinee after this)
+    cases: List[CaseDef],   // list of cases in the match
+    isChecked: Boolean,     // whether exhaustiveness checking is enabled (disabled with @unchecked)
+    context: MatrixContext): Tree =
+  {
+    import context._
+    TRACE("handlePattern", "(%s: %s) match { %s cases }", selector, selector.tpe, cases.size)
+
+    val matrixInit: MatrixInit = {
+      val v = copyVar(selector, isChecked, selector.tpe, "temp")
+      MatrixInit(List(v), cases, atPos(selector.pos)(MATCHERROR(v.ident)))
+    }
+    val matrix = new MatchMatrix(context) { lazy val data = matrixInit }
+    val mch     = typer typed matrix.expansion.toTree
+    val dfatree = typer typed Block(matrix.data.valDefs, mch)
+
+    // redundancy check
+    matrix.targets filter (_.unreached) foreach (cs => cunit.error(cs.body.pos, "unreachable code"))
+    // optimize performs squeezing and resets any remaining NO_EXHAUSTIVE
+    tracing("handlePattern")(matrix optimize dfatree)
+  }
+
   case class MatrixContext(
+    cunit: CompilationUnit,       // current unit
     handleOuter: Tree => Tree,    // for outer pointer
     typer: Typer,                 // a local typer
     owner: Symbol,                // the current owner
@@ -85,8 +114,26 @@ trait Matrix extends MatrixAdditions {
   {
     private def ifNull[T](x: T, alt: T) = if (x == null) alt else x
 
-    // TRANS_FLAG communicates there should be no exhaustiveness checking
-    private def flags(checked: Boolean) = if (checked) Nil else List(TRANS_FLAG)
+    // NO_EXHAUSTIVE communicates there should be no exhaustiveness checking
+    private def flags(checked: Boolean) = if (checked) Nil else List(NO_EXHAUSTIVE)
+
+    // Recording the symbols of the synthetics we create so we don't go clearing
+    // anyone else's mutable flags.
+    private val _syntheticSyms = mutable.HashSet[Symbol]()
+    def clearSyntheticSyms() = {
+      _syntheticSyms foreach (_ resetFlag (NO_EXHAUSTIVE|MUTABLE))
+      if (settings.debug.value)
+        log("Cleared NO_EXHAUSTIVE/MUTABLE on " + _syntheticSyms.size + " synthetic symbols.")
+      _syntheticSyms.clear()
+    }
+    def recordSyntheticSym(sym: Symbol): Symbol = {
+      _syntheticSyms += sym
+      if (_syntheticSyms.size > 25000) {
+        cunit.error(owner.pos, "Sanity check failed: over 25000 symbols created for pattern match.")
+        abort("This is a bug in the pattern matcher.")
+      }
+      sym
+    }
 
     case class MatrixInit(
       roots: List[PatternVar],
@@ -114,7 +161,7 @@ trait Matrix extends MatrixAdditions {
 
         val xs =
           for (Binding(lhs, rhs) <- info) yield
-            new PatternVar(lhs, Ident(rhs) setType lhs.tpe, !(rhs hasFlag TRANS_FLAG))
+            new PatternVar(lhs, Ident(rhs) setType lhs.tpe, !(rhs hasFlag NO_EXHAUSTIVE))
 
         new PatternVarGroup(xs)
       }
@@ -122,9 +169,9 @@ trait Matrix extends MatrixAdditions {
 
     val emptyPatternVarGroup = PatternVarGroup()
     class PatternVarGroup(val pvs: List[PatternVar]) {
-      def syms = pvs map (_.sym)
+      def syms    = pvs map (_.sym)
       def valDefs = pvs map (_.valDef)
-      def idents = pvs map (_.ident)
+      def idents  = pvs map (_.ident)
 
       def extractIndex(index: Int): (PatternVar, PatternVarGroup) = {
         val (t, ts) = self.extractIndex(pvs, index)
@@ -155,12 +202,13 @@ trait Matrix extends MatrixAdditions {
       // XXX how will valsym.tpe differ from sym.tpe ?
       def tpe = valsym.tpe
 
-      lazy val ident  = ID(lhs)
-      lazy val valDef = tracing("typedVal", typer typedValDef (VAL(lhs) === rhs) setPos lhs.pos)
+      // See #1427 for an example of a crash which occurs unless we retype:
+      // in that instance there is an existential in the pattern.
+      lazy val ident  = typer typed { ID(lhs) setType null }
+      lazy val valDef = typer typed { (VAL(lhs) withType ident.tpe) === rhs }
 
       override def toString() = "%s: %s = %s".format(lhs, lhs.info, rhs)
     }
-    // val NoPatternVar = PatternVar(NoSymbol, EmptyTree, false)
 
     /** Sets the rhs to EmptyTree, which makes the valDef ignored in Scrutinee.
      */
@@ -177,10 +225,10 @@ trait Matrix extends MatrixAdditions {
       label: String = "temp"): PatternVar =
     {
       val tpe   = ifNull(_tpe, root.tpe)
-      val name  = newName(root.pos, label)
+      val name  = cunit.freshTermName(label)
       val sym   = newVar(root.pos, tpe, flags(checked), name)
 
-      tracing("copy", new PatternVar(sym, root, checked))
+      tracing("copy")(new PatternVar(sym, root, checked))
     }
 
     /** Creates a new synthetic variable of the specified type and
@@ -190,21 +238,27 @@ trait Matrix extends MatrixAdditions {
       val lhs = newVar(owner.pos, tpe, flags(checked))
       val rhs = f(lhs)
 
-      tracing("create", new PatternVar(lhs, rhs, checked))
+      tracing("create")(new PatternVar(lhs, rhs, checked))
+    }
+    def createLazy(tpe: Type, f: Symbol => Tree, checked: Boolean) = {
+      val lhs = newVar(owner.pos, tpe, Flags.LAZY :: flags(checked))
+      val rhs = f(lhs)
+
+      tracing("createLazy")(new PatternVar(lhs, rhs, checked))
     }
 
     private def newVar(
       pos: Position,
       tpe: Type,
       flags: List[Long] = Nil,
-      name: Name = null): Symbol =
+      name: TermName = null): Symbol =
     {
-      val n: Name = if (name == null) newName(pos, "temp") else name
+      val n = if (name == null) cunit.freshTermName("temp") else name
       // careful: pos has special meaning
-      owner.newVariable(pos, n) setInfo tpe setFlag (SYNTHETIC.toLong /: flags)(_|_)
+      recordSyntheticSym(owner.newVariable(pos, n) setInfo tpe setFlag (SYNTHETIC.toLong /: flags)(_|_))
     }
 
     def typedValDef(x: Symbol, rhs: Tree) =
-      tracing("typedVal", typer typedValDef (VAL(x) === rhs))
+      tracing("typedVal")(typer typedValDef (VAL(x) === rhs))
   }
 }

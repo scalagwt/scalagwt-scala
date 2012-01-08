@@ -1,5 +1,7 @@
 src/scala/collection/parallel/Benchmarking.scala
 src/scala/collection/parallel/benchmarks/parallel_view/SeqViewBenches.scala
+src/scala/collection/parallel/benchmarks/hashtables/ParallelHashTables.scala
+src/scala/collection/parallel/benchmarks/hashtables/ParallelHashTableSets.scala
 src/scala/collection/parallel/benchmarks/arrays/ObjectAccess.scala
 src/scala/collection/parallel/benchmarks/arrays/IntAccess.scala
 src/scala/collection/parallel/benchmarks/arrays/Resetting.scala
@@ -20,9 +22,11 @@ src/scala/collection/parallel/benchmarks/parallel_array/SumLight.scala
 src/scala/collection/parallel/benchmarks/parallel_array/MinLight.scala
 src/scala/collection/parallel/benchmarks/parallel_array/CountList.scala
 src/scala/collection/parallel/benchmarks/parallel_array/PatchHalf.scala
+src/scala/collection/parallel/benchmarks/parallel_array/GroupBy.scala
 src/scala/collection/parallel/benchmarks/parallel_array/DiffHalf.scala
 src/scala/collection/parallel/benchmarks/parallel_array/TakeMany.scala
 src/scala/collection/parallel/benchmarks/parallel_array/PartialMapLight.scala
+src/scala/collection/parallel/benchmarks/parallel_array/ScanLight.scala
 src/scala/collection/parallel/benchmarks/parallel_array/Reverse.scala
 src/scala/collection/parallel/benchmarks/parallel_array/SpanLight.scala
 src/scala/collection/parallel/benchmarks/parallel_array/PlusPlus.scala
@@ -32,6 +36,7 @@ src/scala/collection/parallel/benchmarks/parallel_array/ReducePrime.scala
 src/scala/collection/parallel/benchmarks/parallel_array/DropMany.scala
 src/scala/collection/parallel/benchmarks/parallel_array/ReduceList.scala
 src/scala/collection/parallel/benchmarks/parallel_array/ForeachLight.scala
+src/scala/collection/parallel/benchmarks/parallel_array/ScanMedium.scala
 src/scala/collection/parallel/benchmarks/parallel_array/MatrixMultiplication.scala
 src/scala/collection/parallel/benchmarks/parallel_array/SliceMedium.scala
 src/scala/collection/parallel/benchmarks/parallel_array/ReverseMap.scala
@@ -60,9 +65,15 @@ src/scala/collection/parallel/benchmarks/generic/Operators.scala
 src/scala/collection/parallel/benchmarks/generic/ParallelBenches.scala
 src/scala/collection/parallel/benchmarks/generic/Dummy.scala
 src/scala/collection/parallel/benchmarks/parallel_range/RangeBenches.scala
+src/scala/collection/parallel/benchmarks/misc/Dictionary.scala
+src/scala/collection/parallel/benchmarks/misc/Loader.scala
+src/scala/collection/parallel/benchmarks/misc/Coder.scala
 src/scala/collection/parallel/benchmarks/Bench.scala
 src/scala/collection/parallel/benchmarks/hashtries/Foreach.scala
+src/scala/collection/parallel/benchmarks/hashtries/Combine.scala
+src/scala/collection/parallel/benchmarks/hashtries/MultipleCombine.scala
 src/scala/collection/parallel/benchmarks/hashtries/Iterate.scala
 src/scala/collection/parallel/benchmarks/hashtries/Construct.scala
 src/scala/collection/parallel/benchmarks/hashtries/IntInit.scala
 src/scala/collection/parallel/benchmarks/hashtries/Lookup.scala
+src/scala/collection/parallel/benchmarks/hashtries/ParallelHashTries.scala

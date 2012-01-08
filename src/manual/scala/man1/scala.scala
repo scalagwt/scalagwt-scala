@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author Stephane Micheloud
  */
 
@@ -122,7 +122,7 @@ object scala extends Command {
     "Any arguments specified will be available via the " & Mono("args") &
     "variable.",
 
-    "Script files may have an optional header fthat is ignored if " &
+    "Script files may have an optional header that is ignored if " &
     "present.  There are two ways to format the header: either beginning with " &
     Mono("#!") & " and ending with " & Mono("!#") & ", or beginning with " &
     Mono("::#!") & " and ending with " & Mono("::!#") & ".",

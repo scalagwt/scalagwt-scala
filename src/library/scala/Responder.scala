@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -66,8 +66,7 @@ object Responder {
  *  @version 1.0
  *  @since 2.1
  */
-@serializable
-abstract class Responder[+A] {
+abstract class Responder[+A] extends Serializable {
 
   def respond(k: A => Unit): Unit
 

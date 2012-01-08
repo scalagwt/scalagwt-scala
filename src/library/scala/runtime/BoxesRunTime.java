@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -77,6 +77,8 @@ public final class BoxesRunTime
     }
 
     public static java.lang.Double boxToDouble(double d) {
+        // System.out.println("box " + d);
+        // (new Throwable()).printStackTrace();
         return java.lang.Double.valueOf(d);
     }
 
@@ -111,6 +113,7 @@ public final class BoxesRunTime
     }
 
     public static double unboxToDouble(Object d) {
+        //        System.out.println("unbox " + d);
         return d == null ? 0.0d : ((java.lang.Double)d).doubleValue();
     }
 

@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -12,7 +12,6 @@ package scala.tools.ant
 import java.io.File
 
 import org.apache.tools.ant.{BuildException, Project}
-import org.apache.tools.ant.taskdefs.MatchingTask
 import org.apache.tools.ant.types.{Path, Reference}
 import org.apache.tools.ant.util.{FileUtils, GlobPatternMapper}
 
@@ -46,6 +45,7 @@ import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
  *    <li>bottom,</li>
  *    <li>addparams,</li>
  *    <li>deprecation,</li>
+ *    <li>docgenerator,</li>
  *    <li>unchecked.</li>
  *  </ul>
  *  <p>
@@ -61,7 +61,7 @@ import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
  *
  *  @author Gilles Dubochet, Stephane Micheloud
  */
-class Scaladoc extends MatchingTask {
+class Scaladoc extends ScalaMatchingTask {
 
   /** The unique Ant file utilities instance to use in this task. */
   private val fileUtils = FileUtils.getFileUtils()
@@ -100,6 +100,9 @@ class Scaladoc extends MatchingTask {
   /** The character encoding of the files to compile. */
   private var encoding: Option[String] = None
 
+  /** The fully qualified name of a doclet class, which will be used to generate the documentation. */
+  private var docgenerator: Option[String] = None
+
   /** The document title of the generated HTML documentation. */
   private var doctitle: Option[String] = None
 
@@ -108,6 +111,9 @@ class Scaladoc extends MatchingTask {
 
   /** Instruct the compiler to generate links to sources */
   private var docsourceurl: Option[String] = None
+
+  /** Point scaladoc at uncompilable sources. */
+  private var docUncompilable: Option[String] = None
 
   /** Instruct the compiler to use additional parameters */
   private var addParams: String = ""
@@ -266,6 +272,14 @@ class Scaladoc extends MatchingTask {
     encoding = Some(input)
   }
 
+  /** Sets the <code>docgenerator</code> attribute.
+   *
+   *  @param input A fully qualified class name of a doclet.
+   */
+  def setDocgenerator(input: String) {
+    docgenerator = Some(input)
+  }
+
   /** Sets the <code>docversion</code> attribute.
    *
    *  @param input The value of <code>docversion</code>.
@@ -306,7 +320,7 @@ class Scaladoc extends MatchingTask {
     if (Flag.isPermissible(input))
       deprecation = "yes".equals(input) || "on".equals(input)
     else
-      error("Unknown deprecation flag '" + input + "'")
+      buildError("Unknown deprecation flag '" + input + "'")
   }
 
   /** Set the <code>unchecked</code> info attribute.
@@ -317,7 +331,11 @@ class Scaladoc extends MatchingTask {
     if (Flag.isPermissible(input))
       unchecked = "yes".equals(input) || "on".equals(input)
     else
-      error("Unknown unchecked flag '" + input + "'")
+      buildError("Unknown unchecked flag '" + input + "'")
+  }
+
+  def setDocUncompilable(input: String) {
+    docUncompilable = Some(input)
   }
 
 /*============================================================================*\
@@ -330,7 +348,7 @@ class Scaladoc extends MatchingTask {
    *  @return The class path as a list of files.
    */
   private def getClasspath: List[File] =
-    if (classpath.isEmpty) error("Member 'classpath' is empty.")
+    if (classpath.isEmpty) buildError("Member 'classpath' is empty.")
     else classpath.get.list().toList.map(nameToFile)
 
   /** Gets the value of the <code>origin</code> attribute in a Scala-friendly
@@ -339,7 +357,7 @@ class Scaladoc extends MatchingTask {
    *  @return The origin path as a list of files.
    */
   private def getOrigin: List[File] =
-    if (origin.isEmpty) error("Member 'origin' is empty.")
+    if (origin.isEmpty) buildError("Member 'origin' is empty.")
     else origin.get.list().toList.map(nameToFile)
 
   /** Gets the value of the <code>destination</code> attribute in a
@@ -348,7 +366,7 @@ class Scaladoc extends MatchingTask {
    *  @return The destination as a file.
    */
   private def getDestination: File =
-    if (destination.isEmpty) error("Member 'destination' is empty.")
+    if (destination.isEmpty) buildError("Member 'destination' is empty.")
     else existing(getProject().resolveFile(destination.get.toString))
 
   /** Gets the value of the <code>sourcepath</code> attribute in a
@@ -357,7 +375,7 @@ class Scaladoc extends MatchingTask {
    *  @return The source path as a list of files.
    */
   private def getSourcepath: List[File] =
-    if (sourcepath.isEmpty) error("Member 'sourcepath' is empty.")
+    if (sourcepath.isEmpty) buildError("Member 'sourcepath' is empty.")
     else sourcepath.get.list().toList.map(nameToFile)
 
   /** Gets the value of the <code>bootclasspath</code> attribute in a
@@ -366,7 +384,7 @@ class Scaladoc extends MatchingTask {
    *  @return The boot class path as a list of files.
    */
   private def getBootclasspath: List[File] =
-    if (bootclasspath.isEmpty) error("Member 'bootclasspath' is empty.")
+    if (bootclasspath.isEmpty) buildError("Member 'bootclasspath' is empty.")
     else bootclasspath.get.list().toList.map(nameToFile)
 
   /** Gets the value of the <code>extdirs</code> attribute in a
@@ -375,7 +393,7 @@ class Scaladoc extends MatchingTask {
    *  @return The extensions path as a list of files.
    */
   private def getExtdirs: List[File] =
-    if (extdirs.isEmpty) error("Member 'extdirs' is empty.")
+    if (extdirs.isEmpty) buildError("Member 'extdirs' is empty.")
     else extdirs.get.list().toList.map(nameToFile)
 
 /*============================================================================*\
@@ -437,15 +455,6 @@ class Scaladoc extends MatchingTask {
   private def asString(file: File): String =
     file.getAbsolutePath()
 
-  /** Generates a build error. Error location will be the current task in the
-   *  ant file.
-   *
-   *  @param message         A message describing the error.
-   *  @throws BuildException A build error exception thrown in every case.
-   */
-  private def error(message: String): Nothing =
-    throw new BuildException(message, getLocation())
-
 /*============================================================================*\
 **                           The big execute method                           **
 \*============================================================================*/
@@ -453,10 +462,10 @@ class Scaladoc extends MatchingTask {
   /** Initializes settings and source files */
   protected def initialize: Pair[Settings, List[File]] = {
     // Tests if all mandatory attributes are set and valid.
-    if (origin.isEmpty) error("Attribute 'srcdir' is not set.")
-    if (getOrigin.isEmpty) error("Attribute 'srcdir' is not set.")
+    if (origin.isEmpty) buildError("Attribute 'srcdir' is not set.")
+    if (getOrigin.isEmpty) buildError("Attribute 'srcdir' is not set.")
     if (!destination.isEmpty && !destination.get.isDirectory())
-      error("Attribute 'destdir' does not refer to an existing directory.")
+      buildError("Attribute 'destdir' does not refer to an existing directory.")
     if (destination.isEmpty) destination = Some(getOrigin.head)
 
     val mapper = new GlobPatternMapper()
@@ -501,7 +510,7 @@ class Scaladoc extends MatchingTask {
 
     // Builds-up the compilation settings for Scalac with the existing Ant
     // parameters.
-    val docSettings = new Settings(error)
+    val docSettings = new Settings(buildError)
     docSettings.outdir.value = asString(destination.get)
     if (!classpath.isEmpty)
       docSettings.classpath.value = asString(getClasspath)
@@ -516,8 +525,11 @@ class Scaladoc extends MatchingTask {
     if (!doctitle.isEmpty) docSettings.doctitle.value = decodeEscapes(doctitle.get)
     if (!docversion.isEmpty) docSettings.docversion.value = decodeEscapes(docversion.get)
     if (!docsourceurl.isEmpty) docSettings.docsourceurl.value =decodeEscapes(docsourceurl.get)
+    if (!docUncompilable.isEmpty) docSettings.docUncompilable.value = decodeEscapes(docUncompilable.get)
+
     docSettings.deprecation.value = deprecation
     docSettings.unchecked.value = unchecked
+    if (!docgenerator.isEmpty) docSettings.docgenerator.value = docgenerator.get
     log("Scaladoc params = '" + addParams + "'", Project.MSG_DEBUG)
 
     docSettings processArgumentString addParams
@@ -532,7 +544,7 @@ class Scaladoc extends MatchingTask {
       val docProcessor = new scala.tools.nsc.doc.DocFactory(reporter, docSettings)
       docProcessor.document(sourceFiles.map (_.toString))
       if (reporter.ERROR.count > 0)
-        error(
+        buildError(
           "Document failed with " +
           reporter.ERROR.count + " error" +
           (if (reporter.ERROR.count > 1) "s" else "") +
@@ -547,11 +559,11 @@ class Scaladoc extends MatchingTask {
     } catch {
       case exception: Throwable if exception.getMessage ne null =>
         exception.printStackTrace()
-        error("Document failed because of an internal documenter error (" +
+        buildError("Document failed because of an internal documenter error (" +
           exception.getMessage + "); see the error output for details.")
       case exception =>
         exception.printStackTrace()
-        error("Document failed because of an internal documenter error " +
+        buildError("Document failed because of an internal documenter error " +
           "(no error message provided); see the error output for details.")
     }
   }

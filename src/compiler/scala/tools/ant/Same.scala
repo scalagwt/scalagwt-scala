@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -12,8 +12,6 @@ package scala.tools.ant
 import java.io.{File, FileInputStream}
 
 import org.apache.tools.ant.{BuildException, Project}
-import org.apache.tools.ant.taskdefs.MatchingTask
-import org.apache.tools.ant.util.FileUtils
 import org.apache.tools.ant.util.{FileNameMapper, IdentityMapper}
 
 import org.apache.tools.ant.types.Mapper
@@ -33,11 +31,7 @@ import org.apache.tools.ant.types.Mapper
  *
  * @author  Gilles Dubochet
  * @version 1.0 */
-class Same extends MatchingTask {
-
-  /** The unique Ant file utilities instance to use in this task. */
-  private val fileUtils = FileUtils.getFileUtils()
-
+class Same extends ScalaMatchingTask {
 /*============================================================================*\
 **                             Ant user-properties                            **
 \*============================================================================*/
@@ -95,9 +89,9 @@ class Same extends MatchingTask {
   private var allEqualNow = true
 
   /** Tests if all mandatory attributes are set and valid. */
-  private def validateAttributes = {
-    if (origin.isEmpty) error("Mandatory attribute 'dir' is not set.")
-    if (destination.isEmpty) error("Mandatory attribute 'todir' is not set.")
+  private def validateAttributes() = {
+    if (origin.isEmpty) sys.error("Mandatory attribute 'dir' is not set.")
+    if (destination.isEmpty) sys.error("Mandatory attribute 'todir' is not set.")
   }
 
   private def reportDiff(f1: File, f2: File) = {
@@ -156,7 +150,7 @@ class Same extends MatchingTask {
     }
     if (!allEqualNow)
       if (failing)
-        error("There were differences between '" + origin.get + "' and '" + destination.get + "'")
+        sys.error("There were differences between '" + origin.get + "' and '" + destination.get + "'")
       else
         log("There were differences between '" + origin.get + "' and '" + destination.get + "'")
     else {

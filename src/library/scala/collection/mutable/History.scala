@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/tPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/tPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -24,9 +24,8 @@ package mutable
  *  @tparam Evt   Type of events.
  *  @tparam Pub   Type of publishers.
  */
-@serializable
 @SerialVersionUID(5219213543849892588L)
-class History[Evt, Pub] extends Subscriber[Evt, Pub] with Iterable[(Pub, Evt)]
+class History[Evt, Pub] extends Subscriber[Evt, Pub] with Iterable[(Pub, Evt)] with Serializable
 {
   protected val log: Queue[(Pub, Evt)] = new Queue
   val maxHistory: Int = 1000
@@ -57,4 +56,5 @@ class History[Evt, Pub] extends Subscriber[Evt, Pub] with Iterable[(Pub, Evt)]
     case that: History[_, _] => this.log equals that.log
     case _                   => false
   }
+  override def hashCode = log.hashCode
 }

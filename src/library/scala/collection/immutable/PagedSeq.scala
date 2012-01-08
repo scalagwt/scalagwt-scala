@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -65,11 +65,10 @@ object PagedSeq {
   def fromLines(source: Iterator[String]): PagedSeq[Char] = {
     var isFirst = true
     fromStrings(source map { line =>
-      if (isFirst) line
-      else {
+      if (isFirst) {
         isFirst = false
-        "\n"+line
-      }
+        line
+      } else "\n"+line
     })
   }
 

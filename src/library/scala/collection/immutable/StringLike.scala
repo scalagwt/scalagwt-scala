@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -42,7 +42,7 @@ import StringLike._
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
-trait StringLike[+Repr] extends IndexedSeqOptimized[Char, Repr] with Ordered[String] {
+trait StringLike[+Repr] extends collection.IndexedSeqOptimized[Char, Repr] with Ordered[String] {
 self =>
 
   /** Creates a string builder buffer as builder for this class */
@@ -56,6 +56,14 @@ self =>
   def length: Int = toString.length
 
   override def mkString = toString
+
+  override def slice(from: Int, until: Int): Repr = {
+    val start = from max 0
+    val end   = until min length
+
+    if (start >= end) newBuilder.result
+    else newBuilder ++= toString.substring(start, end) result
+  }
 
   /** Return the current string concatenated `n` times.
    */
@@ -148,10 +156,26 @@ self =>
     if (toString.startsWith(prefix)) toString.substring(prefix.length)
     else toString
 
-  /** Returns this string with the given `suffix` stripped. */
+  /** Returns this string with the given `suffix` stripped. If this string does not
+    * end with `suffix`, it is returned unchanged. */
   def stripSuffix(suffix: String) =
     if (toString.endsWith(suffix)) toString.substring(0, toString.length() - suffix.length)
     else toString
+
+  /** Replace all literal occurrences of `literal` with the string `replacement`.
+   *  This is equivalent to [[java.lang.String#replaceAll]] except that both arguments
+   *  are appropriately quoted to avoid being interpreted as metacharacters.
+   *
+   *  @param    literal     the string which should be replaced everywhere it occurs
+   *  @param    replacement the replacement string
+   *  @return               the resulting string
+   */
+  def replaceAllLiterally(literal: String, replacement: String): String = {
+    val arg1 = java.util.regex.Pattern.quote(literal)
+    val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
+
+    toString.replaceAll(arg1, arg2)
+  }
 
   /**
    *    For every line in this string:
@@ -218,13 +242,8 @@ self =>
     else
       throw new NumberFormatException("For input string: \"null\"")
 
-  /* !!! causes crash?
-  def toArray: Array[Char] = {
-    val result = new Array[Char](length)
-    toString.getChars(0, length, result, 0)
-    result
-  }
-  */
+  override def toArray[B >: Char : ClassManifest]: Array[B] =
+    toString.toCharArray.asInstanceOf[Array[B]]
 
   private def unwrapArg(arg: Any): AnyRef = arg match {
     case x: ScalaNumber => x.underlying

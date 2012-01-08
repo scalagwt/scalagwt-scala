@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -59,10 +59,13 @@ trait PartialFunction[-A, +B] extends (A => B) {
   }
 
   /** Turns this partial function into an plain function returning an `Option` result.
+   *  @see     Function.unlift
    *  @return  a function that takes an argument `x` to `Some(this(x))` if `this`
    *           is defined for `x`, and to `None` otherwise.
    */
-  def lift: A => Option[B] = { x => if (isDefinedAt(x)) Some(this(x)) else None }
+  def lift: A => Option[B] = new (A => Option[B]) {
+    def apply(x: A): Option[B] = if (isDefinedAt(x)) Some(PartialFunction.this.apply(x)) else None
+  }
 }
 
 /** A few handy operations which leverage the extra bit of information

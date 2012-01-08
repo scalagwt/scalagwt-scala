@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -10,10 +10,7 @@
 
 package scala.actors
 
-/** <p>
- *    The class <code>ActorTask</code>.
- *  </p>
- *
+/**
  *  @author Philipp Haller
  */
 private[actors] class ActorTask(actor: Actor,
@@ -37,7 +34,7 @@ private[actors] class ActorTask(actor: Actor,
     val uncaught = UncaughtException(actor,
                                      if (msg != null) Some(msg) else None,
                                      senderInfo,
-                                     currentThread,
+                                     Thread.currentThread,
                                      e)
 
     val todo = actor.synchronized {

@@ -1,17 +1,15 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
 
-
 package scala.util.automata
 
-import scala.collection.{ immutable, mutable, Set, Seq, Map }
-import immutable.{ BitSet }
+import scala.collection.{ immutable, mutable }
 
 /** A nondeterministic automaton. States are integers, where
  *  0 is always the only initial state. Transitions are represented
@@ -20,13 +18,13 @@ import immutable.{ BitSet }
  *  All states are reachable. Accepting states are those for which
  *  the partial function 'finals' is defined.
  */
-abstract class NondetWordAutom[T <: AnyRef]
-{
+abstract class NondetWordAutom[T <: AnyRef] {
+  import immutable.BitSet
+
   val nstates: Int
   val labels: Seq[T]
-
   val finals: Array[Int] // 0 means not final
-  val delta: Array[Map[T, BitSet]]
+  val delta: Array[mutable.Map[T, BitSet]]
   val default: Array[BitSet]
 
   /** returns true if the state is final */
@@ -41,10 +39,10 @@ abstract class NondetWordAutom[T <: AnyRef]
   /** returns true if there are no accepting states */
   final def isEmpty = (0 until nstates) forall (x => !isFinal(x))
 
-  /** returns a bitset with the next states for given state and label */
+  /** returns a BitSet with the next states for given state and label */
   def next(q: Int, a: T): BitSet = delta(q).getOrElse(a, default(q))
 
-  /** returns a bitset with the next states for given state and label */
+  /** returns a BitSet with the next states for given state and label */
   def next(Q: BitSet, a: T): BitSet = next(Q, next(_, a))
   def nextDefault(Q: BitSet): BitSet = next(Q, default)
 

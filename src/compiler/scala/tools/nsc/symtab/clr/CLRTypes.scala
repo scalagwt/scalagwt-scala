@@ -1,5 +1,5 @@
 /* NSC -- new scala compiler
- * Copyright 2004-2010 LAMP/EPFL
+ * Copyright 2004-2011 LAMP/EPFL
  */
 
 
@@ -61,7 +61,24 @@ abstract class CLRTypes {
   val methods: Map[Symbol,MethodInfo] = new HashMap
   val fields: Map[Symbol, FieldInfo] = new HashMap
   val sym2type: Map[Type,Symbol] = new HashMap
+  val addressOfViews: HashSet[Symbol] = new HashSet[Symbol]
+  val mdgptrcls4clssym: Map[ /*cls*/ Symbol, /*cls*/ Symbol] = new HashMap
 
+  def isAddressOf(msym : Symbol) = addressOfViews.contains(msym)
+
+  def isNonEnumValuetype(cls: Symbol) = {
+    val msilTOpt = types.get(cls)
+    val res = msilTOpt.isDefined && {
+      val msilT = msilTOpt.get
+      msilT.IsValueType && !msilT.IsEnum
+    }
+    res
+  }
+
+  def isValueType(cls: Symbol): Boolean = {
+    val opt = types.get(cls)
+    opt.isDefined && opt.get.IsValueType
+  }
 
   def init() = try { // initialize
     // the MsilClasspath (nsc/util/Classpath.scala) initializes the msil-library by calling

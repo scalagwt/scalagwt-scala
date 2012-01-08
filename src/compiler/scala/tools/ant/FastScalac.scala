@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -75,6 +75,11 @@ class FastScalac extends Scalac {
       reset.value = resetCaches
       shutdown.value = shutdownServer
 
+      /** XXX Since fsc is largely unmaintained, the set of options being individually
+       *  assessed here is likely to bear little relationship to the current set of options.
+       *  Most likely this manifests in confusing and very difficult to debug behavior in fsc.
+       *  We should warn or fix.
+       */
       val stringSettings =
         List(s.outdir, s.classpath, s.bootclasspath, s.extdirs, s.encoding) flatMap (x => List(x.name, x.value))
 
@@ -85,7 +90,7 @@ class FastScalac extends Scalac {
         List(s.debuginfo, s.target) map (x => "%s:%s".format(x.name, x.value))
 
       val booleanSettings =
-        List(s.debug, s.deprecation, s.nopredefs, s.verbose, reset, shutdown) map (x => if (x.value) List(x.name) else Nil) flatten
+        List(s.debug, s.deprecation, s.verbose, reset, shutdown) map (x => if (x.value) List(x.name) else Nil) flatten
 
       val phaseSetting = {
         val s = settings.log
@@ -98,17 +103,17 @@ class FastScalac extends Scalac {
 
       val args = (cmdOptions ::: (sourceFiles map (_.toString))).toArray
       try {
-        if (scala.tools.nsc.CompileClient.main0(args) > 0 && failonerror)
-          error("Compile failed; see the compiler error output for details.")
+        if (scala.tools.nsc.CompileClient.process(args) && failonerror)
+          buildError("Compile failed; see the compiler error output for details.")
       }
       catch {
         case exception: Throwable if (exception.getMessage ne null) =>
           exception.printStackTrace()
-          error("Compile failed because of an internal compiler error (" +
+          buildError("Compile failed because of an internal compiler error (" +
             exception.getMessage + "); see the error output for details.")
         case exception =>
           exception.printStackTrace()
-          error("Compile failed because of an internal compiler error " +
+          buildError("Compile failed because of an internal compiler error " +
             "(no error message provided); see the error output for details.")
       }
     }

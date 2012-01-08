@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -8,6 +8,9 @@
 
 
 package scala.collection.immutable
+
+import scala.collection.parallel.immutable.ParRange
+import annotation.bridge
 
 /** The `Range` class represents integer values in range
  *  ''[start;end)'' with non-zero step value `step`.
@@ -25,6 +28,7 @@ package scala.collection.immutable
  *  @param step       the step for the range.
  *
  *  @author Martin Odersky
+ *  @author Paul Phillips
  *  @version 2.8
  *  @since   2.5
  *  @define Coll Range
@@ -35,10 +39,22 @@ package scala.collection.immutable
  *    '''Note:''' this method does not use builders to construct a new range,
  *         and its complexity is O(1).
  */
-@serializable @SerialVersionUID(7618862778670199309L)
-class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int] {
+@SerialVersionUID(7618862778670199309L)
+class Range(val start: Int, val end: Int, val step: Int)
+extends IndexedSeq[Int]
+   with collection.CustomParallelizable[Int, ParRange]
+   with Serializable
+{
+  override def par = new ParRange(this)
 
-  require(step != 0)
+  // This member is designed to enforce conditions:
+  //   (step != 0) && (length <= Int.MaxValue),
+  // but cannot be evaluated eagerly because we have a pattern where ranges
+  // are constructed like:    "x to y by z"
+  // The "x to y" piece should not trigger an exception. So the calculation
+  // is delayed, which means it will not fail fast for those cases where failing
+  // was correct.
+  private lazy val numRangeElements: Int = Range.count(start, end, step, isInclusive)
 
   protected def copy(start: Int, end: Int, step: Int): Range = new Range(start, end, step)
 
@@ -51,8 +67,8 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
 
   def isInclusive = false
 
-  override def foreach[@specialized(Unit) U](f: Int => U) {
-    if (fullLength > 0) {
+  @inline final override def foreach[@specialized(Unit) U](f: Int => U) {
+    if (length > 0) {
       val last = this.last
       var i = start
       while (i != last) {
@@ -63,40 +79,17 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
     }
   }
 
-  override def last: Int = if (step == 1 || step == -1) {
-    end - step
-  } else {
-    val size = end.toLong - start.toLong
-    val inclusiveLast = (size / step.toLong * step.toLong + start.toLong).toInt
-    if (size % step == 0) inclusiveLast - step else inclusiveLast
-  }
-
-  def length: Int = fullLength.toInt
-
-  protected def fullLength: Long = if (end > start == step > 0 && start != end)
-    ((last.toLong - start.toLong) / step.toLong + 1)
-  else
-    0
+  override def length: Int = numRangeElements
+  override lazy val last: Int =
+    if (length == 0) Nil.last
+    else locationAfterN(length - 1)
 
   final override def isEmpty = length == 0
 
   @inline
   final def apply(idx: Int): Int = {
     if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException(idx.toString)
-    start + idx * step
-  }
-
-  // take and drop have to be tolerant of large values without overflowing
-  // warning! this is buggy, and gives wrong answers on boundary cases.
-  // The known bugs are avoided by drop not calling it in those cases.
-  // See ticket #3529.  It should be revised.
-  private def locationAfterN(n: Int) = if (n > 0) {
-    if (step > 0)
-      ((start.toLong + step.toLong * n.toLong) min last.toLong).toInt
-    else
-      ((start.toLong + step.toLong * n.toLong) max last.toLong).toInt
-  } else {
-    start
+    locationAfterN(idx)
   }
 
   /** Creates a new range containing the first `n` elements of this range.
@@ -106,11 +99,11 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
    *  @param n  the number of elements to take.
    *  @return   a new range consisting of `n` first elements.
    */
-  final override def take(n: Int): Range =
-    if (n > 0 && length > 0)
-      Range(start, locationAfterN(n - 1), step).inclusive
-    else
-      Range(start, start, step)
+  final override def take(n: Int): Range = (
+    if (n <= 0 || length == 0) newEmptyRange(start)
+    else if (n >= length) this
+    else new Range.Inclusive(start, locationAfterN(n - 1), step)
+  )
 
   /** Creates a new range containing all the elements of this range except the first `n` elements.
    *
@@ -119,12 +112,11 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
    *  @param n  the number of elements to drop.
    *  @return   a new range consisting of all the elements of this range except `n` first elements.
    */
-  final override def drop(n: Int): Range =
-    if (n >= length) {
-      if (step > 0) copy(end + 1, end, step)
-      else copy(end - 1, end, step)
-    }
+  final override def drop(n: Int): Range = (
+    if (n <= 0 || length == 0) this
+    else if (n >= length) newEmptyRange(end)
     else copy(locationAfterN(n), end, step)
+  )
 
   /** Creates a new range containing all the elements of this range except the last one.
    *
@@ -132,37 +124,56 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
    *
    *  @return  a new range consisting of all the elements of this range except the last one.
    */
-  final override def init: Range =
-    take(length - 1)
+  final override def init: Range = {
+    if (isEmpty)
+      Nil.init
 
-  /** Creates a new range contained in the specified slice of this range.
+    dropRight(length - 1)
+  }
+
+  /** Creates a new range containing all the elements of this range except the first one.
    *
    *  $doesNotUseBuilders
    *
-   *  @param from   the start of the slice.
-   *  @param until  the end of the slice.
-   *  @return       a new range consisting of all the elements of this range contained in the specified slice.
+   *  @return  a new range consisting of all the elements of this range except the first one.
    */
-  final override def slice(from: Int, until: Int): Range =
-    drop(from).take(until - from)
+  final override def tail: Range = {
+    if (isEmpty)
+      Nil.tail
 
-  private def skip(p: Int => Boolean): Int = {
-    var s = start
-    if (length > 0) {
-      val last = this.last
-      while ((if (step > 0) s <= last else s >= last) && p(s))
-        s += step
+    drop(1)
+  }
+
+  // Counts how many elements from the start meet the given test.
+  private def skipCount(p: Int => Boolean): Int = {
+    var current = start
+    var counted = 0
+
+    while (counted < length && p(current)) {
+      counted += 1
+      current += step
     }
-    s
+    counted
   }
+  // Tests whether a number is within the endpoints, without testing
+  // whether it is a member of the sequence (i.e. when step > 1.)
+  private def isWithinBoundaries(elem: Int) = (length > 0) && (
+    (step > 0 && start <= elem && elem <= last ) ||
+    (step < 0 &&  last <= elem && elem <= start)
+  )
+  // Methods like apply throw exceptions on invalid n, but methods like take/drop
+  // are forgiving: therefore the checks are with the methods.
+  private def locationAfterN(n: Int) = start + (step * n)
 
-  final override def takeWhile(p: Int => Boolean): Range = Range(start, skip(p), step)
-  final override def dropWhile(p: Int => Boolean): Range = copy(skip(p), end, step)
+  // When one drops everything.  Can't ever have unchecked operations
+  // like "end + 1" or "end - 1" because ranges involving Int.{ MinValue, MaxValue }
+  // will overflow.  This creates an exclusive range where start == end
+  // based on the given value.
+  private def newEmptyRange(value: Int) = new Range(value, value, step)
 
-  final override def span(p: Int => Boolean): (Range, Range) = {
-    val split = skip(p)
-    (Range(start, split, step), copy(split, end, step))
-  }
+  final override def takeWhile(p: Int => Boolean): Range = take(skipCount(p))
+  final override def dropWhile(p: Int => Boolean): Range = drop(skipCount(p))
+  final override def span(p: Int => Boolean): (Range, Range) = splitAt(skipCount(p))
 
   /** Creates a pair of new ranges, first consisting of elements before `n`, and the second
    *  of elements after `n`.
@@ -187,32 +198,34 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
    *
    *  $doesNotUseBuilders
    */
-  final override def reverse: Range = if (length > 0) new Range.Inclusive(last, start, -step) else this
+  final override def reverse: Range =
+    if (length > 0) new Range.Inclusive(last, start, -step)
+    else this
 
   /** Make range inclusive.
    */
-  def inclusive = new Range.Inclusive(start, end, step)
+  def inclusive =
+    if (isInclusive) this
+    else new Range.Inclusive(start, end, step)
 
-  final def contains(x: Int): Boolean = if (length > 0) {
-    if (step > 0) start <= x && x <= last && (x - start) % step == 0
-    else start >= x && x >= last && (start - x) % step == 0
-  } else {
-    false
-  }
+  final def contains(x: Int) = isWithinBoundaries(x) && ((x - start) % step == 0)
+
+  override def toIterable = this
+
+  override def toSeq = this
 
   override def equals(other: Any) = other match {
     case x: Range =>
-      length == x.length &&
-      (length == 0 ||
-       start == x.start &&
-       (length == 1 || step == x.step))
+      (x canEqual this) && (length == x.length) && (
+        (length == 0) ||                      // all empty sequences are equal
+        (start == x.start && last == x.last)  // same length and same endpoints implies equality
+      )
     case _ =>
       super.equals(other)
   }
-
-  /* eliminated, so as to not break the hashcode/equals contract
-  override def hashCode = start + limit + step
-  */
+  /** Note: hashCode can't be overridden without breaking Seq's
+   *  equals contract.
+   */
 
   override def toString() = {
     val endStr = if (length > Range.MAX_PRINT) ", ... )" else ")"
@@ -225,34 +238,23 @@ class Range(val start: Int, val end: Int, val step: Int) extends IndexedSeq[Int]
 object Range {
   private[immutable] val MAX_PRINT = 512  // some arbitrary value
 
-  /** Calculates the number of elements in a range given start, end, step, and
-   *  whether or not it is inclusive.  Returns -1 if parameters are invalid.
+  /** Counts in "Long arithmetic" so we can recognize overflow.
    */
-  def count(start: Int, end: Int, step: Int): Int = count(start, end, step, false)
-  def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
-    def last =
-      if (isInclusive && step < 0) end - 1
-      else if (isInclusive && step > 0) end + 1
-      else end
+  def count(start: Int, end: Int, step: Int): Int =
+    count(start, end, step, false)
 
-    if (step == 0) -1
-    else if (start == end) { if (isInclusive) 1 else 0 }
-    else if (end > start != step > 0) -1
-    else if (step == 1 || step == -1) last - start
-    else ((last - start - 1) / step) + 1
+  def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
+    // faster path for the common counting range
+    if (start >= 0 && end > start && end < scala.Int.MaxValue && step == 1)
+      (end - start) + ( if (isInclusive) 1 else 0 )
+    else
+      NumericRange.count[Long](start, end, step, isInclusive)
   }
 
   class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
+//    override def par = new ParRange(this)
     override def isInclusive = true
     override protected def copy(start: Int, end: Int, step: Int): Range = new Inclusive(start, end, step)
-    override def last: Int = if (step == 1 || step == -1)
-      end
-    else
-      ((end.toLong - start.toLong) / step.toLong * step.toLong + start.toLong).toInt
-    protected override def fullLength: Long = if (end > start == step > 0 || start == end)
-      ((last.toLong - start.toLong) / step.toLong + 1)
-    else
-      0
   }
 
   /** Make a range from `start` until `end` (exclusive) with given step value.
@@ -262,30 +264,16 @@ object Range {
 
   /** Make an range from `start` to `end` inclusive with step value 1.
    */
-  def apply(start: Int, end: Int): Range with ByOne = new Range(start, end, 1) with ByOne
+  def apply(start: Int, end: Int): Range = new Range(start, end, 1)
 
   /** Make an inclusive range from start to end with given step value.
    * @note step != 0
    */
-  def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Inclusive(start, end, step)
+  @inline def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Inclusive(start, end, step)
 
   /** Make an inclusive range from start to end with step value 1.
    */
-  def inclusive(start: Int, end: Int): Range.Inclusive with ByOne = new Inclusive(start, end, 1) with ByOne
-
-  trait ByOne extends Range {
-    override final def foreach[@specialized(Unit) U](f: Int => U) {
-      if (length > 0) {
-        val last = this.last
-        var i = start
-        while (i != last) {
-          f(i)
-          i += 1
-        }
-        f(i)
-      }
-    }
-  }
+  @inline def inclusive(start: Int, end: Int): Range.Inclusive = new Inclusive(start, end, 1)
 
   // BigInt and Long are straightforward generic ranges.
   object BigInt {
@@ -304,7 +292,7 @@ object Range {
   // imprecision or surprises might result from anything, although this may
   // not yet be fully implemented.
   object BigDecimal {
-    implicit val bigDecAsIntegral = scala.Numeric.BigDecimalAsIfIntegral
+    implicit val bigDecAsIntegral = scala.math.Numeric.BigDecimalAsIfIntegral
 
     def apply(start: BigDecimal, end: BigDecimal, step: BigDecimal) =
       NumericRange(start, end, step)
@@ -319,9 +307,9 @@ object Range {
   // is necessary to keep 0.3d at 0.3 as opposed to
   // 0.299999999999999988897769753748434595763683319091796875 or so.
   object Double {
-    implicit val bigDecAsIntegral = scala.Numeric.BigDecimalAsIfIntegral
-    implicit val doubleAsIntegral = scala.Numeric.DoubleAsIfIntegral
-    def toBD(x: Double): BigDecimal = scala.BigDecimal valueOf x
+    implicit val bigDecAsIntegral = scala.math.Numeric.BigDecimalAsIfIntegral
+    implicit val doubleAsIntegral = scala.math.Numeric.DoubleAsIfIntegral
+    def toBD(x: Double): BigDecimal = scala.math.BigDecimal valueOf x
 
     def apply(start: Double, end: Double, step: Double) =
       BigDecimal(toBD(start), toBD(end), toBD(step)) mapRange (_.doubleValue)
@@ -343,5 +331,11 @@ object Range {
   object Int {
     def apply(start: Int, end: Int, step: Int) = NumericRange(start, end, step)
     def inclusive(start: Int, end: Int, step: Int) = NumericRange.inclusive(start, end, step)
+  }
+
+  @deprecated("use Range instead", "2.9.0")
+  trait ByOne extends Range {
+//    @bridge override def foreach[@specialized(Unit) U](f: Int => U) =
+//      super.foreach(f)
   }
 }

@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -13,17 +13,18 @@ package immutable
 
 import generic._
 import BitSetLike.{LogWL, updateArray}
-import mutable.{ Builder, AddingBuilder }
+import mutable.{ Builder, SetBuilder }
 
 /** A class for immutable bitsets.
  *  $bitsetinfo
  *  @define Coll immutable.BitSet
  *  @define coll immutable bitset
  */
-@serializable @SerialVersionUID(1611436763290191562L)
+@SerialVersionUID(1611436763290191562L)
 abstract class BitSet extends Set[Int]
                          with scala.collection.BitSet
-                         with BitSetLike[BitSet] {
+                         with BitSetLike[BitSet]
+                         with Serializable {
   override def empty = BitSet.empty
 
   def fromArray(elems: Array[Long]): BitSet = BitSet.fromArray(elems)
@@ -64,7 +65,7 @@ object BitSet extends BitSetFactory[BitSet] {
   val empty: BitSet = new BitSet1(0L)
 
   /** An adding builder for immutable Sets. */
-  def newBuilder: Builder[Int, BitSet] = new AddingBuilder[Int, BitSet](empty)
+  def newBuilder: Builder[Int, BitSet] = new SetBuilder[Int, BitSet](empty)
 
   /** $bitsetCanBuildFrom */
   implicit def canBuildFrom: CanBuildFrom[BitSet, Int, BitSet] = bitsetCanBuildFrom
@@ -77,8 +78,6 @@ object BitSet extends BitSetFactory[BitSet] {
     else if (len == 2) new BitSet2(elems(0), elems(1))
     else new BitSetN(elems)
   }
-
-  private val hashSeed = "BitSet".hashCode
 
   class BitSet1(val elems: Long) extends BitSet {
     protected def nwords = 1

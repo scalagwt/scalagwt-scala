@@ -1,8 +1,7 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
-
 
 package scala.tools.nsc
 package backend
@@ -24,21 +23,15 @@ package icode
 
 */
 
-import scala.collection.mutable.{ Map, HashMap }
-import symtab.SymbolTable
-
-trait TypeKinds {
-  val global: SymbolTable { def abort(msg: String): Nothing }
+trait TypeKinds { self: ICodes =>
   import global._
-
-  // TODO(spoon): put in better location
-  lazy val AnyRefReference: TypeKind = REFERENCE(global.definitions.ObjectClass)
-  import definitions.{ ArrayClass, AnyRefClass, ObjectClass, NullClass, NothingClass }
+  import definitions.{ ArrayClass, AnyRefClass, ObjectClass, NullClass, NothingClass, arrayType }
+  import icodes.{ checkerDebug, NothingReference, NullReference }
 
   /** A map from scala primitive Types to ICode TypeKinds */
-  lazy val primitiveTypeMap: collection.Map[Symbol, TypeKind] = {
+  lazy val primitiveTypeMap: Map[Symbol, TypeKind] = {
     import definitions._
-    collection.Map(
+    Map(
       UnitClass     -> UNIT,
       BooleanClass  -> BOOL,
       CharClass     -> CHAR,
@@ -51,65 +44,81 @@ trait TypeKinds {
     )
   }
   /** Reverse map for toType */
-  private lazy val reversePrimitiveMap: collection.Map[TypeKind, Symbol] =
-    collection.Map(primitiveTypeMap.toList map (_.swap) : _*)
+  private lazy val reversePrimitiveMap: Map[TypeKind, Symbol] =
+    primitiveTypeMap map (_.swap) toMap
 
   /** This class represents a type kind. Type kinds
    * represent the types that the VM know (or the ICode
    * view of what VMs know).
    */
   sealed abstract class TypeKind {
+    def maxType(other: TypeKind): TypeKind
 
-    def toType: Type = (reversePrimitiveMap get this) match {
-      case Some(sym)  => sym.tpe
-      case None       => this match {
-        case REFERENCE(cls)  => cls.tpe // typeRef(cls.typeConstructor.prefix, cls, Nil)
-        // case VALUE(cls)      => typeRef(cls.typeConstructor.prefix, cls, Nil)
-        case ARRAY(elem)     => typeRef(ArrayClass.typeConstructor.prefix, ArrayClass, List(elem.toType))
-        case _ => abort("Unknown type kind.")
+    def toType: Type = reversePrimitiveMap get this map (_.tpe) getOrElse {
+      this match {
+        case REFERENCE(cls) => cls.tpe
+        case ARRAY(elem)    => arrayType(elem.toType)
+        case _              => abort("Unknown type kind.")
       }
     }
 
-    def isReferenceType: Boolean = false
-    def isArrayType: Boolean = false
-    def isValueType: Boolean = !isReferenceType && !isArrayType
-
-
-    def isIntType: Boolean = this match {
-      case BYTE | SHORT | INT | LONG | CHAR => true
-      case _ => false
+    def isReferenceType           = false
+    def isArrayType               = false
+    def isValueType               = false
+    def isBoxedType               = false
+    final def isRefOrArrayType    = isReferenceType || isArrayType
+    final def isRefArrayOrBoxType = isRefOrArrayType || isBoxedType
+    final def isNothingType       = this == NothingReference
+    final def isNullType          = this == NullReference
+    final def isInterfaceType     = this match {
+      case REFERENCE(cls) if cls.isInterface || cls.isTrait => true
+      case _                                                => false
     }
 
+    /** On the JVM, these types are like Ints for the
+     *  purposes of calculating the lub.
+     */
+    def isIntSizedType: Boolean = this match {
+      case BOOL | CHAR | BYTE | SHORT | INT => true
+      case _                                => false
+    }
+    def isIntegralType: Boolean = this match {
+      case BYTE | SHORT | INT | LONG | CHAR => true
+      case _                                => false
+    }
     def isRealType: Boolean = this match {
       case FLOAT | DOUBLE => true
-      case _ => false
+      case _              => false
     }
-
-    def isNumericType: Boolean = isIntType | isRealType
-
-    def maxType(other: TypeKind): TypeKind
+    def isNumericType: Boolean = isIntegralType | isRealType
 
     /** Simple subtyping check */
     def <:<(other: TypeKind): Boolean = (this eq other) || (this match {
-      case BOOL | BYTE | SHORT | CHAR =>
-        other match {
-          case INT | LONG => true
-          case _ => false
-        }
-      case _ => this eq other
+      case BOOL | BYTE | SHORT | CHAR => other == INT || other == LONG
+      case _                          => this eq other
     })
-
-    override def equals(other: Any): Boolean =
-      this eq other.asInstanceOf[AnyRef]
 
     /** Is this type a category 2 type in JVM terms? */
     def isWideType: Boolean = this match {
-      case DOUBLE | LONG => true
-      case _ => false
+      case DOUBLE | LONG  => true
+      case _              => false
     }
 
     /** The number of dimensions for array types. */
     def dimensions: Int = 0
+
+    protected def uncomparable(thisKind: String, other: TypeKind): Nothing =
+      abort("Uncomparable type kinds: " + thisKind + " with " + other)
+
+    protected def uncomparable(other: TypeKind): Nothing =
+      uncomparable(this.toString, other)
+  }
+
+  sealed abstract class ValueTypeKind extends TypeKind {
+    override def isValueType = true
+    override def toString = {
+      this.getClass.getName stripSuffix "$" dropWhile (_ != '$') drop 1
+    }
   }
 
   var lubs0 = 0
@@ -121,58 +130,67 @@ trait TypeKinds {
    * The lub is based on the lub of scala types.
    */
   def lub(a: TypeKind, b: TypeKind): TypeKind = {
-    def lub0(t1: Type, t2: Type): Type = {
-      //lubs0 += 1
-      global.lub(t1 :: t2 :: Nil)
+    /** The compiler's lub calculation does not order classes before traits.
+     *  This is apparently not wrong but it is inconvenient, and causes the
+     *  icode checker to choke when things don't match up.  My attempts to
+     *  alter the calculation at the compiler level were failures, so in the
+     *  interests of a working icode checker I'm making the adjustment here.
+     *
+     *  Example where we'd like a different answer:
+     *
+     *    abstract class Tom
+     *    case object Bob extends Tom
+     *    case object Harry extends Tom
+     *    List(Bob, Harry)  // compiler calculates "Product with Tom" rather than "Tom with Product"
+     *
+     *  Here we make the adjustment by rewinding to a pre-erasure state and
+     *  sifting through the parents for a class type.
+     */
+    def lub0(tk1: TypeKind, tk2: TypeKind): Type = atPhase(currentRun.uncurryPhase) {
+      import definitions._
+      val tp = global.lub(List(tk1.toType, tk2.toType))
+      val (front, rest) = tp.parents span (_.typeSymbol.hasTraitFlag)
+
+      if (front.isEmpty) tp
+      else if (rest.isEmpty) front.head   // all parents are interfaces
+      else rest.head match {
+        case AnyRefClass | ObjectClass  => tp
+        case x                          => x
+      }
     }
 
+    def isIntLub = (
+      (a == INT && b.isIntSizedType) ||
+      (b == INT && a.isIntSizedType)
+    )
+
     if (a == b) a
-    else if (a == REFERENCE(NothingClass)) b
-    else if (b == REFERENCE(NothingClass)) a
-    else (a, b) match {
-      case (BOXED(a1), BOXED(b1)) => if (a1 == b1) a else REFERENCE(AnyRefClass)
-      case (BOXED(_), REFERENCE(_)) | (REFERENCE(_), BOXED(_)) => REFERENCE(AnyRefClass)
-      case (BOXED(_), ARRAY(_)) | (ARRAY(_), BOXED(_)) => REFERENCE(AnyRefClass)
-      case (BYTE, INT) | (INT, BYTE) => INT
-      case (SHORT, INT) | (INT, SHORT) => INT
-      case (CHAR, INT) | (INT, CHAR) => INT
-      case (BOOL, INT) | (INT, BOOL) => INT
-      case _ =>
-        if ((a.isReferenceType || a.isArrayType) &&
-            (b.isReferenceType || b.isArrayType))
-          toTypeKind(lub0(a.toType, b.toType))
-        else
-          throw new CheckerException("Incompatible types: " + a + " with " + b)
+    else if (a.isNothingType) b
+    else if (b.isNothingType) a
+    else if (a.isBoxedType || b.isBoxedType) AnyRefReference  // we should do better
+    else if (isIntLub) INT
+    else if (a.isRefOrArrayType && b.isRefOrArrayType) {
+      if (a.isNullType) b
+      else if (b.isNullType) a
+      else toTypeKind(lub0(a, b))
     }
+    else throw new CheckerException("Incompatible types: " + a + " with " + b)
   }
 
   /** The unit value */
-  case object UNIT extends TypeKind {
-    def maxType(other: TypeKind): TypeKind = other match {
-      case UNIT => UNIT
-      case REFERENCE(NothingClass)  => UNIT
-      case _ => abort("Uncomparable type kinds: UNIT with " + other)
+  case object UNIT extends ValueTypeKind {
+    def maxType(other: TypeKind) = other match {
+      case UNIT | REFERENCE(NothingClass)   => UNIT
+      case _                                => uncomparable(other)
     }
   }
 
   /** A boolean value */
-  case object BOOL extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind = other match {
-      case BOOL => BOOL
-      case REFERENCE(NothingClass) => BOOL
-      case _ => abort("Uncomparable type kinds: BOOL with " + other)
+  case object BOOL extends ValueTypeKind {
+    def maxType(other: TypeKind) = other match {
+      case BOOL | REFERENCE(NothingClass)   => BOOL
+      case _                                => uncomparable(other)
     }
-  }
-
-  /** A 1-byte signed integer */
-  case object BYTE extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case CHAR => INT
-        case BYTE | SHORT | INT | LONG | FLOAT | DOUBLE => other
-        case REFERENCE(NothingClass) => BYTE
-        case _ => abort("Uncomparable type kinds: BYTE with " + other)
-      }
   }
 
   /** Note that the max of Char/Byte and Char/Short is Int, because
@@ -180,83 +198,71 @@ trait TypeKinds {
    *  See ticket #2087 for a consequence.
    */
 
-  /** A 2-byte signed integer */
-  case object SHORT extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case CHAR => INT
-        case BYTE | SHORT => SHORT
-        case REFERENCE(NothingClass) => SHORT
-        case INT | LONG | FLOAT | DOUBLE => other
-        case _ => abort("Uncomparable type kinds: SHORT with " + other)
-      }
-  }
-
-  /** A 2-byte UNSIGNED integer */
-  case object CHAR extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case CHAR => CHAR
-        case BYTE | SHORT => INT
-        case REFERENCE(NothingClass) => CHAR
-        case INT | LONG | FLOAT | DOUBLE => other
-        case _ => abort("Uncomparable type kinds: CHAR with " + other)
-      }
-  }
-
-
-  /** A 4-byte signed integer */
-  case object INT extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case BYTE | SHORT | CHAR | INT => INT
-        case REFERENCE(NothingClass) => INT
-        case LONG | FLOAT | DOUBLE => other
-        case _ => abort("Uncomparable type kinds: INT with " + other)
-      }
-  }
-
-  /** An 8-byte signed integer */
-  case object LONG extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case BYTE | SHORT | CHAR | INT | LONG => LONG
-        case REFERENCE(NothingClass) => LONG
-        case FLOAT | DOUBLE => DOUBLE
-        case _ => abort("Uncomparable type kinds: LONG with " + other)
-      }
-  }
-
-  /** A 4-byte floating point number */
-  case object FLOAT extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind = other match {
-      case BYTE | SHORT | CHAR | INT | LONG | FLOAT => FLOAT
-      case REFERENCE(NothingClass)                  => FLOAT
-      case DOUBLE                                   => DOUBLE
-      case _ => abort("Uncomparable type kinds: FLOAT with " + other)
+  /** A 1-byte signed integer */
+  case object BYTE extends ValueTypeKind {
+    def maxType(other: TypeKind) = {
+      if (other == BYTE || other.isNothingType) BYTE
+      else if (other == CHAR) INT
+      else if (other.isNumericType) other
+      else uncomparable(other)
     }
   }
 
-  /** An 8-byte floating point number */
-  case object DOUBLE extends TypeKind {
-    override def maxType(other: TypeKind): TypeKind =
-      if (other.isNumericType)
-        DOUBLE
-      else if (other == REFERENCE(NothingClass)) DOUBLE
-      else abort("Uncomparable type kinds: DOUBLE with " + other)
+  /** A 2-byte signed integer */
+  case object SHORT extends ValueTypeKind {
+    override def maxType(other: TypeKind) = other match {
+      case BYTE | SHORT | REFERENCE(NothingClass) => SHORT
+      case CHAR                                   => INT
+      case INT | LONG | FLOAT | DOUBLE            => other
+      case _                                      => uncomparable(other)
+    }
   }
 
-  /** A string reference */
-  // case object STRING extends TypeKind {
-  //   override def maxType(other: TypeKind): TypeKind = other match {
-  //     case STRING => STRING;
-  //     case _   =>
-  //       abort("Uncomparable type kinds: STRING with " + other);
-  //   }
-  // }
+  /** A 2-byte UNSIGNED integer */
+  case object CHAR extends ValueTypeKind {
+    override def maxType(other: TypeKind) = other match {
+      case CHAR | REFERENCE(NothingClass) => CHAR
+      case BYTE | SHORT                   => INT
+      case INT | LONG | FLOAT | DOUBLE    => other
+      case _                              => uncomparable(other)
+    }
+  }
+
+  /** A 4-byte signed integer */
+  case object INT extends ValueTypeKind {
+    override def maxType(other: TypeKind) = other match {
+      case BYTE | SHORT | CHAR | INT | REFERENCE(NothingClass)  => INT
+      case LONG | FLOAT | DOUBLE                                => other
+      case _                                                    => uncomparable(other)
+    }
+  }
+
+  /** An 8-byte signed integer */
+  case object LONG extends ValueTypeKind {
+    override def maxType(other: TypeKind): TypeKind =
+      if (other.isIntegralType || other.isNothingType) LONG
+      else if (other.isRealType) DOUBLE
+      else uncomparable(other)
+  }
+
+  /** A 4-byte floating point number */
+  case object FLOAT extends ValueTypeKind {
+    override def maxType(other: TypeKind): TypeKind =
+      if (other == DOUBLE) DOUBLE
+      else if (other.isNumericType || other.isNothingType) FLOAT
+      else uncomparable(other)
+  }
+
+  /** An 8-byte floating point number */
+  case object DOUBLE extends ValueTypeKind {
+    override def maxType(other: TypeKind): TypeKind =
+      if (other.isNumericType || other.isNothingType) DOUBLE
+      else uncomparable(other)
+  }
 
   /** A class type. */
   final case class REFERENCE(cls: Symbol) extends TypeKind {
+    override def toString = "REF(" + cls + ")"
     assert(cls ne null,
            "REFERENCE to null class symbol.")
     assert(cls != ArrayClass,
@@ -264,75 +270,40 @@ trait TypeKinds {
     assert(cls != NoSymbol,
            "REFERENCE to NoSymbol not allowed!")
 
-    override def toString(): String =
-      "REFERENCE(" + cls.fullName + ")"
-
     /**
      * Approximate `lub'. The common type of two references is
      * always AnyRef. For 'real' least upper bound wrt to subclassing
      * use method 'lub'.
      */
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case REFERENCE(_) | ARRAY(_) =>
-          REFERENCE(AnyRefClass)
-        case _ =>
-          abort("Uncomparable type kinds: REFERENCE with " + other)
-      }
+    override def maxType(other: TypeKind) = other match {
+      case REFERENCE(_) | ARRAY(_)  => AnyRefReference
+      case _                        => uncomparable("REFERENCE", other)
+    }
 
     /** Checks subtyping relationship. */
-    override def <:<(other: TypeKind): Boolean =
-      if (cls == NothingClass)
-        true
-      else other match {
-        case REFERENCE(cls2) =>
-          cls.tpe <:< cls2.tpe
-        case ARRAY(_) =>
-          cls == NullClass
-        case _ => false
-      }
-
-    override def isReferenceType: Boolean = true;
-
-    override def equals(other: Any): Boolean = other match {
-      case REFERENCE(cls2) => cls == cls2
-      case _               => false
-    }
+    override def <:<(other: TypeKind) = isNothingType || (other match {
+      case REFERENCE(cls2)  => cls.tpe <:< cls2.tpe
+      case ARRAY(_)         => cls == NullClass
+      case _                => false
+    })
+    override def isReferenceType = true
   }
-
-//   final case class VALUE(cls: Symbol) extends TypeKind {
-//     override def equals(other: Any): Boolean = other match {
-//       case VALUE(cls2) => cls == cls2;
-//       case _ => false;
-//     }
-
-//     def maxType(other: TypeKind): TypeKind =
-//       abort(toString() + " maxType " + other.toString());
-
-//     override def toString(): String =
-//       "VALUE(" + cls.fullName + ")";
-//   }
 
   def ArrayN(elem: TypeKind, dims: Int): ARRAY = {
     assert(dims > 0)
-    if (dims == 1)
-      ARRAY(elem)
-    else
-      ARRAY(ArrayN(elem, dims - 1))
+    if (dims == 1) ARRAY(elem)
+    else ARRAY(ArrayN(elem, dims - 1))
   }
 
   final case class ARRAY(val elem: TypeKind) extends TypeKind {
-    override def toString(): String =
-      "ARRAY[" + elem + "]"
-
+    override def toString    = "ARRAY[" + elem + "]"
     override def isArrayType = true
-
-    override def dimensions: Int = 1 + elem.dimensions
+    override def dimensions  = 1 + elem.dimensions
 
     /** The ultimate element type of this array. */
     def elementKind: TypeKind = elem match {
-      case a @ ARRAY(e1) => a.elementKind
-      case k => k
+      case a @ ARRAY(_) => a.elementKind
+      case k            => k
     }
 
     /**
@@ -340,70 +311,37 @@ trait TypeKinds {
      * always AnyRef. For 'real' least upper bound wrt to subclassing
      * use method 'lub'.
      */
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case REFERENCE(_) =>
-          REFERENCE(AnyRefClass)
-        case ARRAY(elem2) =>
-          if (elem == elem2) ARRAY(elem)
-          else REFERENCE(AnyRefClass)
-        case _ =>
-          abort("Uncomparable type kinds: ARRAY with " + other)
-      }
+    override def maxType(other: TypeKind) = other match {
+      case ARRAY(elem2) if elem == elem2  => ARRAY(elem)
+      case ARRAY(_) | REFERENCE(_)        => AnyRefReference
+      case _                              => uncomparable("ARRAY", other)
+    }
 
     /** Array subtyping is covariant, as in Java. Necessary for checking
      *  code that interacts with Java. */
-    override def <:<(other: TypeKind): Boolean =
-      other match {
-        case ARRAY(elem2) =>
-          elem <:< elem2
-        case REFERENCE(AnyRefClass | ObjectClass) =>
-          true  //  TODO: platform dependent!
-        case _ => false
-      }
-
-    override def equals(other: Any): Boolean = other match {
-      case ARRAY(elem2) => elem == elem2
-      case _               => false
+    override def <:<(other: TypeKind) = other match {
+      case ARRAY(elem2)                         => elem <:< elem2
+      case REFERENCE(AnyRefClass | ObjectClass) => true // TODO: platform dependent!
+      case _                                    => false
     }
-
   }
 
   /** A boxed value. */
   case class BOXED(kind: TypeKind) extends TypeKind {
-    override def toString(): String =
-      "BOXED(" + kind + ")"
+    override def isBoxedType = true
 
-    /**
-     * Approximate `lub'. The common type of two references is
-     * always AnyRef. For 'real' least upper bound wrt to subclassing
-     * use method 'lub'.
-     */
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case REFERENCE(_) | ARRAY(_) | BOXED(_) =>
-          REFERENCE(AnyRefClass)
-        case _ =>
-          abort("Uncomparable type kinds: ARRAY with " + other)
-      }
-
-    /** Checks subtyping relationship. */
-    override def <:<(other: TypeKind): Boolean =
-      other match {
-        case REFERENCE(AnyRefClass | ObjectClass) =>
-          true // TODO: platform dependent!
-
-        case BOXED(other) =>
-          kind == other
-
-        case _ => false
-      }
-
-    override def equals(other: Any): Boolean = other match {
-      case BOXED(kind2) => kind == kind2
-      case _            => false
+    override def maxType(other: TypeKind) = other match {
+      case BOXED(`kind`)                      => this
+      case REFERENCE(_) | ARRAY(_) | BOXED(_) => AnyRefReference
+      case _                                  => uncomparable("BOXED", other)
     }
 
+    /** Checks subtyping relationship. */
+    override def <:<(other: TypeKind) = other match {
+      case BOXED(`kind`)                        => true
+      case REFERENCE(AnyRefClass | ObjectClass) => true // TODO: platform dependent!
+      case _                                    => false
+    }
   }
 
  /**
@@ -411,86 +349,86 @@ trait TypeKinds {
   * way. For JVM it would have been a REFERENCE to 'StringBuffer'.
   */
   case object ConcatClass extends TypeKind {
-    override def toString() = "ConcatClass"
+    override def toString = "ConcatClass"
 
     /**
      * Approximate `lub'. The common type of two references is
      * always AnyRef. For 'real' least upper bound wrt to subclassing
      * use method 'lub'.
      */
-    override def maxType(other: TypeKind): TypeKind =
-      other match {
-        case REFERENCE(_) =>
-          REFERENCE(AnyRefClass)
-        case _ =>
-          abort("Uncomparable type kinds: ConcatClass with " + other)
-      }
+    override def maxType(other: TypeKind) = other match {
+      case REFERENCE(_) => AnyRefReference
+      case _            => uncomparable(other)
+    }
 
     /** Checks subtyping relationship. */
-    override def <:<(other: TypeKind): Boolean = (this eq other)
-
-    override def isReferenceType: Boolean = false
+    override def <:<(other: TypeKind) = this eq other
   }
 
   ////////////////// Conversions //////////////////////////////
 
-
   /** Return the TypeKind of the given type
    *
    *  Call to .normalize fixes #3003 (follow type aliases). Otherwise,
-   *  arrayOrClassType below would return AnyRefReference.
+   *  arrayOrClassType below would return ObjectReference.
    */
   def toTypeKind(t: Type): TypeKind = t.normalize match {
-    case ThisType(sym) =>
-      if (sym == ArrayClass)
-        AnyRefReference
-      else
-        REFERENCE(sym)
-
-    case SingleType(pre, sym) =>
-      primitiveTypeMap.getOrElse(sym, REFERENCE(sym))
-
-    case ConstantType(value) =>
-      toTypeKind(t.underlying)
-
-    case TypeRef(_, sym, args) =>
-      primitiveTypeMap.getOrElse(sym, arrayOrClassType(sym, args))
-
-    case ClassInfoType(_, _, sym) =>
-      primitiveTypeMap get sym match {
-        case Some(k) => k
-        case None    =>
-          if (sym == ArrayClass)
-            abort("ClassInfoType to ArrayClass!")
-          else
-            REFERENCE(sym)
-      }
-
-    case ExistentialType(tparams, t) =>
-      toTypeKind(t)
-
-    case AnnotatedType(_, t, _) =>
-      toTypeKind(t)
-
-    //case WildcardType => // bq: useful hack when wildcard types come here
-    //  REFERENCE(definitions.ObjectClass)
-
-    case _ =>
-      abort("Unknown type: " + t + ", " + t.normalize + "[" + t.getClass + ", " + t.normalize.getClass + "]" +
-	    " TypeRef? " + t.isInstanceOf[TypeRef] + ", " + t.normalize.isInstanceOf[TypeRef])
+    case ThisType(ArrayClass)            => ObjectReference
+    case ThisType(sym)                   => REFERENCE(sym)
+    case SingleType(_, sym)              => primitiveOrRefType(sym)
+    case ConstantType(_)                 => toTypeKind(t.underlying)
+    case TypeRef(_, sym, args)           => primitiveOrClassType(sym, args)
+    case ClassInfoType(_, _, ArrayClass) => abort("ClassInfoType to ArrayClass!")
+    case ClassInfoType(_, _, sym)        => primitiveOrRefType(sym)
+    case ExistentialType(_, t)           => toTypeKind(t)
+    case AnnotatedType(_, t, _)          => toTypeKind(t)
+    // PP to ID: I added RefinedType here, is this OK or should they never be
+    // allowed to reach here?
+    case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub
+    // bq: useful hack when wildcard types come here
+    // case WildcardType                    => REFERENCE(ObjectClass)
+    case norm => abort(
+      "Unknown type: %s, %s [%s, %s] TypeRef? %s".format(
+        t, norm, t.getClass, norm.getClass, t.isInstanceOf[TypeRef]
+      )
+    )
   }
 
   /** Return the type kind of a class, possibly an array type.
    */
-  private def arrayOrClassType(sym: Symbol, targs: List[Type]): TypeKind = {
-    if (sym == ArrayClass)
-      ARRAY(toTypeKind(targs.head))
-    else if (sym.isClass)
-        REFERENCE(sym)
-    else {
+  private def arrayOrClassType(sym: Symbol, targs: List[Type]) = sym match {
+    case ArrayClass       => ARRAY(toTypeKind(targs.head))
+    case _ if sym.isClass => newReference(sym)
+    case _                =>
       assert(sym.isType, sym) // it must be compiling Array[a]
-      AnyRefReference
+      ObjectReference
+  }
+  /** Interfaces have to be handled delicately to avoid introducing
+   *  spurious errors, but if we treat them all as AnyRef we lose too
+   *  much information.
+   */
+  private def newReference(sym: Symbol): TypeKind = {
+    // Can't call .toInterface (at this phase) or we trip an assertion.
+    // See PackratParser#grow for a method which fails with an apparent mismatch
+    // between "object PackratParsers$class" and "trait PackratParsers"
+    if (sym.isImplClass) {
+      // pos/spec-List.scala is the sole failure if we don't check for NoSymbol
+      val traitSym = sym.owner.info.decl(nme.interfaceName(sym.name))
+      if (traitSym != NoSymbol)
+        return REFERENCE(traitSym)
     }
+    REFERENCE(sym)
+  }
+
+  private def primitiveOrRefType(sym: Symbol) =
+    primitiveTypeMap.getOrElse(sym, newReference(sym))
+  private def primitiveOrClassType(sym: Symbol, targs: List[Type]) =
+    primitiveTypeMap.getOrElse(sym, arrayOrClassType(sym, targs))
+
+  def msil_mgdptr(tk: TypeKind): TypeKind = (tk: @unchecked) match {
+    case REFERENCE(cls)  => REFERENCE(loaders.clrTypes.mdgptrcls4clssym(cls))
+    // TODO have ready class-symbols for the by-ref versions of built-in valuetypes
+    case _ => abort("cannot obtain a managed pointer for " + tk)
   }
 
 }

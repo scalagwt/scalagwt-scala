@@ -5,9 +5,6 @@
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-
-
 package scala
 
 import scala.compat.Platform.currentTime
@@ -58,7 +55,7 @@ import scala.compat.Platform.currentTime
  *    performance degradation.</li>
  *  </ul>
  *
- *  Instead, it is recommended to define a <code>main</code> method explicitly:
+ *  It is recommended to use the `App` trait instead.
  *  <pre>
  *  <b>object</b> Main {
  *    <b>def</b> main(args: Array[String]) {
@@ -70,11 +67,11 @@ import scala.compat.Platform.currentTime
  *  @author  Matthias Zenger
  *  @version 1.0, 10/09/2003
  */
-
+@deprecated("use App instead", "2.9.0")
 trait Application {
 
-  /** The time when execution of this program started.
-   */
+  /** The time when the execution of this program started, in milliseconds since 1
+    * January 1970 UTC. */
   val executionStart: Long = currentTime
 
   /** The default main method.

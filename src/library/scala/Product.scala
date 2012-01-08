@@ -1,38 +1,40 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala
 
-/** The trait <code>Product</code> defines access functions for instances
- *  of products, in particular case classes.
+/** Base trait for all products, which in the standard library include at least
+ *  [[scala.Product1]] through [[scala.Product22]] and therefore also their
+ *  subclasses [[scala.Tuple1]] through [[scala.Tuple22]].  In addition, all case
+ *  classes implement Product with synthetically generated methods.
  *
  *  @author  Burak Emir
  *  @version 1.0
  *  @since   2.3
  */
 trait Product extends Equals {
-
-  /** For a product <code>A(x_1,...,x_k)</code>, returns <code>x_(n+1)</code>
-   *  for <code>0 &lt;= n &lt; k</code>
+  /** The nth element of this product, 0-based.  In other words, for a
+   *  product `A(x_1, ..., x_k)`, returns x_(n+1) where 0 < n < k.
    *
-   *  @param  n the index of the element to return
-   *  @throws IndexOutOfBoundsException
-   *  @return  The element <code>n</code> elements after the first element
+   *  @param    n   the index of the element to return
+   *  @throws       IndexOutOfBoundsException
+   *  @return       the element `n` elements after the first element
    */
   def productElement(n: Int): Any
 
-  /** return k for a product <code>A(x_1,...,x_k)</code>
+  /** The size of this product.
+   *  @return     for a product `A(x_1, ..., x_k)`, returns `k`
    */
   def productArity: Int
 
-  /** An iterator that returns all fields of this product */
+  /** An iterator over all the elements of this product.
+   *  @return     in the default implementation, an Iterator[Any]
+   */
   def productIterator: Iterator[Any] = new Iterator[Any] {
     private var c: Int = 0
     private val cmax = productArity
@@ -40,13 +42,14 @@ trait Product extends Equals {
     def next() = { val result = productElement(c); c += 1; result }
   }
 
-  @deprecated("use productIterator instead")
+  @deprecated("use productIterator instead", "2.8.0")
   def productElements: Iterator[Any] = productIterator
 
-  /**
-   *  By default the empty string. Implementations may override this
-   *  method in order to prepend a string prefix to the result of the
-   *  toString methods.
+  /** A string used in the `toString` methods of derived classes.
+   *  Implementations may override this method to prepend a string prefix
+   *  to the result of toString methods.
+   *
+   *  @return   in the default implementation, the empty string
    */
   def productPrefix = ""
 }

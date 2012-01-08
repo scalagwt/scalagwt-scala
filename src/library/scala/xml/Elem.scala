@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -17,8 +17,7 @@ package scala.xml
  * Copyright 2008 Google Inc. All Rights Reserved.
  * @author Burak Emir <bqe@google.com>
  */
-object Elem
-{
+object Elem {
   def apply(prefix: String,label: String, attributes: MetaData, scope: NamespaceBinding, child: Node*) =
     new Elem(prefix,label,attributes,scope,child:_*)
 
@@ -40,14 +39,13 @@ object Elem
  * Copyright 2008 Google Inc. All Rights Reserved.
  * @author Burak Emir <bqe@google.com>
  */
-@serializable
 class Elem(
   override val prefix: String,
   val label: String,
   override val attributes: MetaData,
   override val scope: NamespaceBinding,
   val child: Node*)
-extends Node
+extends Node with Serializable
 {
   final override def doCollectNamespaces = true
   final override def doTransform         = true

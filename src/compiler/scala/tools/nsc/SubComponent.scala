@@ -1,9 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author Martin Odersky
  */
 
 package scala.tools.nsc
+
+import scala.ref.WeakReference
 
 /** An nsc sub-component.
  *
@@ -42,16 +44,20 @@ abstract class SubComponent {
   /** The phase factory */
   def newPhase(prev: Phase): Phase
 
-  private var ownPhaseCache: Phase = _
+  private var ownPhaseCache: WeakReference[Phase] = new WeakReference(null)
   private var ownPhaseRunId = global.NoRunId
 
   /** The phase corresponding to this subcomponent in the current compiler run */
   def ownPhase: Phase = {
-    if (ownPhaseRunId != global.currentRunId) {
-      ownPhaseCache = global.currentRun.phaseNamed(phaseName)
-      ownPhaseRunId = global.currentRunId
+    ownPhaseCache.get match {
+      case Some(phase) if ownPhaseRunId == global.currentRunId =>
+        phase
+      case _ =>
+        val phase = global.currentRun.phaseNamed(phaseName)
+        ownPhaseCache = new WeakReference(phase)
+        ownPhaseRunId = global.currentRunId
+        phase
     }
-    ownPhaseCache
   }
 
   /** The phase defined by this subcomponent. Can be called only after phase is installed by newPhase. */

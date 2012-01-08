@@ -1,7 +1,7 @@
 package scala.reflect
 package generic
 
-import java.io.{PrintWriter, StringWriter}
+import java.io.{ PrintWriter, StringWriter }
 import Flags._
 
 trait Trees { self: Universe =>
@@ -15,33 +15,27 @@ trait Trees { self: Universe =>
 
   private[scala] var nodeCount = 0
 
+  protected def flagsIntoString(flags: Long, privateWithin: String): String
+
   /** @param privateWithin the qualifier for a private (a type name)
-   *    or nme.EMPTY.toTypeName, if none is given.
+   *    or tpnme.EMPTY, if none is given.
    *  @param annotations the annotations for the definition.
    *    <strong>Note:</strong> the typechecker drops these annotations,
    *    use the AnnotationInfo's (Symbol.annotations) in later phases.
    */
-  case class Modifiers(flags: Long, privateWithin: Name, annotations: List[Tree], positions: Map[Long, Position]) {
-    def isAbstract      = hasFlag(ABSTRACT )
-    def isAccessor      = hasFlag(ACCESSOR )
-    def isArgument      = hasFlag(PARAM    )
-    def isCase          = hasFlag(CASE     )
-    def isContravariant = hasFlag(CONTRAVARIANT)  // marked with `-'
-    def isCovariant     = hasFlag(COVARIANT    )  // marked with `+'
-    def isDeferred      = hasFlag(DEFERRED )
-    def isFinal         = hasFlag(FINAL    )
-    def isImplicit      = hasFlag(IMPLICIT )
-    def isLazy          = hasFlag(LAZY     )
-    def isOverride      = hasFlag(OVERRIDE )
-    def isPrivate       = hasFlag(PRIVATE  )
-    def isProtected     = hasFlag(PROTECTED)
-    def isPublic        = !isPrivate && !isProtected
-    def isSealed        = hasFlag(SEALED   )
-    def isSynthetic     = hasFlag(SYNTHETIC)
-    def isTrait         = hasFlag(TRAIT    )
-    def isVariable      = hasFlag(MUTABLE  )
+  case class Modifiers(flags: Long, privateWithin: Name, annotations: List[Tree], positions: Map[Long, Position]) extends HasFlags {
+    /* Abstract types from HasFlags. */
+    type FlagsType          = Long
+    type AccessBoundaryType = Name
+    type AnnotationType     = Tree
 
+    def hasAccessBoundary = privateWithin != tpnme.EMPTY
+    def hasAllFlags(mask: Long): Boolean = (flags & mask) == mask
     def hasFlag(flag: Long) = (flag & flags) != 0L
+    def hasFlagsToString(mask: Long): String = flagsToString(
+      flags & mask,
+      if (hasAccessBoundary) privateWithin.toString else ""
+    )
     def & (flag: Long): Modifiers = {
       val flags1 = flags & flag
       if (flags1 == flags) this
@@ -62,10 +56,12 @@ trait Trees { self: Universe =>
       else copy(annotations = annotations ::: annots)
     def withPosition(flag: Long, position: Position) =
       copy(positions = positions + (flag -> position))
+
+    override def toString = "Modifiers(%s, %s, %s)".format(hasFlagsToString(-1L), annotations mkString ", ", positions)
   }
 
   def Modifiers(flags: Long, privateWithin: Name): Modifiers = Modifiers(flags, privateWithin, List(), Map.empty)
-  def Modifiers(flags: Long): Modifiers = Modifiers(flags, mkTypeName(nme.EMPTY))
+  def Modifiers(flags: Long): Modifiers = Modifiers(flags, tpnme.EMPTY)
 
   lazy val NoMods = Modifiers(0)
 
@@ -101,15 +97,17 @@ trait Trees { self: Universe =>
     def isDef = false
     def isEmpty = false
 
+    def hasSymbolWhich(f: Symbol => Boolean) = hasSymbol && f(symbol)
+
     /** The direct child trees of this tree
      *  EmptyTrees are always omitted. Lists are collapsed.
      */
     def children: List[Tree] = {
       def subtrees(x: Any): List[Tree] = x match {
-        case EmptyTree => List()
-        case t: Tree => List(t)
+        case EmptyTree   => Nil
+        case t: Tree     => List(t)
         case xs: List[_] => xs flatMap subtrees
-        case _ => List()
+        case _           => Nil
       }
       productIterator.toList flatMap subtrees
     }
@@ -137,12 +135,8 @@ trait Trees { self: Universe =>
       buffer.toString
     }
 
-    override def hashCode(): Int = super.hashCode()
-
-    override def equals(that: Any): Boolean = that match {
-      case t: Tree => this eq t
-      case _ => false
-    }
+    override def hashCode(): Int = System.identityHashCode(this)
+    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
 
   private[scala] def duplicateTree(tree: Tree): Tree = tree
@@ -181,14 +175,14 @@ trait Trees { self: Universe =>
     def mods: Modifiers
     def keyword: String = this match {
       case TypeDef(_, _, _, _)      => "type"
-      case ClassDef(mods, _, _, _)  => if (mods.isTrait) "trait" else "class"
+      case ClassDef(mods, _, _, _)  => if (mods hasFlag TRAIT) "trait" else "class"
       case DefDef(_, _, _, _, _, _) => "def"
       case ModuleDef(_, _, _)       => "object"
       case PackageDef(_, _)         => "package"
-      case ValDef(mods, _, _, _)    => if (mods.isVariable) "var" else "val"
+      case ValDef(mods, _, _, _)    => if (mods.isMutable) "var" else "val"
       case _ => ""
     }
-    final def hasFlag(mask: Long): Boolean = (mods.flags & mask) != 0L
+    // final def hasFlag(mask: Long): Boolean = mods hasFlag mask
   }
 
   /** Package clause
@@ -204,30 +198,31 @@ trait Trees { self: Universe =>
   }
 
   /** Class definition */
-  case class ClassDef(mods: Modifiers, name: Name, tparams: List[TypeDef], impl: Template)
+  case class ClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], impl: Template)
        extends ImplDef
 
   /** Singleton object definition
    */
-  case class ModuleDef(mods: Modifiers, name: Name, impl: Template)
+  case class ModuleDef(mods: Modifiers, name: TermName, impl: Template)
        extends ImplDef
 
   abstract class ValOrDefDef extends MemberDef {
+    def name: TermName
     def tpt: Tree
     def rhs: Tree
   }
 
   /** Value definition
    */
-  case class ValDef(mods: Modifiers, name: Name, tpt: Tree, rhs: Tree) extends ValOrDefDef
+  case class ValDef(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree) extends ValOrDefDef
 
   /** Method definition
    */
-  case class DefDef(mods: Modifiers, name: Name, tparams: List[TypeDef],
+  case class DefDef(mods: Modifiers, name: TermName, tparams: List[TypeDef],
                     vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree) extends ValOrDefDef
 
   /** Abstract type, type parameter, or type alias */
-  case class TypeDef(mods: Modifiers, name: Name, tparams: List[TypeDef], rhs: Tree)
+  case class TypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree)
        extends MemberDef
 
   /** <p>
@@ -247,7 +242,7 @@ trait Trees { self: Universe =>
    *        jumps within a Block.
    *  </p>
    */
-  case class LabelDef(name: Name, params: List[Ident], rhs: Tree)
+  case class LabelDef(name: TermName, params: List[Ident], rhs: Tree)
        extends DefTree with TermTree
 
 
@@ -296,23 +291,23 @@ trait Trees { self: Universe =>
   case class Block(stats: List[Tree], expr: Tree)
        extends TermTree
 
-  /** Case clause in a pattern match, eliminated by TransMatch
+  /** Case clause in a pattern match, eliminated during explicitouter
    *  (except for occurrences in switch statements)
    */
   case class CaseDef(pat: Tree, guard: Tree, body: Tree)
        extends Tree
 
-  /** Alternatives of patterns, eliminated by TransMatch, except for
+  /** Alternatives of patterns, eliminated by explicitouter, except for
    *  occurrences in encoded Switch stmt (=remaining Match(CaseDef(...))
    */
   case class Alternative(trees: List[Tree])
        extends TermTree
 
-  /** Repetition of pattern, eliminated by TransMatch */
+  /** Repetition of pattern, eliminated by explicitouter */
   case class Star(elem: Tree)
        extends TermTree
 
-  /** Bind of a variable to a rhs pattern, eliminated by TransMatch
+  /** Bind of a variable to a rhs pattern, eliminated by explicitouter
    *
    *  @param name
    *  @param body
@@ -343,12 +338,11 @@ trait Trees { self: Universe =>
        extends TermTree
 
   /** <p>
-   *    Pattern matching expression  (before <code>TransMatch</code>)
-   *    Switch statements            (after TransMatch)
+   *    Pattern matching expression  (before explicitouter)
+   *    Switch statements            (after explicitouter)
    *  </p>
    *  <p>
-   *    After <code>TransMatch</code>, cases will satisfy the following
-   *    constraints:
+   *    After explicitouter, cases will satisfy the following constraints:
    *  </p>
    *  <ul>
    *    <li>all guards are EmptyTree,</li>
@@ -415,14 +409,16 @@ trait Trees { self: Universe =>
        extends TermTree with SymTree
     // The symbol of an ApplyDynamic is the function symbol of `qual', or NoSymbol, if there is none.
 
-  /** Super reference */
-  case class Super(qual: Name, mix: Name)
-       extends TermTree with SymTree
+  /** Super reference, qual = corresponding this reference */
+  case class Super(qual: Tree, mix: TypeName) extends TermTree {
     // The symbol of a Super is the class _from_ which the super reference is made.
     // For instance in C.super(...), it would be C.
+    override def symbol: Symbol = qual.symbol
+    override def symbol_=(sym: Symbol) { qual.symbol = sym }
+  }
 
   /** Self reference */
-  case class This(qual: Name)
+  case class This(qual: TypeName)
         extends TermTree with SymTree
     // The symbol of a This is the class to which the this refers.
     // For instance in C.this, it would be C.
@@ -432,8 +428,7 @@ trait Trees { self: Universe =>
        extends RefTree
 
   /** Identifier <name> */
-  case class Ident(name: Name)
-       extends RefTree
+  case class Ident(name: Name) extends RefTree { }
 
   class BackQuotedIdent(name: Name) extends Ident(name)
 
@@ -605,7 +600,7 @@ trait Trees { self: Universe =>
         extends TypTree
 
   /** Type selection <qualifier> # <name>, eliminated by RefCheck */
-  case class SelectFromTypeTree(qualifier: Tree, name: Name)
+  case class SelectFromTypeTree(qualifier: Tree, name: TypeName)
        extends TypTree with RefTree
 
   /** Intersection type <parent1> with ... with <parentN> { <decls> }, eliminated by RefCheck */
@@ -707,7 +702,7 @@ trait Trees { self: Universe =>
   case ApplyDynamic(qual, args)                                   (introduced by erasure, eliminated by cleanup)
     // fun(args)
   case Super(qual, mix) =>
-    // qual.super[mix]     if qual and/or mix is empty, ther are nme.EMPTY.toTypeName
+    // qual.super[mix]     if qual and/or mix is empty, ther are tpnme.EMPTY
   case This(qual) =>
     // qual.this
   case Select(qualifier, selector) =>

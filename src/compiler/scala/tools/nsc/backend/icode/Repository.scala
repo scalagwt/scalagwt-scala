@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -24,17 +24,13 @@ trait Repository {
   def available(sym: Symbol) = classes.contains(sym) || loaded.contains(sym)
 
   /** The icode of the given class, if available */
-  def icode(sym: Symbol): Option[IClass] =
-    if (classes.contains(sym)) Some(classes(sym))
-    else if (loaded.contains(sym)) Some(loaded(sym))
-    else None
+  def icode(sym: Symbol): Option[IClass] = (classes get sym) orElse (loaded get sym)
 
   /** The icode of the given class. If not available, it loads
    *  its bytecode.
    */
   def icode(sym: Symbol, force: Boolean): IClass =
-    if (available(sym)) icode(sym).get
-    else {
+    icode(sym) getOrElse {
       log("loading " + sym)
       load(sym)
       assert(available(sym))
@@ -42,11 +38,19 @@ trait Repository {
     }
 
   /** Load bytecode for given symbol. */
-  private def load(sym: Symbol) {
-    val (c1, c2) = icodeReader.readClass(sym)
+  def load(sym: Symbol) {
+    try {
+      val (c1, c2) = icodeReader.readClass(sym)
 
-    assert(c1.symbol == sym || c2.symbol == sym)
-    loaded += (c1.symbol -> c1)
-    loaded += (c2.symbol -> c2)
+      assert(c1.symbol == sym || c2.symbol == sym,
+        "c1.symbol = %s, c2.symbol = %s, sym = %s".format(c1.symbol, c2.symbol, sym))
+      loaded += (c1.symbol -> c1)
+      loaded += (c2.symbol -> c2)
+    } catch {
+      case e: Throwable => // possible exceptions are MissingRequirementError, IOException and TypeError -> no better common supertype
+        log("Failed to load %s. [%s]".format(sym.fullName, e.getMessage))
+        if (settings.debug.value)
+          e.printStackTrace
+    }
   }
 }

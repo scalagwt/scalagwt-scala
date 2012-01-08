@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -19,5 +19,9 @@ import generic._
  *  @param empty   The empty element of the collection.
  *  @since 2.8
  */
-class SetBuilder[A, Coll <: Addable[A, Coll] with collection.Iterable[A] with collection.IterableLike[A, Coll]](empty: Coll)
-extends AddingBuilder[A, Coll](empty) { }
+class SetBuilder[A, Coll <: collection.Set[A] with collection.SetLike[A, Coll]](empty: Coll) extends Builder[A, Coll] {
+  protected var elems: Coll = empty
+  def +=(x: A): this.type = { elems = elems + x; this }
+  def clear() { elems = empty }
+  def result: Coll = elems
+}

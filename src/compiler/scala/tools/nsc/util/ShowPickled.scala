@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -13,8 +13,8 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
 import cmd.program.Simple
-import symtab.{ Flags, Names }
-import scala.reflect.generic.{ PickleBuffer, PickleFormat }
+import scala.reflect.internal.{Flags, Names}
+import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
 import interpreter.ByteCode.scalaSigBytesForPath
 
 object ShowPickled extends Names {
@@ -28,10 +28,10 @@ object ShowPickled extends Names {
     }
     def readName =
       if (isName) new String(bytes, "UTF-8")
-      else error("%s is no name" format tagName)
+      else sys.error("%s is no name" format tagName)
     def nameIndex =
       if (hasName) readNat(bytes, 0)
-      else error("%s has no name" format tagName)
+      else sys.error("%s has no name" format tagName)
 
     def tagName = tag2string(tag)
     override def toString = "%d,%d: %s".format(num, startIndex, tagName)
@@ -76,7 +76,7 @@ object ShowPickled extends Names {
     case CLASSINFOtpe   => "CLASSINFOtpe"
     case METHODtpe      => "METHODtpe"
     case POLYtpe        => "POLYtpe"
-    case IMPLICITMETHODtpe => "IMPLICITMETHODtpe"
+    case IMPLICITMETHODtpe => "METHODtpe" // IMPLICITMETHODtpe no longer used.
     case SUPERtpe       => "SUPERtpe"
     case LITERALunit    => "LITERALunit"
     case LITERALboolean => "LITERALboolean"
@@ -96,7 +96,7 @@ object ShowPickled extends Names {
     case ANNOTATEDtpe   => "ANNOTATEDtpe"
     case ANNOTINFO      => "ANNOTINFO"
     case ANNOTARGARRAY  => "ANNOTARGARRAY"
-    case DEBRUIJNINDEXtpe => "DEBRUIJNINDEXtpe"
+    // case DEBRUIJNINDEXtpe => "DEBRUIJNINDEXtpe"
     case EXISTENTIALtpe => "EXISTENTIALtpe"
     case TREE           => "TREE"
     case MODIFIERS      => "MODIFIERS"
@@ -284,8 +284,11 @@ object ShowPickled extends Names {
     catch { case _: Exception => None }
 
   def show(what: String, pickle: PickleBuffer, bare: Boolean) = {
-    Console.println(what + ": ")
+    Console.println(what)
+    val saved = pickle.readIndex
+    pickle.readIndex = 0
     printFile(pickle, Console.out, bare)
+    pickle.readIndex = saved
   }
 
   private lazy val ShowPickledSpec =
@@ -304,7 +307,7 @@ object ShowPickled extends Names {
 
     residualArgs foreach { arg =>
       (fromFile(arg) orElse fromName(arg)) match {
-        case Some(pb) => show(arg, pb, parsed isSet "--bare")
+        case Some(pb) => show(arg + ":", pb, parsed isSet "--bare")
         case _        => Console.println("Cannot read " + arg)
       }
     }

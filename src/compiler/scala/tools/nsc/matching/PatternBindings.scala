@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2010 LAMP/EPFL
+ * Copyright 2005-2011 LAMP/EPFL
  * Author: Paul Phillips
  */
 
@@ -20,9 +20,16 @@ trait PatternBindings extends ast.TreeDSL
   import Debug._
 
   /** EqualsPattern **/
-  def isEquals(tpe: Type)           = cond(tpe) { case TypeRef(_, EqualsPatternClass, _) => true }
-  def mkEqualsRef(tpe: Type)        = typeRef(NoPrefix, EqualsPatternClass, List(tpe))
-  def decodedEqualsType(tpe: Type)  = condOpt(tpe) { case TypeRef(_, EqualsPatternClass, List(arg)) => arg } getOrElse (tpe)
+  def isEquals(tpe: Type)             = cond(tpe) { case TypeRef(_, EqualsPatternClass, _) => true }
+  def mkEqualsRef(tpe: Type)          = typeRef(NoPrefix, EqualsPatternClass, List(tpe))
+  def decodedEqualsType(tpe: Type)    = condOpt(tpe) { case TypeRef(_, EqualsPatternClass, List(arg)) => arg } getOrElse (tpe)
+
+  // A subtype test which creates fresh existentials for type
+  // parameters on the right hand side.
+  def matches(arg1: Type, arg2: Type) = decodedEqualsType(arg1) matchesPattern decodedEqualsType(arg2)
+
+  // For spotting duplicate unapplies
+  def isEquivalentTree(t1: Tree, t2: Tree) = (t1.symbol == t2.symbol) && (t1 equalsStructure t2)
 
   // used as argument to `EqualsPatternClass'
   case class PseudoType(o: Tree) extends SimpleTypeProxy {
@@ -74,7 +81,7 @@ trait PatternBindings extends ast.TreeDSL
     def boundTree = if (_boundTree == null) tree else _boundTree
     def withBoundTree(x: Bind): this.type = {
       _boundTree = x
-      tracing[this.type]("Bound", this)
+      tracing[this.type]("Bound")(this)
     }
 
     // If a tree has bindings, boundTree looks something like
@@ -89,8 +96,8 @@ trait PatternBindings extends ast.TreeDSL
     }
 
     // Wrap this pattern's bindings around (_: Type)
-    def rebindToType(tpe: Type, annotatedType: Type = null): Pattern = {
-      val aType = if (annotatedType == null) tpe else annotatedType
+    def rebindToType(tpe: Type, ascription: Type = null): Pattern = {
+      val aType = if (ascription == null) tpe else ascription
       rebindTo(Typed(WILD(tpe), TypeTree(aType)) setType tpe)
     }
 
@@ -104,10 +111,8 @@ trait PatternBindings extends ast.TreeDSL
 
     // Like rebindToEqualsCheck, but subtly different.  Not trying to be
     // mysterious -- I haven't sorted it all out yet.
-    def rebindToObjectCheck(): Pattern = {
-      val sType = sufficientType
-      rebindToType(mkEqualsRef(sType), sType)
-    }
+    def rebindToObjectCheck(): Pattern =
+      rebindToType(mkEqualsRef(sufficientType), sufficientType)
 
     /** Helpers **/
     private def wrapBindings(vs: List[Symbol], pat: Tree): Tree = vs match {
@@ -119,25 +124,19 @@ trait PatternBindings extends ast.TreeDSL
       case _                => Nil
     }
     private def deepstrip(t: Tree): List[Symbol] =
-      t filter { case _: Bind => true ; case _ => false } map (_.symbol)
+      treeCollect(t, { case x: Bind => x.symbol })
   }
 
   case class Binding(pvar: Symbol, tvar: Symbol) {
-    // see bug #1843 for the consequences of not setting info.
-    // there is surely a better way to do this, especially since
-    // this looks to be the only usage of containsTp anywhere
-    // in the compiler, but it suffices for now.
-    if (tvar.info containsTp WildcardType)
-      tvar setInfo pvar.info
-
-    override def toString() = pp(pvar -> tvar)
+    override def toString() = pvar.name + " -> " + tvar.name
   }
 
   class Bindings(private val vlist: List[Binding]) {
-    if (!vlist.isEmpty)
-      traceCategory("Bindings", this.toString)
+    // if (!vlist.isEmpty)
+    //   traceCategory("Bindings", this.toString)
 
     def get() = vlist
+    def toMap = vlist map (x => (x.pvar, x.tvar)) toMap
 
     def add(vs: Iterable[Symbol], tvar: Symbol): Bindings = {
       val newBindings = vs.toList map (v => Binding(v, tvar))
@@ -145,8 +144,8 @@ trait PatternBindings extends ast.TreeDSL
     }
 
     override def toString() =
-      if (vlist.isEmpty) "No Bindings"
-      else "%d Bindings(%s)".format(vlist.size, pp(vlist))
+      if (vlist.isEmpty) "<none>"
+      else vlist.mkString(", ")
   }
 
   val NoBinding: Bindings = new Bindings(Nil)

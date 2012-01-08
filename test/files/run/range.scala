@@ -7,6 +7,17 @@ object Test {
     assert(buffer.toList == range.iterator.toList, buffer.toList+"/"+range.iterator.toList)
   }
 
+  def boundaryTests() = {
+    // #4321
+    assert((Int.MinValue to Int.MaxValue by Int.MaxValue).size == 3)
+    // #4308
+    val caught = (
+      try   { (Long.MinValue to Long.MaxValue).sum ; false }
+      catch { case _: IllegalArgumentException => true }
+    )
+    assert(caught)
+  }
+
   case class GR[T](val x: T)(implicit val num: Integral[T]) {
     import num._
 
@@ -16,14 +27,15 @@ object Test {
     def gr2 = NumericRange.inclusive(x, x, x)
     def gr3 = NumericRange(x, x * fromInt(10), x)
     def gr4 = NumericRange.inclusive(x, x * fromInt(10), x)
+    def gr5 = gr3.toList ::: negated.gr3.toList
 
-    def check = assert(
-      gr1.isEmpty && !gr2.isEmpty &&
-      gr3.size == 9 && gr4.size == 10 &&
-      (gr3.toList ::: negated.gr3.toList).sum == num.zero &&
-      !(gr3 contains (x * fromInt(10))) &&
-      (gr4 contains (x * fromInt(10)))
-    )
+    def check = {
+      assert(gr1.isEmpty && !gr2.isEmpty)
+      assert(gr3.size == 9 && gr4.size == 10)
+      assert(gr5.sum == num.zero, gr5.toString)
+      assert(!(gr3 contains (x * fromInt(10))))
+      assert((gr4 contains (x * fromInt(10))))
+    }
   }
 
   def main(args: Array[String]): Unit = {
@@ -53,5 +65,8 @@ object Test {
     rangeForeach(10 until 1 by -1);
     rangeForeach(10 to 1 by -3);
     rangeForeach(10 until 1 by -3);
+
+    // living on the edges
+    boundaryTests()
   }
 }

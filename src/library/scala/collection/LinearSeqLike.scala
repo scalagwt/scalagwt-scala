@@ -1,16 +1,15 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
 
-
 package scala.collection
-import generic._
 
+import generic._
 import mutable.ListBuffer
 import immutable.List
 import scala.util.control.Breaks._
@@ -19,8 +18,7 @@ import scala.util.control.Breaks._
  *
  *  $linearSeqInfo
  *
- *  This trait just implements `iterator`
- *  in terms of `isEmpty, ``head`, and `tail`.
+ *  This trait just implements `iterator` in terms of `isEmpty, ``head`, and `tail`.
  *  However, see `LinearSeqOptimized` for an implementation trait that overrides operations
  *  to make them run faster under the assumption of fast linear access with `head` and `tail`.
  *
@@ -56,6 +54,14 @@ trait LinearSeqLike[+A, +Repr <: LinearSeqLike[A, Repr]] extends SeqLike[A, Repr
       if (hasNext) {
         val result = these.head; these = these.tail; result
       } else Iterator.empty.next
-    override def toList: List[A] = these.toList
+
+    /** Have to clear `these` so the iterator is exhausted like
+     *  it would be without the optimization.
+     */
+    override def toList: List[A] = {
+      val xs = these.toList
+      these = newBuilder.result
+      xs
+    }
   }
 }

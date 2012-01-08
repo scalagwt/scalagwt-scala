@@ -1,17 +1,16 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala.collection
 
 import mutable.ArrayBuffer
 import annotation.{ tailrec, migration }
+import immutable.Stream
 
 /** The `Iterator` object provides various functions for
  *  creating specialized iterators.
@@ -149,53 +148,13 @@ object Iterator {
     def next = elem
   }
 
-  /** With the advent of TraversableOnce, it can be useful to have a builder
-   *  for Iterators so they can be treated uniformly along with the collections.
-   *  See scala.util.Random.shuffle for an example.
-   */
-  class IteratorCanBuildFrom[A] extends generic.CanBuildFrom[Iterator[A], A, Iterator[A]] {
-    def newIterator = new ArrayBuffer[A] mapResult (_.iterator)
-
-    /** Creates a new builder on request of a collection.
-     *  @param from  the collection requesting the builder to be created.
-     *  @return the result of invoking the `genericBuilder` method on `from`.
-     */
-    def apply(from: Iterator[A]) = newIterator
-
-    /** Creates a new builder from scratch
-     *  @return the result of invoking the `newBuilder` method of this factory.
-     */
-    def apply() = newIterator
-  }
-
-  implicit def iteratorCanBuildFrom[T]: IteratorCanBuildFrom[T] = new IteratorCanBuildFrom[T]
-
-  /** A wrapper class for the `flatten` method that is added to
-   *  class `Iterator` with implicit conversion
-   *  @see iteratorIteratorWrapper.
-   */
-  class IteratorIteratorOps[A](its: Iterator[Iterator[A]]) {
-    /** If `its` is an iterator of iterators, `its.flatten` gives the iterator
-     *  that is the concatenation of all iterators in `its`.
-     */
-    def flatten: Iterator[A] = new Iterator[A] {
-      private var it: Iterator[A] = empty
-      def hasNext: Boolean = it.hasNext || its.hasNext && { it = its.next(); hasNext }
-      def next(): A = if (hasNext) it.next() else empty.next()
-    }
-  }
-
-  /** An implicit conversion which adds the `flatten` method to class `Iterator` */
-  implicit def iteratorIteratorWrapper[A](its: Iterator[Iterator[A]]): IteratorIteratorOps[A] =
-    new IteratorIteratorOps[A](its)
-
-  @deprecated("use `xs.iterator' or `Iterator(xs)' instead")
+  @deprecated("use `xs.iterator' or `Iterator(xs)' instead", "2.8.0")
   def fromValues[a](xs: a*) = xs.iterator
 
   /** @param xs the array of elements
    *  @see also: IndexedSeq.iterator and slice
    */
-  @deprecated("use `xs.iterator' instead")
+  @deprecated("use `xs.iterator' instead", "2.8.0")
   def fromArray[a](xs: Array[a]): Iterator[a] =
     fromArray(xs, 0, xs.length)
 
@@ -205,7 +164,7 @@ object Iterator {
    *  @param length  the length
    *  @see also: IndexedSeq.iterator and slice
    */
-  @deprecated("use `xs.slice(start, start + length).iterator' instead")
+  @deprecated("use `xs.slice(start, start + length).iterator' instead", "2.8.0")
   def fromArray[a](xs: Array[a], start: Int, length: Int): Iterator[a] =
     xs.slice(start, start + length).iterator
 
@@ -213,7 +172,7 @@ object Iterator {
    *  @param n the product arity
    *  @return  the iterator on `Product&lt;n&gt;`.
    */
-  @deprecated("use product.productIterator instead")
+  @deprecated("use product.productIterator instead", "2.8.0")
   def fromProduct(n: Product): Iterator[Any] = new Iterator[Any] {
     private var c: Int = 0
     private val cmax = n.productArity
@@ -232,7 +191,7 @@ object Iterator {
    *  @param step  the increment function of the iterator, must be monotonically increasing or decreasing
    *  @return      the iterator with values in range `[start;end)`.
    */
-  @deprecated("use Iterator.iterate(start, end - start)(step) instead")
+  @deprecated("use Iterator.iterate(start, end - start)(step) instead", "2.8.0")
   def range(start: Int, end: Int, step: Int => Int) = new Iterator[Int] {
     private val up = step(start) > start
     private val down = step(start) < start
@@ -251,7 +210,7 @@ object Iterator {
    *  @param step  the increment function of the iterator
    *  @return      the iterator starting at value `start`.
    */
-  @deprecated("use iterate(start)(step) instead")
+  @deprecated("use iterate(start)(step) instead", "2.8.0")
   def from(start: Int, step: Int => Int): Iterator[Int] = new Iterator[Int] {
     private var i = start
     override def hasNext: Boolean = true
@@ -263,7 +222,7 @@ object Iterator {
    *   @param its   The iterator which returns on each call to next
    *                a new iterator whose elements are to be concatenated to the result.
    */
-  @deprecated("use its.flatten instead")
+  @deprecated("use its.flatten instead", "2.8.0")
   def flatten[T](its: Iterator[Iterator[T]]): Iterator[T] = new Iterator[T] {
     private var cur = its.next
     def hasNext: Boolean = {
@@ -292,6 +251,8 @@ import Iterator.empty
  */
 trait Iterator[+A] extends TraversableOnce[A] {
   self =>
+
+  def seq: Iterator[A] = this
 
   /** Tests whether this iterator can provide another element.
    *  @return  `true` if a subsequent call to `next` will yield an element,
@@ -324,15 +285,9 @@ trait Iterator[+A] extends TraversableOnce[A] {
   /** Selects first ''n'' values of this iterator.
    *  @param  n    the number of values to take
    *  @return an iterator producing only of the first `n` values of this iterator, or else the
-   *          whole iterator, if it produces less than `n` values.
+   *          whole iterator, if it produces fewer than `n` values.
    */
-  def take(n: Int): Iterator[A] = new Iterator[A] {
-    private var remaining = n
-    def hasNext = remaining > 0 && self.hasNext
-    def next(): A =
-      if (hasNext) { remaining -= 1; self.next() }
-      else empty.next()
-  }
+  def take(n: Int): Iterator[A] = slice(0, n)
 
   /** Advances this iterator past the first ''n'' elements,
    *  or the length of the iterator, whichever is smaller.
@@ -341,14 +296,7 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  @return  an iterator which produces all values of the current iterator, except
    *           it omits the first `n` values.
    */
-  def drop(n: Int): Iterator[A] = {
-    @tailrec
-    def loop(left: Int): Iterator[A] =
-      if (left > 0 && hasNext) { next; loop(left - 1) }
-      else this
-
-    loop(n)
-  }
+  def drop(n: Int): Iterator[A] = slice(n, Int.MaxValue)
 
   /** Creates an iterator returning an interval of the values produced by this iterator.
    *  @param from   the index of the first element in this iterator which forms part of the slice.
@@ -356,7 +304,25 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  @return an iterator which advances this iterator past the first `from` elements using `drop`,
    *  and then takes `until - from` elements, using `take`.
    */
-  def slice(from: Int, until: Int): Iterator[A] = drop(from).take(until - from)
+  def slice(from: Int, until: Int): Iterator[A] = {
+    val lo = from max 0
+    var toDrop = lo
+    while (toDrop > 0 && self.hasNext) {
+      self.next()
+      toDrop -= 1
+    }
+
+    new Iterator[A] {
+      private var remaining = until - lo
+      def hasNext = remaining > 0 && self.hasNext
+      def next(): A =
+        if (remaining > 0) {
+          remaining -= 1
+          self.next()
+        }
+        else empty.next()
+    }
+  }
 
   /** Creates a new iterator that maps all produced values of this iterator
    *  to new values using a transformation function.
@@ -375,13 +341,13 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  iterator followed by the values produced by iterator `that`.
    *  @usecase def ++(that: => Iterator[A]): Iterator[A]
    */
-  def ++[B >: A](that: => Iterator[B]): Iterator[B] = new Iterator[B] {
+  def ++[B >: A](that: => GenTraversableOnce[B]): Iterator[B] = new Iterator[B] {
     // optimize a little bit to prevent n log n behavior.
     private var cur : Iterator[B] = self
     // since that is by-name, make sure it's only referenced once -
     // if "val it = that" is inside the block, then hasNext on an empty
     // iterator will continually reevaluate it.  (ticket #3269)
-    lazy val it = that
+    lazy val it = that.toIterator
     // the eq check is to avoid an infinite loop on "x ++ x"
     def hasNext = cur.hasNext || ((cur eq self) && {
       it.hasNext && {
@@ -399,10 +365,10 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  @return   the iterator resulting from applying the given iterator-valued function
    *                `f` to each value produced by this iterator and concatenating the results.
    */
-  def flatMap[B](f: A => Iterator[B]): Iterator[B] = new Iterator[B] {
+  def flatMap[B](f: A => GenTraversableOnce[B]): Iterator[B] = new Iterator[B] {
     private var cur: Iterator[B] = empty
     def hasNext: Boolean =
-      cur.hasNext || self.hasNext && { cur = f(self.next); hasNext }
+      cur.hasNext || self.hasNext && { cur = f(self.next).toIterator; hasNext }
     def next(): B = (if (hasNext) cur else empty).next()
   }
 
@@ -469,6 +435,19 @@ trait Iterator[+A] extends TraversableOnce[A] {
     }
   }
 
+  def scanLeft[B](z: B)(op: (B, A) => B): Iterator[B] = new Iterator[B] {
+    var hasNext = true
+    var elem = z
+    def next() = if (hasNext) {
+      val res = elem
+      if (self.hasNext) elem = op(elem, self.next())
+      else hasNext = false
+      res
+    } else Iterator.empty.next()
+  }
+
+  def scanRight[B](z: B)(op: (A, B) => B): Iterator[B] = toBuffer.scanRight(z)(op).iterator
+
   /** Takes longest prefix of values produced by this iterator that satisfy a predicate.
    *  @param   p  The predicate used to test elements.
    *  @return  An iterator returning the values produced by this iterator, until
@@ -501,7 +480,7 @@ trait Iterator[+A] extends TraversableOnce[A] {
     val self = buffered
     class PartitionIterator(p: A => Boolean) extends Iterator[A] {
       var other: PartitionIterator = _
-      val lookahead = new scala.collection.mutable.Queue[A]
+      val lookahead = new mutable.Queue[A]
       def skip() =
         while (self.hasNext && !p(self.head)) {
           other.lookahead += self.next
@@ -515,6 +494,48 @@ trait Iterator[+A] extends TraversableOnce[A] {
     l.other = r
     r.other = l
     (l, r)
+  }
+
+  /** Splits this Iterator into a prefix/suffix pair according to a predicate.
+   *
+   *  @param p the test predicate
+   *  @return  a pair of Iterators consisting of the longest prefix of this
+   *           whose elements all satisfy `p`, and the rest of the Iterator.
+   */
+  def span(p: A => Boolean): (Iterator[A], Iterator[A]) = {
+    val self = buffered
+    val leading = new Iterator[A] {
+      private var isDone = false
+      val lookahead = new mutable.Queue[A]
+      def advance() = {
+        self.hasNext && p(self.head) && {
+          lookahead += self.next
+          true
+        }
+      }
+      def finish() = {
+        while (advance()) ()
+        isDone = true
+      }
+      def hasNext = lookahead.nonEmpty || advance()
+      def next() = {
+        if (lookahead.isEmpty)
+          advance()
+
+        lookahead.dequeue()
+      }
+    }
+    val trailing = new Iterator[A] {
+      private lazy val it = {
+        leading.finish()
+        self
+      }
+      def hasNext = it.hasNext
+      def next() = it.next()
+      override def toString = "unknown-if-empty iterator"
+    }
+
+    (leading, trailing)
   }
 
   /** Skips longest sequence of elements of this iterator which satisfy given
@@ -682,21 +703,6 @@ trait Iterator[+A] extends TraversableOnce[A] {
     res
   }
 
-  /** Applies option-valued function to successive elements of this iterator
-   *  until a defined value is found.
-   *
-   *  @param f    the function to be applied to successive elements.
-   *  @return     an option value containing the first defined result of
-   *              `f`, or `None` if `f` returns `None` for all all elements.
-  def mapFind[B](f: A => Option[B]): Option[B] = {
-    var res: Option[B] = None
-    while (res.isEmpty && hasNext) {
-      res = f(next())
-    }
-    res
-  }
-   */
-
   /** Returns the index of the first produced value satisfying a predicate, or -1.
    *  $mayNotTerminateInf
    *  @param  p the predicate to test values
@@ -756,11 +762,11 @@ trait Iterator[+A] extends TraversableOnce[A] {
     def hasNext =
       hdDefined || self.hasNext
 
-    def next =
+    def next() =
       if (hdDefined) {
         hdDefined = false
         hd
-      } else self.next
+      } else self.next()
   }
 
   /** A flexible iterator for transforming an `Iterator[A]` into an
@@ -770,7 +776,7 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  Typical uses can be achieved via methods `grouped' and `sliding'.
    */
   class GroupedIterator[B >: A](self: Iterator[A], size: Int, step: Int) extends Iterator[Seq[B]] {
-    require(size >= 1 && step >= 1)
+    require(size >= 1 && step >= 1, "size=%d and step=%d, but both must be positive".format(size, step))
 
     private[this] var buffer: ArrayBuffer[B] = ArrayBuffer()  // the buffer
     private[this] var filled = false                          // whether the buffer is "hot"
@@ -968,8 +974,8 @@ trait Iterator[+A] extends TraversableOnce[A] {
   }
 
   /** Copies selected values produced by this iterator to an array.
-   *  Fills the given array `xs` with at most `len` values produced by this
-   *  iterator, after skipping `start` values.
+   *  Fills the given array `xs` starting at index `start` with at most
+   *  `len` values produced by this iterator.
    *  Copying will stop once either the end of the current iterator is reached,
    *  or the end of the array is reached, or `len` elements have been copied.
    *
@@ -980,12 +986,11 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  @param  len    the maximal number of elements to copy.
    *  @tparam B      the type of the elements of the array.
    *
-   *
    *  @usecase def copyToArray(xs: Array[A], start: Int, len: Int): Unit
    */
   def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Unit = {
     var i = start
-    val end = start + len min xs.length
+    val end = start + math.min(len, xs.length)
     while (hasNext && i < end) {
       xs(i) = next()
       i += 1
@@ -1019,16 +1024,16 @@ trait Iterator[+A] extends TraversableOnce[A] {
   /** Returns a new iterator that first yields the elements of this
    *  iterator followed by the elements provided by iterator `that`.
    */
-  @deprecated("use `++`")
+  @deprecated("use `++`", "2.3.2")
   def append[B >: A](that: Iterator[B]) = self ++ that
 
   /** Returns index of the first element satisfying a predicate, or -1. */
-  @deprecated("use `indexWhere` instead")
+  @deprecated("use `indexWhere` instead", "2.8.0")
   def findIndexOf(p: A => Boolean): Int = indexWhere(p)
 
   /** Returns a counted iterator from this iterator.
    */
-  @deprecated("use zipWithIndex in Iterator")
+  @deprecated("use zipWithIndex in Iterator", "2.8.0")
   def counted = new CountedIterator[A] {
     private var cnt = 0
     def count = cnt
@@ -1045,7 +1050,7 @@ trait Iterator[+A] extends TraversableOnce[A] {
    *  @param  start the starting index.
    *  @param  sz    the maximum number of elements to be read.
    */
-  @deprecated("use copyToArray instead")
+  @deprecated("use copyToArray instead", "2.8.0")
   def readInto[B >: A](xs: Array[B], start: Int, sz: Int) {
     var i = start
     while (hasNext && i - start < sz) {
@@ -1054,12 +1059,12 @@ trait Iterator[+A] extends TraversableOnce[A] {
     }
   }
 
-  @deprecated("use copyToArray instead")
+  @deprecated("use copyToArray instead", "2.8.0")
   def readInto[B >: A](xs: Array[B], start: Int) {
     readInto(xs, start, xs.length - start)
   }
 
-  @deprecated("use copyToArray instead")
+  @deprecated("use copyToArray instead", "2.8.0")
   def readInto[B >: A](xs: Array[B]) {
     readInto(xs, 0, xs.length)
   }

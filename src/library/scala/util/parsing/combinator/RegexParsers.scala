@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -45,8 +45,10 @@ trait RegexParsers extends Parsers {
       }
       if (i == s.length)
         Success(source.subSequence(start, j).toString, in.drop(j - offset))
-      else
-        Failure("`"+s+"' expected but `"+in.first+"' found", in.drop(start - offset))
+      else  {
+        val found = if (start == source.length()) "end of source" else "`"+source.charAt(start)+"'"
+        Failure("`"+s+"' expected but "+found+" found", in.drop(start - offset))
+      }
     }
   }
 
@@ -61,7 +63,8 @@ trait RegexParsers extends Parsers {
           Success(source.subSequence(start, start + matched.end).toString,
                   in.drop(start + matched.end - offset))
         case None =>
-          Failure("string matching regex `"+r+"' expected but `"+in.first+"' found", in.drop(start - offset))
+          val found = if (start == source.length()) "end of source" else "`"+source.charAt(start)+"'"
+          Failure("string matching regex `"+r+"' expected but "+found+" found", in.drop(start - offset))
       }
     }
   }

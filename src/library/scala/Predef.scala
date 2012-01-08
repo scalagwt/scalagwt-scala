@@ -15,9 +15,8 @@ import generic.CanBuildFrom
 import annotation.{ elidable, implicitNotFound }
 import annotation.elidable.ASSERTION
 
-/** The <code>Predef</code> object provides definitions that are
- *  accessible in all Scala compilation units without explicit
- *  qualification.
+/** The `Predef` object provides definitions that are accessible in all Scala
+ *  compilation units without explicit qualification.
  */
 object Predef extends LowPriorityImplicits {
   /** Return the runtime representation of a class type.  This is a stub method.
@@ -76,9 +75,9 @@ object Predef extends LowPriorityImplicits {
 
   // errors and asserts -------------------------------------------------
 
-  /** Tests an expression, throwing an AssertionError if false.
-   *  Calls to this method will not be generated if -Xelide-below
-   *  is at least ASSERTION.
+  /** Tests an expression, throwing an `AssertionError` if false.
+   *  Calls to this method will not be generated if `-Xelide-below`
+   *  is at least `ASSERTION`.
    *
    *  @see elidable
    *  @param p   the expression to test
@@ -89,25 +88,25 @@ object Predef extends LowPriorityImplicits {
       throw new java.lang.AssertionError("assertion failed")
   }
 
-  /** Tests an expression, throwing an AssertionError if false.
-   *  Calls to this method will not be generated if -Xelide-below
-   *  is at least ASSERTION.
+  /** Tests an expression, throwing an `AssertionError` if false.
+   *  Calls to this method will not be generated if `-Xelide-below`
+   *  is at least `ASSERTION`.
    *
    *  @see elidable
    *  @param p   the expression to test
    *  @param msg a String to include in the failure message
    */
-  @elidable(ASSERTION)
-  def assert(assertion: Boolean, message: => Any) {
+  @elidable(ASSERTION) @inline
+  final def assert(assertion: Boolean, message: => Any) {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed: "+ message)
   }
 
-  /** Tests an expression, throwing an AssertionError if false.
+  /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
    *  assert contains a predicate which needs to be proven, while
    *  assume contains an axiom for a static checker.  Calls to this method
-   *  will not be generated if -Xelide-below is at least ASSERTION.
+   *  will not be generated if `-Xelide-below` is at least `ASSERTION`.
    *
    *  @see elidable
    *  @param p   the expression to test
@@ -118,24 +117,24 @@ object Predef extends LowPriorityImplicits {
       throw new java.lang.AssertionError("assumption failed")
   }
 
-  /** Tests an expression, throwing an AssertionError if false.
+  /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
    *  assert contains a predicate which needs to be proven, while
    *  assume contains an axiom for a static checker.  Calls to this method
-   *  will not be generated if -Xelide-below is at least ASSERTION.
+   *  will not be generated if `-Xelide-below` is at least `ASSERTION`.
    *
    *  @see elidable
    *  @param p   the expression to test
    *  @param msg a String to include in the failure message
    */
-  @elidable(ASSERTION)
-  def assume(assumption: Boolean, message: => Any) {
+  @elidable(ASSERTION) @inline
+  final def assume(assumption: Boolean, message: => Any) {
     if (!assumption)
       throw new java.lang.AssertionError("assumption failed: "+ message)
   }
 
-  /** Tests an expression, throwing an IllegalArgumentException if false.
-   *  This method is similar to assert, but blames the caller of the method
+  /** Tests an expression, throwing an `IllegalArgumentException` if false.
+   *  This method is similar to `assert`, but blames the caller of the method
    *  for violating the condition.
    *
    *  @param p   the expression to test
@@ -145,14 +144,14 @@ object Predef extends LowPriorityImplicits {
       throw new IllegalArgumentException("requirement failed")
   }
 
-  /** Tests an expression, throwing an IllegalArgumentException if false.
-   *  This method is similar to assert, but blames the caller of the method
+  /** Tests an expression, throwing an `IllegalArgumentException` if false.
+   *  This method is similar to `assert`, but blames the caller of the method
    *  for violating the condition.
    *
    *  @param p   the expression to test
    *  @param msg a String to include in the failure message
    */
-  def require(requirement: Boolean, message: => Any) {
+  @inline final def require(requirement: Boolean, message: => Any) {
     if (!requirement)
       throw new IllegalArgumentException("requirement failed: "+ message)
   }
@@ -334,30 +333,39 @@ object Predef extends LowPriorityImplicits {
 
   // Type Constraints --------------------------------------------------------------
 
-  /** An instance of `A <:< B` witnesses that `A` is a subtype of `B`.
+  /**
+   * An instance of `A <:< B` witnesses that `A` is a subtype of `B`.
+   * Requiring an implicit argument of the type `A <:< B` encodes
+   * the generalized constraint `A <: B`.
    *
-   * Requiring an implicit argument of the type `A <:< B` encodes the generalized constraint `A <: B`.
+   * @note we need a new type constructor `<:<` and evidence `conforms`,
+   * as reusing `Function1` and `identity` leads to ambiguities in
+   * case of type errors (`any2stringadd` is inferred)
    *
-   * @note we need a new type constructor `<:<` and evidence `conforms`, as
-   * reusing `Function2` and `identity` leads to ambiguities in case of type errors (any2stringadd is inferred)
-   * to constrain any abstract type T that's in scope in a method's argument list (not just the method's own type parameters)
-   * simply add an implicit argument of type `T <:< U`, where U is the required upper bound (for lower-bounds, use: `L <:< T`,
-   * where L is the required lower bound).
-   * in part contributed by Jason Zaugg
+   * To constrain any abstract type T that's in scope in a method's
+   * argument list (not just the method's own type parameters) simply
+   * add an implicit argument of type `T <:< U`, where `U` is the required
+   * upper bound; or for lower-bounds, use: `L <:< T`, where `L` is the
+   * required lower bound.
+   *
+   * In part contributed by Jason Zaugg.
    */
   @implicitNotFound(msg = "Cannot prove that ${From} <:< ${To}.")
   sealed abstract class <:<[-From, +To] extends (From => To) with Serializable
-  implicit def conforms[A]: A <:< A = new (A <:< A) { def apply(x: A) = x }
-  // not in the <:< companion object because it is also intended to subsume identity (which is no longer implicit)
+  private[this] final val singleton_<:< = new <:<[Any,Any] { def apply(x: Any): Any = x }
+  // not in the <:< companion object because it is also
+  // intended to subsume identity (which is no longer implicit)
+  implicit def conforms[A]: A <:< A = singleton_<:<.asInstanceOf[A <:< A]
 
   /** An instance of `A =:= B` witnesses that the types `A` and `B` are equal.
    *
-   * @see <:< for expressing subtyping constraints
+   * @see `<:<` for expressing subtyping constraints
    */
   @implicitNotFound(msg = "Cannot prove that ${From} =:= ${To}.")
   sealed abstract class =:=[From, To] extends (From => To) with Serializable
+  private[this] final val singleton_=:= = new =:=[Any,Any] { def apply(x: Any): Any = x }
   object =:= {
-    implicit def tpEquals[A]: A =:= A = new (A =:= A) {def apply(x: A) = x}
+     implicit def tpEquals[A]: A =:= A = singleton_=:=.asInstanceOf[A =:= A]
   }
 
   // less useful due to #2781
@@ -374,7 +382,7 @@ object Predef extends LowPriorityImplicits {
 
   object DummyImplicit {
 
-    /** An implicit value yielding a DummyImplicit.
+    /** An implicit value yielding a `DummyImplicit`.
      *   @see fallbackCanBuildFrom in Array.scala
      */
     implicit def dummyImplicit: DummyImplicit = new DummyImplicit

@@ -6,14 +6,10 @@
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala.collection
 package mutable
 
 import generic._
-
-
 
 /** Factory object for the `ArrayStack` class.
  *
@@ -22,12 +18,13 @@ import generic._
  *  @define Coll ArrayStack
  */
 object ArrayStack extends SeqFactory[ArrayStack] {
-  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, ArrayStack[A]] = new GenericCanBuildFrom[A]
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, ArrayStack[A]] = ReusableCBF.asInstanceOf[GenericCanBuildFrom[A]]
   def newBuilder[A]: Builder[A, ArrayStack[A]] = new ArrayStack[A]
   def empty: ArrayStack[Nothing] = new ArrayStack()
-  def apply[A: ClassManifest](elems: A*): ArrayStack[A]= {
+  def apply[A: ClassManifest](elems: A*): ArrayStack[A] = {
     val els: Array[AnyRef] = elems.reverse.map{_.asInstanceOf[AnyRef]}(breakOut)
-    new ArrayStack[A](els, els.length)
+    if (els.length == 0) new ArrayStack()
+    else new ArrayStack[A](els, els.length)
   }
 
   private[mutable] def growArray(x: Array[AnyRef]) = {
@@ -87,8 +84,7 @@ extends Seq[T]
 
   override def companion = ArrayStack
 
-  /** Replace element at index <code>n</code> with the new element
-   *  <code>newelem</code>.
+  /** Replace element at index `n` with the new element `newelem`.
    *
    *  This is a constant time operation.
    *

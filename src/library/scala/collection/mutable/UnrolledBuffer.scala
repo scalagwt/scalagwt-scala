@@ -1,3 +1,13 @@
+/*                     __                                               *\
+**     ________ ___   / /  ___     Scala API                            **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
+** /____/\___/_/ |_/____/_/ | |                                         **
+**                          |/                                          **
+\*                                                                      */
+
+
+
 package scala.collection.mutable
 
 import collection.Iterator
@@ -137,7 +147,7 @@ extends collection.mutable.Buffer[T]
     } else throw new IndexOutOfBoundsException(idx.toString)
 
   def +=:(elem: T) = {
-    headptr = headptr.prepend(elem)
+    headptr = headptr prepend elem
     sz += 1
     this
   }
@@ -150,8 +160,8 @@ extends collection.mutable.Buffer[T]
 
   private def writeObject(out: java.io.ObjectOutputStream) {
     out.defaultWriteObject
-    out.writeInt(sz)
-    for (elem <- this) out.writeObject(elem)
+    out writeInt sz
+    for (elem <- this) out writeObject elem
   }
 
   private def readObject(in: java.io.ObjectInputStream) {
@@ -198,7 +208,7 @@ object UnrolledBuffer extends ClassManifestTraversableFactory[UnrolledBuffer] {
       this
     } else {
       next = new Unrolled[T](0, new Array[T](nextlength), null, buff)
-      next.append(elem)
+      next append elem
     }
     def foreach[U](f: T => U) {
       var unrolled = this
@@ -232,7 +242,7 @@ object UnrolledBuffer extends ClassManifestTraversableFactory[UnrolledBuffer] {
       // allocate a new node and store element
       // then make it point to this
       val newhead = new Unrolled[T](buff)
-      newhead.append(elem)
+      newhead append elem
       newhead.next = this
       newhead
     }
@@ -314,4 +324,3 @@ object UnrolledBuffer extends ClassManifestTraversableFactory[UnrolledBuffer] {
   }
 
 }
-

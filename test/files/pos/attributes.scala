@@ -1,5 +1,3 @@
-/* $Id$ */
-
 @serializable  class C1;
 @serializable @volatile  class C2;
 @serializable @volatile  class C3;
@@ -37,9 +35,10 @@ abstract class A1 {
 
 object O6 {
   @serializable  val x1 = new C1;
-  @serializable @volatile  val x2 = new C2;
-  @serializable @volatile  val x3 = new C3;
-  @serializable @volatile @serializable  val x4 = new C4;
+  // volatile val sensibly disallowed as of r18645
+  @serializable val x2 = new C2;
+  @serializable val x3 = new C3;
+  @serializable val x4 = new C4;
 
   @serializable  var y1: C1 = _;
   @serializable @volatile  var y2: C2 = _;

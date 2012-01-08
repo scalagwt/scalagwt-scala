@@ -1,18 +1,27 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.symtab
+package scala.tools.nsc
+package symtab
 
+// Martin: I am about 1/4 way on a cleanup of scopes.
+// The most important change is that scopes are now Iterables.
+// This removed the need for the various iterators on ScopeEntries.
+// ScopeEntries are conceptually an internal representation detail,
+// so it's better not to return them in public iterators.
+// It's true that other code also references ScopeEntries but that's
+// done for performance (and could be reviewed).
+// Another addition is a lookupAll method that returns all symbols with
+// a name in a scopein an iterator.
 trait Scopes {
   self: SymbolTable =>
 
   class ScopeEntry(val sym: Symbol, val owner: Scope) {
     /** the next entry in the hash bucket
      */
-    var tail: ScopeEntry = _
+    var tail: ScopeEntry = null
 
     /** the next entry in this scope
      */
@@ -27,63 +36,18 @@ trait Scopes {
    *  @param owner ...
    *  @return      ...
    */
-  def newScopeEntry(sym: Symbol, owner: Scope): ScopeEntry = {
+  private def newScopeEntry(sym: Symbol, owner: Scope): ScopeEntry = {
     val e = new ScopeEntry(sym, owner)
     e.next = owner.elems
     owner.elems = e
     e
   }
 
-  object NoScopeEntry extends ScopeEntry(NoSymbol, null)
-
-  /**
-   *  @param initElems ...
-   *  @return          ...
-   */
-  def newScope(initElems: ScopeEntry): Scope = new NormalScope(initElems)
-  final def newScope: Scope = newScope(null: ScopeEntry)
-  def newTempScope = newScope(null : ScopeEntry)
-  class ScopeKind(name : String) { override def toString = name }
-  def allocateScopeKind(name : String) = new ScopeKind(name)
-  lazy val Constructor0ScopeKind : ScopeKind = allocateScopeKind("constructors0")
-  lazy val Constructor1ScopeKind : ScopeKind = allocateScopeKind("constructors1")
-  lazy val InnerScopeKind : ScopeKind = allocateScopeKind("inner")
-  lazy val FinishWithScopeKind : ScopeKind = allocateScopeKind("finishWith")
-  lazy val TypeSigScopeKind : ScopeKind = allocateScopeKind("typeSig")
-  lazy val PolyTypeCompleterScopeKind : ScopeKind = allocateScopeKind("polyType")
-  lazy val CompoundTreeScopeKind : ScopeKind = allocateScopeKind("compoundTree")
-  lazy val FreshArgScopeKind : ScopeKind = allocateScopeKind("freshArgs")
-  lazy val LabelScopeKind : ScopeKind = allocateScopeKind("label")
-  lazy val TypedCasesScopeKind : ScopeKind = allocateScopeKind("typedCases")
-  lazy val TypedDefScopeKind : ScopeKind = allocateScopeKind("typedDef")
-  //lazy val ParentTypesScopeKind : ScopeKind = allocateScopeKind("parentType")
-  lazy val TypedScopeKind : ScopeKind = allocateScopeKind("typed")
-  // have to sometimes use constructor depth unfortunately.
-  case class ParentTypesScopeKind(clazz : Symbol) extends ScopeKind("parentType") { override def toString = super.toString + "-" + clazz }
-  case class BlockScopeKind(depth : Int) extends ScopeKind("block") { override def toString = super.toString + "-" + depth }
-
-  def newClassScope(clazz : Symbol) = newScope // for use in ClassInfoType creation
-  def scopeFor(             tree : Tree, kind : ScopeKind) : Scope = newScope
-  def scopeFor(old : Scope, tree : Tree, kind : ScopeKind) : Scope = newScope(old)
-
-  final def newScope(base: Scope) : Scope = newScope(base.elems)
-  final def newScope(decls: List[Symbol]) : Scope = {
-    val ret = newScope
-    decls.foreach(d => ret.enter(d))
-    ret
-  }
-  def newThrowAwayScope(decls : List[Symbol]) : Scope = newScope(decls)
-  // for symbols that don't exist in scopes!
-  def recycle(sym : Symbol) : Symbol = sym
-  def newLocalDummy(clazz : Symbol, pos : util.Position) = clazz.newLocalDummy(pos)
-
-  private class NormalScope(initElems: ScopeEntry) extends Scope(initElems)
-
-  abstract class Scope(initElems: ScopeEntry)  {
+  class Scope(initElems: ScopeEntry) extends AbsScope {
 
     var elems: ScopeEntry = initElems
 
-    /** The number of times this scope is neted in another
+    /** The number of times this scope is nested in another
      */
     private var nestinglevel = 0
 
@@ -111,39 +75,26 @@ trait Scopes {
 
     def this(base: Scope) = {
       this(base.elems)
-/*
-      if (base.hashtable ne null) {
-        this.hashtable = new Array[ScopeEntry](HASHSIZE)
-        System.arraycopy(base.hashtable, 0, this.hashtable, 0, HASHSIZE)
-      }
-*/
       nestinglevel = base.nestinglevel + 1
     }
 
     def this(decls: List[Symbol]) = {
       this()
-      decls.foreach(sym => enter(sym))
+      decls foreach enter
     }
 
     /** Returns a new scope with the same content as this one. */
     def cloneScope: Scope = {
-      val clone = newScope
-      this.toList.foreach(sym => clone.enter(sym))
+      val clone = new Scope()
+      this.toList foreach (clone enter _)
       clone
     }
-    /* clear the contents of this scope */
-    def clear = {
-      elems = null
-      elemsCache = null
-      hashtable = null
-    }
-
 
     /** is the scope empty? */
-    def isEmpty: Boolean = elems eq null
+    override def isEmpty: Boolean = elems eq null
 
     /** the number of entries in this scope */
-    def size: Int = {
+    override def size: Int = {
       var s = 0
       var e = elems
       while (e ne null) {
@@ -172,7 +123,7 @@ trait Scopes {
      *
      *  @param sym ...
      */
-    def enter(sym: Symbol) : Symbol = { enter(newScopeEntry(sym, this)); sym }
+    def enter(sym: Symbol): Symbol = { enter(newScopeEntry(sym, this)); sym }
 
     /** enter a symbol, asserting that no symbol with same name exists in scope
      *
@@ -266,10 +217,18 @@ trait Scopes {
       if (e eq null) NoSymbol else e.sym
     }
 
+    /** Returns an iterator eidling every symbol with given name in this scope.
+     */
+    def lookupAll(name: Name): Iterator[Symbol] = new Iterator[Symbol] {
+      var e = lookupEntry(name)
+      def hasNext: Boolean = e ne null
+      def next: Symbol = { val r = e.sym; e = lookupNextEntry(e); r }
+    }
+
     /** lookup a symbol entry matching given name.
-     *
-     *  @param name ...
-     *  @return     ...
+     *  @note from Martin: I believe this is a hotspot or will be one
+     *  in future versions of the type system. I have reverted the previous
+     *  change to use iterators as too costly.
      */
     def lookupEntry(name: Name): ScopeEntry = {
       var e: ScopeEntry = null
@@ -287,11 +246,15 @@ trait Scopes {
       e
     }
 
-    /** lookup next entry with same name as this one */
+    /** lookup next entry with same name as this one
+     *  @note from Martin: I believe this is a hotspot or will be one
+     *  in future versions of the type system. I have reverted the previous
+     *  change to use iterators as too costly.
+     */
     def lookupNextEntry(entry: ScopeEntry): ScopeEntry = {
       var e = entry
-      if (hashtable ne null) //debug
-      do { e = e.tail } while ((e ne null) && e.sym.name != entry.sym.name)
+      if (hashtable ne null)
+        do { e = e.tail } while ((e ne null) && e.sym.name != entry.sym.name)
       else
         do { e = e.next } while ((e ne null) && e.sym.name != entry.sym.name);
       e
@@ -299,7 +262,7 @@ trait Scopes {
 
     /** Return all symbols as a list in the order they were entered in this scope.
      */
-    def toList: List[Symbol] = {
+    override def toList: List[Symbol] = {
       if (elemsCache eq null) {
         elemsCache = Nil
         var e = elems
@@ -311,46 +274,63 @@ trait Scopes {
       elemsCache
     }
 
-    /** Return all symbols as an interator in the order they were entered in this scope.
-     */
-    def elements: Iterator[Symbol] = toList.elements
-
-    def filter(p: Symbol => Boolean): Scope =
-      if (!(toList forall p)) newScope(toList filter p) else this
-
-    def mkString(start: String, sep: String, end: String) =
-      toList.map(_.defString).mkString(start, sep, end)
-
-    override def toString(): String = mkString("{\n  ", ";\n  ", "\n}")
-
     /** Return the nesting level of this scope, i.e. the number of times this scope
      *  was nested in another */
     def nestingLevel = nestinglevel
 
-    def invalidate(name : Name) = {}
+    /** Return all symbols as an iterator in the order they were entered in this scope.
+     */
+    def iterator: Iterator[Symbol] = toList.iterator
+
+/*
+    /** Does this scope contain an entry for `sym`?
+     */
+    def contains(sym: Symbol): Boolean = lookupAll(sym.name) contains sym
+
+    /** A scope that contains all symbols of this scope and that also contains `sym`.
+     */
+    def +(sym: Symbol): Scope =
+      if (contains(sym)) this
+      else {
+        val result = cloneScope
+        result enter sym
+        result
+      }
+
+    /** A scope that contains all symbols of this scope except `sym`.
+     */
+    def -(sym: Symbol): Scope =
+      if (!contains(sym)) this
+      else {
+        val result = cloneScope
+        result unlink sym
+        result
+      }
+*/
+    override def foreach[U](p: Symbol => U): Unit = toList foreach p
+
+    override def filter(p: Symbol => Boolean): Scope =
+      if (!(toList forall p)) new Scope(toList filter p) else this
+
+    override def mkString(start: String, sep: String, end: String) =
+      toList.map(_.defString).mkString(start, sep, end)
+
+    override def toString(): String = mkString("Scope{\n  ", ";\n  ", "\n}")
+
   }
+
+  def newScope: Scope = new Scope
 
   /** The empty scope (immutable).
    */
   object EmptyScope extends Scope {
     override def enter(e: ScopeEntry) {
-      throw new Error("EmptyScope.enter")
+      abort("EmptyScope.enter")
     }
   }
 
   /** The error scope.
    */
-  class ErrorScope(owner: Symbol) extends Scope(null: ScopeEntry) {
-    override def lookupEntry(name: Name): ScopeEntry = {
-      val e = super.lookupEntry(name)
-      if (e != NoSymbol) e
-      else {
-        enter(if (name.isTermName) owner.newErrorValue(name)
-              else owner.newErrorClass(name))
-        super.lookupEntry(name)
-      }
-    }
-  }
-
+  class ErrorScope(owner: Symbol) extends Scope(null: ScopeEntry)
 }
 

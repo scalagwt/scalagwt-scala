@@ -1,16 +1,14 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-
-package scala.collection.mutable
-
+package scala.collection
+package mutable
 
 /** This is a simple wrapper class for <a href="Set.html"
  *  target="contentFrame"><code>scala.collection.mutable.Set</code></a>.
@@ -19,38 +17,14 @@ package scala.collection.mutable
  *
  *  @author  Matthias Zenger
  *  @version 1.1, 09/05/2004
+ *  @since   1
  */
-trait SetProxy[A] extends Set[A] with collection.SetProxy[A] {
+trait SetProxy[A] extends Set[A] with SetProxyLike[A, Set[A]] {
+  override def repr = this
+  override def empty = new SetProxy[A] { val self = SetProxy.this.self.empty }
+  override def + (elem: A) = { self += elem ; this }
+  override def - (elem: A) = { self -= elem ; this }
 
-  def self: Set[A]
-
-  override def update(elem: A, included: Boolean): Unit = self(elem) = included
-
-  def +=(elem: A): Unit = self += elem
-
-  override def ++=(that: Iterable[A]): Unit = self ++= that
-
-  override def ++=(it: Iterator[A]): Unit = self ++= it
-
-  override def incl(elems: A*): Unit = self ++= elems
-
-  def -=(elem: A): Unit = self -= elem
-
-  override def --=(that: Iterable[A]): Unit = self --= that
-
-  override def --=(it: Iterator[A]): Unit = self --= it
-
-  override def excl(elems: A*): Unit = self --= elems
-
-  override def intersect(that: Set[A]): Unit = self.intersect(that)
-
-  override def clear(): Unit = self.clear
-
-  override def retain(p: A => Boolean): Unit =  self.retain(p)
-
-  override def <<(cmd: Message[A]): Unit = self << cmd
-
-  override def clone(): Set[A] = new SetProxy[A] {
-    def self = SetProxy.this.self.clone()
-  }
+  def +=(elem: A) = { self += elem; this }
+  def -=(elem: A) = { self -= elem; this }
 }

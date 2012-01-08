@@ -1,10 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
+
 
 package scala.tools.ant.sabbus
 
@@ -12,7 +13,6 @@ import java.io.File
 
 import org.apache.tools.ant.types.{Path, Reference}
 
-@cloneable
 class Settings {
 
   private var gBf: Option[String] = None
@@ -30,6 +30,10 @@ class Settings {
   private var sourcepathBf: Option[Path] = None
   def sourcepath = sourcepathBf.get
   def sourcepath_=(p: Path): this.type = { sourcepathBf = Some(p); this }
+
+  private var sourcedirBf: Option[File] = None
+  def sourcedir = sourcedirBf.get
+  def sourcedir_=(p: File): this.type = { sourcedirBf = Some(p); this }
 
   private var bootclasspathBf: Option[Path] = None
   def bootclasspath = bootclasspathBf.get
@@ -64,13 +68,14 @@ class Settings {
     (if (uncheckedBf) "-unchecked" :: Nil else Nil) :::
     (if (!classpathBf.isEmpty) "-classpath" :: classpath.toString :: Nil else Nil) :::
     (if (!sourcepathBf.isEmpty) "-sourcepath" :: sourcepath.toString :: Nil else Nil) :::
+    (if (!sourcedirBf.isEmpty) "-Xsourcedir" :: sourcedir.toString :: Nil else Nil) :::
     (if (!bootclasspathBf.isEmpty) "-bootclasspath" :: bootclasspath.toString :: Nil else Nil) :::
     (if (!extdirsBf.isEmpty) "-extdirs" :: extdirs.toString :: Nil else Nil) :::
     (if (!dBf.isEmpty) "-d" :: d.getAbsolutePath :: Nil else Nil) :::
     (if (!encodingBf.isEmpty) "-encoding" :: encoding :: Nil else Nil) :::
     (if (!targetBf.isEmpty) "-target:"+target :: Nil else Nil) :::
     (if (optimiseBf) "-optimise" :: Nil else Nil) :::
-    (if (!moreBf.isEmpty) List.fromString(more, ' ') else Nil)
+    (if (!moreBf.isEmpty) (more split ' ').toList else Nil)
 
   override def equals(that: Any): Boolean = that match {
     case cs: Settings =>
@@ -78,6 +83,7 @@ class Settings {
       this.uncheckedBf == cs.uncheckedBf &&
       this.classpathBf == cs.classpathBf &&
       this.sourcepathBf == cs.sourcepathBf &&
+      this.sourcedirBf == cs.sourcedirBf &&
       this.bootclasspathBf == cs.bootclasspathBf &&
       this.extdirsBf == cs.extdirsBf &&
       this.dBf == cs.dBf &&

@@ -1,19 +1,20 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
 
-package scala.tools.nsc.io
+package scala.tools.nsc
+package io
 
-import java.io.{File, FileInputStream, InputStream, IOException}
+import java.io.{ FileInputStream, InputStream, IOException, File => JFile }
 import java.nio.{ByteBuffer, CharBuffer}
 import java.nio.channels.{FileChannel, ReadableByteChannel, Channels}
 import java.nio.charset.{CharsetDecoder, CoderResult}
+import scala.tools.nsc.reporters._
 
 /** This class implements methods to read and decode source files. */
-class SourceReader(decoder: CharsetDecoder) {
+class SourceReader(decoder: CharsetDecoder, reporter: Reporter) {
 
   import SourceReader.{decode, flush}
 
@@ -27,23 +28,25 @@ class SourceReader(decoder: CharsetDecoder) {
   private var chars: CharBuffer = CharBuffer.allocate(0x4000)
 
   private def reportEncodingError(filename:String) = {
-    Console println "IO error while decoding "+filename+" with "+decoder.charset();
-    Console println "Please try specifying another one using the -encoding option"
+    reporter.error(util.NoPosition,
+                   "IO error while decoding "+filename+" with "+decoder.charset()+"\n"+
+                   "Please try specifying another one using the -encoding option")
   }
 
   //########################################################################
   // Public Methods
 
   /** Reads the file with the specified name. */
-  def read(filename: String): Array[Char]= read(new File(filename))
+  def read(filename: String): Array[Char]= read(new JFile(filename))
 
   /** Reads the specified file. */
-  def read(file: File): Array[Char] = {
+  def read(file: JFile): Array[Char] = {
     val c = new FileInputStream(file).getChannel
     try {
       read(c)
     } catch {
       case e:Exception =>
+        if (true) e.printStackTrace
         reportEncodingError(file.toString())
         new Array[Char](0)
     } finally {
@@ -61,23 +64,19 @@ class SourceReader(decoder: CharsetDecoder) {
       case p:PlainFile =>
         read(p.file)                                                     // bq: (!!!)
       case z:ZipArchive#FileEntry =>
-        val c = Channels.newChannel(z.getArchive.getInputStream(z.entry))
+        val c = Channels.newChannel(z.archive.getInputStream(z.entry))
         read(c)
       case _ =>
-        throw new IOException(file.toString()+" is neither plain file nor ZipArchive#FileEntry")
+        val b = ByteBuffer.wrap(file.toByteArray)
+        try {
+          read(b)
+        } catch {
+          case e:Exception =>
+            if (true) e.printStackTrace
+            reportEncodingError(file.toString())
+            new Array[Char](0)
+        }
     }
-    /*
-    val decoder: CharsetDecoder = this.decoder.reset();
-    val bytes: ByteBuffer = ByteBuffer.wrap(file.read);
-    val chars: CharBuffer = this.chars; chars.clear();
-    try {
-      terminate(flush(decoder, decode(decoder, bytes, chars, true)));
-    } catch {
-      case e:Exception =>
-        reportEncodingError(file.toString())
-        new Array[Char](0)
-    }
-    */
   }
 
   /** Reads the specified byte channel. */
@@ -92,6 +91,13 @@ class SourceReader(decoder: CharsetDecoder) {
       chars = decode(decoder, bytes, chars, endOfInput)
     }
     terminate(flush(decoder, chars))
+  }
+
+  /** Reads the specified byte buffer. */
+  protected def read(bytes: ByteBuffer): Array[Char] = {
+    val decoder: CharsetDecoder = this.decoder.reset()
+    val chars: CharBuffer = this.chars; chars.clear()
+    terminate(flush(decoder, decode(decoder, bytes, chars, true)))
   }
 
   //########################################################################

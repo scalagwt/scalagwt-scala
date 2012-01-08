@@ -1,52 +1,83 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |                                         **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
+import generic._
 
-/** This extensible class may be used as a basis for implementing double
- *  linked lists. Type variable <code>A</code> refers to the element type
- *  of the list, type variable <code>This</code> is used to model self
- *  types of linked lists.
+/** This class implements double linked lists where both the head (`elem`),
+ *  the tail (`next`) and a reference to the previous node (`prev`) are mutable.
  *
- *  @author  Matthias Zenger
- *  @version 1.0, 08/07/2003
+ *  @author Matthias Zenger
+ *  @author Martin Odersky
+ *  @version 2.8
+ *  @since   1
+ *
+ *  @tparam A     the type of the elements contained in this double linked list.
+ *
+ *  @define Coll DoubleLinkedList
+ *  @define coll double linked list
+ *  @define thatinfo the class of the returned collection. In the standard library configuration,
+ *    `That` is always `DoubleLinkedList[B]` because an implicit of type `CanBuildFrom[DoubleLinkedList, B, DoubleLinkedList[B]]`
+ *    is defined in object `DoubleLinkedList`.
+ *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *    result class `That` from the current representation type `Repr`
+ *    and the new element type `B`. This is usually the `canBuildFrom` value
+ *    defined in object `DoubleLinkedList`.
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
  */
-abstract class DoubleLinkedList[A, This >: Null <: DoubleLinkedList[A, This]]
-         extends SingleLinkedList[A, This]
-{ self: This =>
+@serializable @SerialVersionUID(-8144992287952814767L)
+class DoubleLinkedList[A]() extends LinearSeq[A]
+                            with GenericTraversableTemplate[A, DoubleLinkedList]
+                            with DoubleLinkedListLike[A, DoubleLinkedList[A]] {
+  next = this
 
-  var prev: This
-
-  override def append(that: This): Unit =
-    if (that eq null)
-      ()
-    else if (next eq null) {
-      next = that
-      that.prev = this
-    } else
-      next.append(that)
-
-  override def insert(that: This): Unit = if (that ne null) {
-    that.append(next)
-    next = that
-    that.prev = this
+  /** Creates a node for the double linked list.
+   *
+   *  @param elem    the element this node contains.
+   *  @param next    the next node in the double linked list.
+   */
+  def this(elem: A, next: DoubleLinkedList[A]) {
+    this()
+    if (next != null) {
+      this.elem = elem
+      this.next = next
+    }
   }
 
-  def remove() {
-    if (next ne null)
-      next.prev = prev
-    if (prev ne null)
-      prev.next = next
-    prev = null
-    next = null
-  }
+  override def companion: GenericCompanion[DoubleLinkedList] = DoubleLinkedList
+}
+
+/** $factoryInfo
+ *  @define coll double linked list
+ *  @define Coll DoubleLinkedList
+ */
+object DoubleLinkedList extends SeqFactory[DoubleLinkedList] {
+  /** $genericCanBuildFrom */
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, DoubleLinkedList[A]] = new GenericCanBuildFrom[A]
+  def newBuilder[A]: Builder[A, DoubleLinkedList[A]] =
+    new Builder[A, DoubleLinkedList[A]] {
+      var current: DoubleLinkedList[A] = _
+      def +=(elem: A): this.type = {
+        val tmp = new DoubleLinkedList(elem, null)
+        if (current != null)
+          current.insert(tmp)
+        else
+          current = tmp
+        this
+      }
+      def clear() { current = null }
+      def result() = current
+    }
 }

@@ -1,22 +1,34 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.xml
 
+import parsing.NoBindingFactoryAdapter
+import factory.XMLLoader
+import java.io.{ File, FileDescriptor, FileInputStream, FileOutputStream }
+import java.io.{ InputStream, Reader, StringReader, Writer }
+import java.nio.channels.Channels
+import scala.util.control.Exception.ultimately
 
-import Predef._
-import scala.xml.parsing.NoBindingFactoryAdapter
-import org.xml.sax.InputSource
-import java.io.{File, FileDescriptor, FileInputStream, FileOutputStream}
-import java.io.{InputStream, Reader, StringReader, Writer}
+object Source
+{
+  def fromFile(file: File)              = new InputSource(new FileInputStream(file))
+  def fromFile(fd: FileDescriptor)      = new InputSource(new FileInputStream(fd))
+  def fromFile(name: String)            = new InputSource(new FileInputStream(name))
+
+  def fromInputStream(is: InputStream)  = new InputSource(is)
+  def fromReader(reader: Reader)        = new InputSource(reader)
+  def fromSysId(sysID: String)          = new InputSource(sysID)
+  def fromString(string: String)        = fromReader(new StringReader(string))
+}
+import Source._
 
 /** The object <code>XML</code> provides constants, and functions to load
  *  and save XML elements. Use this when data binding is not desired, i.e.
@@ -25,8 +37,8 @@ import java.io.{InputStream, Reader, StringReader, Writer}
  *  @author  Burak Emir
  *  @version 1.0, 25/04/2005
  */
-object XML {
-
+object XML extends XMLLoader[Elem]
+{
   val xml       = "xml"
   val xmlns     = "xmlns"
   val namespace = "http://www.w3.org/XML/1998/namespace"
@@ -35,83 +47,17 @@ object XML {
   val lang      = "lang"
   val encoding  = "ISO-8859-1"
 
-  // functions for generic xml loading, saving
+  /** Returns an XMLLoader whose load* methods will use the supplied SAXParser. */
+  def withSAXParser(p: SAXParser): XMLLoader[Elem] =
+    new XMLLoader[Elem] { override val parser: SAXParser = p }
 
-  /** loads XML from given file, using XML parser in JDK. */
-  final def loadFile(file: File): Elem =
-    new NoBindingFactoryAdapter().loadXML(new InputSource(
-      new FileInputStream(file)
-    ))
-
-  /** loads XML from given file descriptor, using XML parser in JDK.
-   *
-   *  @param fileDesc ...
-   *  @return         ...
-   */
-  final def loadFile(fileDesc: FileDescriptor): Elem =
-    new NoBindingFactoryAdapter().loadXML(new InputSource(
-      new FileInputStream(fileDesc)
-    ))
-
-  /** loads XML from given file, using XML parser in JDK. */
-  final def loadFile(fileName: String): Elem =
-    new NoBindingFactoryAdapter().loadXML(new InputSource(
-      new FileInputStream(fileName)
-    ));
-
-  /** loads XML from given InputStream, using XML parser in JDK. */
-  final def load( is:InputStream ): Elem =
-    new NoBindingFactoryAdapter().loadXML(new InputSource(is))
-
-  /** loads XML from given Reader, using XML parser in JDK. */
-  final def load(reader: Reader): Elem =
-    new NoBindingFactoryAdapter().loadXML(new InputSource(reader))
-
-  /** loads XML from given sysID, using XML parser in JDK. */
-  final def load(sysID: String): Elem =
-    new NoBindingFactoryAdapter().loadXML(new InputSource(sysID))
-
-  /** loads XML from a given input source, using XML parser in JDK.
-   *
-   *  @param source ...
-   *  @return       ...
-   */
-  final def load(source: InputSource): Elem =
-    new NoBindingFactoryAdapter().loadXML(source)
-
-  /** loads XML from a string, using XML parser in JDK. */
-  final def loadString(string: String): Elem =
-    load(new StringReader(string))
-
-  /** Saves XML to filename with encoding ISO-8859-1 without xml-decl without
-   *  <code>doctype</code>.
-   *
-   *  @param filename ...
-   *  @param node     ...
-   */
-  final def save(filename: String, node: Node): Unit =
-    save(filename, node, encoding)
-
-  /** saves XML to filename with given encoding, without xml-decl without
-   *  <code>doctype</code>.
-   *
-   *  @param filename ...
-   *  @param node     ...
-   *  @param enc      ...
-   */
-  final def save(filename: String, node: Node, enc: String): Unit =
-    saveFull(filename, node, enc, false, null);
-
-  /** saves a node to a file with given filename using encoding iso-8859-1
-   *  optionally with xmldecl and doctype declaration.
-   *
-   *  @param filename the filename
-   *  @param node     the xml node we want to write
-   *  @param xmlDecl  if true, write xml declaration
-   *  @param doctype  if not null, write doctype declaration
-   */
+  @deprecated("Use save() instead")
   final def saveFull(filename: String, node: Node, xmlDecl: Boolean, doctype: dtd.DocType): Unit =
-    saveFull(filename, node, encoding, xmlDecl, doctype)
+    save(filename, node, encoding, xmlDecl, doctype)
+
+  @deprecated("Use save() instead")
+  final def saveFull(filename: String, node: Node, enc: String, xmlDecl: Boolean, doctype: dtd.DocType): Unit =
+    save(filename, node, enc, xmlDecl, doctype)
 
   /** Saves a node to a file with given filename using given encoding
    *  optionally with xmldecl and doctype declaration.
@@ -122,22 +68,20 @@ object XML {
    *  @param xmlDecl  if true, write xml declaration
    *  @param doctype  if not null, write doctype declaration
    */
+  final def save(
+    filename: String,
+    node: Node,
+    enc: String = encoding,
+    xmlDecl: Boolean = false,
+    doctype: dtd.DocType = null
+    ): Unit =
+  {
+    val fos = new FileOutputStream(filename)
+    val w = Channels.newWriter(fos.getChannel(), enc)
 
-  final def saveFull(filename: String, node: Node, enc: String, xmlDecl: Boolean, doctype: dtd.DocType) {
-    var fos: FileOutputStream = null
-    var w: Writer = null
-    try {
-      // using NIO classes of JDK 1.4
-      import java.io.{FileOutputStream, Writer}
-      import java.nio.channels.{Channels, FileChannel}
-
-      fos = new FileOutputStream(filename)
-      w = Channels.newWriter(fos.getChannel(), enc)
+    ultimately(w.close())(
       write(w, node, enc, xmlDecl, doctype)
-    } finally {
-      w.close()
-      fos.close()
-    }
+    )
   }
 
   /** Writes the given node using writer, optionally with xml decl and doctype.
@@ -153,6 +97,6 @@ object XML {
     /* TODO: optimize by giving writer parameter to toXML*/
     if (xmlDecl) w.write("<?xml version='1.0' encoding='" + enc + "'?>\n")
     if (doctype ne null) w.write( doctype.toString() + "\n")
-    w.write(Utility.toXML(node))
+    w.write(Utility.toXML(node).toString)
   }
 }

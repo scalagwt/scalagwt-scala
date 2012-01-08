@@ -1,19 +1,17 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.runtime
 
-
 import java.lang.Character
-import Predef.NoSuchElementException
+import collection.immutable.NumericRange
 
 /** <p>
  *    For example, in the following code
@@ -45,27 +43,53 @@ final class RichChar(x: Char) extends Proxy with Ordered[Char] {
   def isDigit: Boolean = Character.isDigit(x)
   def isLetter: Boolean = Character.isLetter(x)
   def isLetterOrDigit: Boolean = Character.isLetterOrDigit(x)
-  def isLowerCase: Boolean = Character.isLowerCase(x)
-  def isUpperCase: Boolean = Character.isUpperCase(x)
   def isWhitespace: Boolean = Character.isWhitespace(x)
+  def isSpaceChar: Boolean = Character.isSpaceChar(x)
+  def isHighSurrogate: Boolean = Character.isHighSurrogate(x)
+  def isLowSurrogate: Boolean = Character.isLowSurrogate(x)
+  def isSurrogate: Boolean = isHighSurrogate || isLowSurrogate
+  def isUnicodeIdentifierStart: Boolean = Character.isUnicodeIdentifierStart(x)
+  def isUnicodeIdentifierPart: Boolean = Character.isUnicodeIdentifierPart(x)
+  def isIdentifierIgnorable: Boolean = Character.isIdentifierIgnorable(x)
+  def isMirrored: Boolean = Character.isMirrored(x)
 
-  def toLowerCase: Char = Character.toLowerCase(x)
-  def toUpperCase: Char = Character.toUpperCase(x)
+  def isLower: Boolean = Character.isLowerCase(x)
+  def isUpper: Boolean = Character.isUpperCase(x)
+  def isTitleCase: Boolean = Character.isTitleCase(x)
 
-  /** Create an Iterator[Char] over the characters from 'x' to 'y' - 1
+  def toLower: Char = Character.toLowerCase(x)
+  def toUpper: Char = Character.toUpperCase(x)
+  def toTitleCase: Char = Character.toTitleCase(x)
+
+  def getType: Int = Character.getType(x)
+  def getNumericValue: Int = Character.getNumericValue(x)
+  def getDirectionality: Byte = Character.getDirectionality(x)
+  def reverseBytes: Char = Character.reverseBytes(x)
+
+  // Java 5 Character methods not added:
+  //
+  // public static boolean isDefined(char ch)
+  // public static boolean isJavaIdentifierStart(char ch)
+  // public static boolean isJavaIdentifierPart(char ch)
+
+  @deprecated("Use ch.toLower instead")
+  def toLowerCase: Char = toLower
+  @deprecated("Use ch.toUpper instead")
+  def toUpperCase: Char = toUpper
+
+  @deprecated("Use ch.isLower instead")
+  def isLowerCase: Boolean = isLower
+  @deprecated("Use ch.isUpper instead")
+  def isUpperCase: Boolean = isUpper
+
+  /** Create a <code>[Char]</code> over the characters from 'x' to 'limit' - 1
    */
-  def until(limit: Char): Iterator[Char] = new Iterator[Char] {
-    private var ch = x
-    def hasNext: Boolean = ch < limit
-    def next: Char =
-      if (hasNext) { val j = ch; ch = (ch + 1).toChar; j }
-      else throw new NoSuchElementException("next on empty iterator")
-  }
+  def until(limit: Char): NumericRange[Char] =
+    new NumericRange.Exclusive(x, limit, 1.toChar)
 
-  //def until(y: Char): Iterator[Char] = to(y)
-
-  /** Create an Iterator[Char] over the characters from 'x' to 'y'
+  /** Create a <code>IndexedSeqView[Char]</code> over the characters from 'x' to 'limit'
    */
-  def to(y: Char): Iterator[Char] = until((y + 1).toChar)
+  def to(limit: Char): NumericRange[Char] =
+    new NumericRange.Inclusive(x, limit, 1.toChar)
 
 }

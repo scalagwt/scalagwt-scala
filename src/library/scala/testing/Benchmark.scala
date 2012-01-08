@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.testing
@@ -70,18 +69,16 @@ trait Benchmark {
   def prefix: String = getClass().getName()
 
   /**
-   * The entry point. It takes two arguments (n), (name)
+   * The entry point. It takes two arguments (n),
    *  and an optional argument multiplier (mult).
-   *  (n) is the number of consecutive runs, (name) the name
-   *  of a log file where to append the times.
-   *  if (mult) is present, the same thing is repeated (mult)
+   *  (n) is the number of consecutive runs,
+   *  if (mult) is present, the n runs are repeated (mult)
    *  times.
    */
   def main(args: Array[String]) {
-    if (args.length > 1) {
-      val logFile = new java.io.FileWriter(args(1), true) // append, not overwrite
-      if (args.length >= 3)
-         multiplier = args(2).toInt
+    if (args.length > 0) {
+      val logFile = new java.io.OutputStreamWriter(System.out)
+      if (args.length > 1) multiplier = args(1).toInt
       logFile.write(prefix)
       for (t <- runBenchmark(args(0).toInt))
         logFile.write("\t\t" + t)
@@ -89,8 +86,13 @@ trait Benchmark {
       logFile.write(Platform.EOL)
       logFile.flush()
     } else {
-      Console.println("Usage: scala benchmarks.program <runs> <logfile>")
-      Console.println("   or: scala benchmarks.program <runs> <logfile> <multiplier>")
+      println("Usage: scala benchmarks.program <runs> ")
+      println("   or: scala benchmarks.program <runs> <multiplier>")
+      println("""
+    The benchmark is run <runs> times, forcing a garbage collection between runs. The optional
+    <multiplier> causes the benchmark to be repeated <multiplier> times, each time for <runs>
+    executions.
+      """)
     }
   }
 }

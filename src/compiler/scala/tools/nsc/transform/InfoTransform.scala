@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2006 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 /** <p>
  *    A base class for transforms.
@@ -13,7 +13,7 @@ package scala.tools.nsc.transform
  *    A transform contains a compiler phase which applies a tree transformer.
  *  </p>
  */
-abstract class InfoTransform extends Transform {
+trait InfoTransform extends Transform {
   import global.{Symbol, Type, InfoTransformer, infoTransformers}
 
   def transformInfo(sym: Symbol, tpe: Type): Type
@@ -22,9 +22,13 @@ abstract class InfoTransform extends Transform {
     new Phase(prev)
 
   protected def changesBaseClasses = true
+  protected def keepsTypeParams = true
 
   class Phase(prev: scala.tools.nsc.Phase) extends super.Phase(prev) {
+    override val keepsTypeParams = InfoTransform.this.keepsTypeParams
+
     if (infoTransformers.nextFrom(id).pid != id) {
+      // this phase is not yet in the infoTransformers
       val infoTransformer = new InfoTransformer {
         val pid = id
         val changesBaseClasses = InfoTransform.this.changesBaseClasses

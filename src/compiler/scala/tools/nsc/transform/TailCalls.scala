@@ -1,10 +1,10 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Iulian Dragos
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 import scala.tools.nsc.symtab.Flags
 
@@ -20,7 +20,6 @@ abstract class TailCalls extends Transform
   import global._                  // the global environment
   import definitions._             // standard classes and methods
   import typer.{typed, atOwner}    // methods to type trees
-  import posAssigner.atPos         // for filling in tree positions
 
   val phaseName: String = "tailcalls"
 
@@ -69,7 +68,7 @@ abstract class TailCalls extends Transform
    *   are optimized. Since 'this' is not a local variable, a dummy local val
    *   is added and used as a label parameter. The backend knows to load
    *   the corresponding argument in the 'this' (local at index 0). This dummy local
-   *   is never used and should be cleand up by dead code elmination (when enabled).
+   *   is never used and should be cleand up by dead code elimination (when enabled).
    * </p>
    * <p>
    *   This phase has been moved before pattern matching to catch more
@@ -101,6 +100,9 @@ abstract class TailCalls extends Transform
 
       /** Tells whether we are in a (possible) tail position */
       var tailPos = false
+
+      /** The reason this method could not be optimized. */
+      var tailrecFailReason = "it contains a recursive call not in tail position"
 
       /** Is the label accessed? */
       var accessed = false
@@ -135,7 +137,8 @@ abstract class TailCalls extends Transform
       t
     }
 
-    private var ctx: Context = new Context()
+    private var ctx: Context      = new Context()
+    private def enclosingType     = ctx.currentMethod.enclClass.typeOfThis
 
     /** Rewrite this tree to contain no tail recursive calls */
     def transform(tree: Tree, nctx: Context): Tree = {
@@ -147,54 +150,101 @@ abstract class TailCalls extends Transform
     }
 
     override def transform(tree: Tree): Tree = {
+      /** A possibly polymorphic apply to be considered for tail call transformation.
+       */
+      def rewriteApply(target: Tree, fun: Tree, targs: List[Tree], args: List[Tree]) = {
+        def isRecursiveCall   = ctx.currentMethod eq fun.symbol
+        def isMandatory       = ctx.currentMethod hasAnnotation TailrecClass
+        def isEligible        = ctx.currentMethod.isEffectivelyFinal
+        def transformArgs     = transformTrees(args, mkContext(ctx, false))
+        def matchesTypeArgs   = ctx.tparams sameElements (targs map (_.tpe.typeSymbol))
+        def defaultTree       = treeCopy.Apply(tree, target, transformArgs)
+
+        def sameTypeOfThis(receiver: Tree) =
+          receiver.tpe.widen =:= enclosingType.widen
+
+        /** Records failure reason in Context for reporting.
+         */
+        def cannotRewrite(reason: String) = {
+          if (isMandatory)
+            ctx.tailrecFailReason = reason
+
+          defaultTree
+        }
+        def rewriteTailCall(receiver: Tree, otherArgs: List[Tree]): Tree = {
+          log("Rewriting tail recursive method call at: " + fun.pos)
+
+          ctx.accessed = true
+          typed { atPos(fun.pos)(Apply(Ident(ctx.label), receiver :: otherArgs)) }
+        }
+
+        if (!isRecursiveCall)           defaultTree
+        else if (!isEligible)           cannotRewrite("it is neither private nor final so can be overridden")
+        else if (!ctx.tailPos)          cannotRewrite("it contains a recursive call not in tail position")
+        else if (!matchesTypeArgs)      cannotRewrite("it is called recursively with different type arguments")
+        else fun match {
+          case Select(_, _) if forMSIL                  => cannotRewrite("it cannot be optimized on MSIL")
+          case Select(qual, _) if !sameTypeOfThis(qual) => cannotRewrite("it changes type of 'this' on a polymorphic recursive call")
+          case Select(qual, _)                          => rewriteTailCall(qual, transformArgs)
+          case _                                        => rewriteTailCall(This(currentClass), transformArgs)
+        }
+      }
+
       tree match {
 
-        case DefDef(mods, name, tparams, vparams, tpt, rhs) =>
+        case dd @ DefDef(mods, name, tparams, vparams, tpt, rhs) =>
           log("Entering DefDef: " + name)
           val newCtx = mkContext(ctx)
           newCtx.currentMethod = tree.symbol
           newCtx.makeLabel()
-          newCtx.label.setInfo(MethodType(currentClass.tpe :: tree.symbol.tpe.paramTypes, tree.symbol.tpe.finalResultType))
+          val currentClassParam = tree.symbol.newSyntheticValueParam(currentClass.typeOfThis)
+          newCtx.label.setInfo(MethodType(currentClassParam :: tree.symbol.tpe.params, tree.symbol.tpe.finalResultType))
           newCtx.tailPos = true
 
-          val t1 = if (newCtx.currentMethod.isFinal ||
-                       newCtx.currentMethod.enclClass.hasFlag(Flags.MODULE)) {
+          val isEligible  = newCtx.currentMethod.isEffectivelyFinal
+          val isMandatory = dd.symbol.hasAnnotation(TailrecClass) && !forMSIL  // @tailrec annotation indicates mandatory transformation
+
+          if (isEligible) {
             newCtx.tparams = Nil
             log("  Considering " + name + " for tailcalls")
             tree.symbol.tpe match {
               case PolyType(tpes, restpe) =>
                 newCtx.tparams = tparams map (_.symbol)
                 newCtx.label.setInfo(
-                  newCtx.label.tpe.substSym(tpes, tparams map (_.symbol)))
-              case _ => ()
+                newCtx.label.tpe.substSym(tpes, tparams map (_.symbol)))
+              case _ =>
             }
-
-            //println("label.tpe: " + newCtx.label.tpe)
-            var newRHS = transform(rhs, newCtx);
-            if (newCtx.accessed) {
-              log("Rewrote def " + newCtx.currentMethod)
-
-              val newThis = newCtx.currentMethod.newValue(tree.pos, nme.THIS)
-                 .setInfo(currentClass.tpe)
-                 .setFlag(Flags.SYNTHETIC)
-              newRHS =
-                  typed(atPos(tree.pos)(Block(List(
-                    ValDef(newThis, This(currentClass))),
-                    LabelDef(newCtx.label,
-                             newThis :: (List.flatten(vparams) map (_.symbol)),
-                             newRHS))));
-              copy.DefDef(tree, mods, name, tparams, vparams, tpt, newRHS);
-            } else
-              copy.DefDef(tree, mods, name, tparams, vparams, tpt, newRHS);
-          } else {
-            copy.DefDef(tree, mods, name, tparams, vparams, tpt, transform(rhs, newCtx))
           }
+
+          val t1 = treeCopy.DefDef(tree, mods, name, tparams, vparams, tpt, {
+            val transformed = transform(rhs, newCtx)
+
+            transformed match {
+              case newRHS if isEligible && newCtx.accessed =>
+                log("Rewrote def " + newCtx.currentMethod)
+                val newThis = newCtx.currentMethod
+                  . newValue (tree.pos, nme.THIS)
+                  . setInfo (currentClass.typeOfThis)
+                  . setFlag (Flags.SYNTHETIC)
+
+                typed(atPos(tree.pos)(Block(
+                  List(ValDef(newThis, This(currentClass))),
+                  LabelDef(newCtx.label, newThis :: (vparams.flatten map (_.symbol)), newRHS)
+                )))
+              case rhs =>
+                if (isMandatory)
+                  unit.error(dd.pos, "could not optimize @tailrec annotated method: " + newCtx.tailrecFailReason)
+
+                rhs
+            }
+          })
+
           log("Leaving DefDef: " + name)
           t1
 
         case EmptyTree => tree
 
-        case PackageDef(name, stats) =>
+        case PackageDef(_, _) =>
           super.transform(tree)
 
         case ClassDef(_, name, _, _) =>
@@ -210,15 +260,14 @@ abstract class TailCalls extends Transform
           super.transform(tree)
 
         case Block(stats, expr) =>
-          copy.Block(tree,
-                     transformTrees(stats, mkContext(ctx, false)),
-                     transform(expr))
+          treeCopy.Block(tree,
+                         transformTrees(stats, mkContext(ctx, false)),
+                         transform(expr))
 
         case CaseDef(pat, guard, body) =>
-          copy.CaseDef(tree, pat, guard, transform(body))
+          treeCopy.CaseDef(tree, pat, guard, transform(body))
 
-        case Sequence(_) | Alternative(_) |
-             Star(_)     | Bind(_, _) =>
+        case Alternative(_) | Star(_) | Bind(_, _) =>
           throw new RuntimeException("We should've never gotten inside a pattern")
 
         case Function(vparams, body) =>
@@ -229,56 +278,33 @@ abstract class TailCalls extends Transform
           super.transform(tree)
 
         case If(cond, thenp, elsep) =>
-          copy.If(tree, cond, transform(thenp), transform(elsep))
+          treeCopy.If(tree, cond, transform(thenp), transform(elsep))
 
         case Match(selector, cases) => //super.transform(tree);
-          copy.Match(tree, transform(selector, mkContext(ctx, false)), transformTrees(cases).asInstanceOf[List[CaseDef]])
+          treeCopy.Match(tree, transform(selector, mkContext(ctx, false)), transformTrees(cases).asInstanceOf[List[CaseDef]])
 
         case Return(expr) => super.transform(tree)
         case Try(block, catches, finalizer) =>
-          if (finalizer == EmptyTree)
-            super.transform(tree)
-          else
-            copy.Try(tree, transform(block, mkContext(ctx, false)), // recursive calls are not in tail position if there is non-empty finally clause
-                           transformTrees(catches, ctx).asInstanceOf[List[CaseDef]],
-                           transform(finalizer, ctx))
+           // no calls inside a try are in tail position, but keep recursing for nested functions
+          treeCopy.Try(tree, transform(block, mkContext(ctx, false)),
+                       transformTrees(catches, mkContext(ctx, false)).asInstanceOf[List[CaseDef]],
+                       transform(finalizer, mkContext(ctx, false)))
 
         case Throw(expr) => super.transform(tree)
         case New(tpt) => super.transform(tree)
         case Typed(expr, tpt) => super.transform(tree)
 
         case Apply(tapply @ TypeApply(fun, targs), vargs) =>
-          lazy val defaultTree = copy.Apply(tree, tapply, transformTrees(vargs, mkContext(ctx, false)))
-          if ( ctx.currentMethod.isFinal &&
-               ctx.tailPos &&
-               isSameTypes(ctx.tparams, targs map (_.tpe.typeSymbol)) &&
-               isRecursiveCall(fun)) {
-            fun match {
-              case Select(receiver, _) => if (!forMSIL) rewriteTailCall(fun, receiver :: transformTrees(vargs, mkContext(ctx, false))) else defaultTree
-              case _ => rewriteTailCall(fun, This(currentClass) :: transformTrees(vargs, mkContext(ctx, false)))
-            }
-          } else
-            defaultTree
+          rewriteApply(tapply, fun, targs, vargs)
 
         case TypeApply(fun, args) =>
           super.transform(tree)
 
-        case Apply(fun, args) if (fun.symbol == definitions.Boolean_or ||
-                                  fun.symbol == definitions.Boolean_and) =>
-          copy.Apply(tree, fun, transformTrees(args))
-
         case Apply(fun, args) =>
-          lazy val defaultTree = copy.Apply(tree, fun, transformTrees(args, mkContext(ctx, false)))
-          if (ctx.currentMethod.isFinal &&
-              ctx.tailPos &&
-              isRecursiveCall(fun)) {
-            fun match {
-              case Select(receiver, _) => if (!forMSIL) rewriteTailCall(fun, receiver :: transformTrees(args, mkContext(ctx, false))) else defaultTree
-              case _ => rewriteTailCall(fun, This(currentClass) :: transformTrees(args, mkContext(ctx, false)))
-            }
-          } else
-            defaultTree
-
+          if (fun.symbol == Boolean_or || fun.symbol == Boolean_and)
+            treeCopy.Apply(tree, fun, transformTrees(args))
+          else
+            rewriteApply(fun, fun, Nil, args)
 
         case Super(qual, mix) =>
           tree
@@ -299,32 +325,5 @@ abstract class TailCalls extends Transform
 
     def transformTrees(trees: List[Tree], nctx: Context): List[Tree] =
       trees map ((tree) => transform(tree, nctx))
-
-    private def rewriteTailCall(fun: Tree, args: List[Tree]): Tree = {
-      log("Rewriting tail recursive method call at: " +
-                      (fun.pos))
-      ctx.accessed = true
-      //println("fun: " + fun + " args: " + args)
-      typed(atPos(fun.pos)(
-        Apply(Ident(ctx.label), args)))
-    }
-
-    private def isSameTypes(ts1: List[Symbol], ts2: List[Symbol]): Boolean = {
-      def isSameType(t1: Symbol, t2: Symbol) = {
-        t1 == t2
-      }
-      List.forall2(ts1, ts2)(isSameType)
-    }
-
-    /** Returns <code>true</code> if the fun tree refers to the same method as
-     *  the one saved in <code>ctx</code>.
-     *
-     *  @param fun the expression that is applied
-     *  @return    <code>true</code> if the tree symbol refers to the innermost
-     *             enclosing method
-     */
-    private def isRecursiveCall(fun: Tree): Boolean =
-      (fun.symbol eq ctx.currentMethod)
   }
-
 }

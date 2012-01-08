@@ -1,194 +1,287 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Parallel Testing               **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-package scala.tools.partest
+// $Id$
+
+package scala.tools
+package partest
 
 import scala.actors.Actor._
+import scala.util.Properties.setProp
+import scala.tools.nsc.io.{ Directory, Path => SPath }
+import nsc.Settings
+import nsc.util.ClassPath
+import util.PathResolver
+import scala.tools.ant.sabbus.CompilationPathProperty
 
 import java.io.File
 import java.net.URLClassLoader
+import java.lang.reflect.Method
 
 import org.apache.tools.ant.Task
 import org.apache.tools.ant.types.{Path, Reference, FileSet}
 
-class PartestTask extends Task {
+class PartestTask extends Task with CompilationPathProperty {
 
-  def addConfiguredPosTests(input: FileSet): Unit =
+  def addConfiguredPosTests(input: FileSet) {
     posFiles = Some(input)
+  }
 
-  def addConfiguredNegTests(input: FileSet): Unit =
+  def addConfiguredNegTests(input: FileSet) {
     negFiles = Some(input)
+  }
 
-  def addConfiguredRunTests(input: FileSet): Unit =
+  def addConfiguredRunTests(input: FileSet) {
     runFiles = Some(input)
+  }
 
-  def addConfiguredResidentTests(input: FileSet): Unit =
+  def addConfiguredJvmTests(input: FileSet) {
+    jvmFiles = Some(input)
+  }
+
+  def addConfiguredResidentTests(input: FileSet) {
     residentFiles = Some(input)
+  }
 
-  def setClasspath(input: Path): Unit =
+  def addConfiguredBuildManagerTests(input: FileSet) {
+    buildManagerFiles = Some(input)
+  }
+
+  def addConfiguredScalacheckTests(input: FileSet) {
+    scalacheckFiles = Some(input)
+  }
+
+  def addConfiguredScriptTests(input: FileSet) {
+    scriptFiles = Some(input)
+  }
+
+  def addConfiguredShootoutTests(input: FileSet) {
+    shootoutFiles = Some(input)
+  }
+
+  def addConfiguredScalapTests(input: FileSet) {
+    scalapFiles = Some(input)
+  }
+
+  def setSrcDir(input: String) {
+    srcDir = Some(input)
+  }
+
+  def setClasspath(input: Path) {
     if (classpath.isEmpty)
       classpath = Some(input)
     else
       classpath.get.append(input)
+  }
 
   def createClasspath(): Path = {
     if (classpath.isEmpty) classpath = Some(new Path(getProject()))
     classpath.get.createPath()
   }
 
-  def setClasspathref(input: Reference): Unit =
+  def setClasspathref(input: Reference) {
     createClasspath().setRefid(input)
+  }
 
-  def setShowLog(input: Boolean): Unit =
+  def setShowLog(input: Boolean) {
     showLog = input
+  }
 
-  def setShowDiff(input: Boolean): Unit =
+  def setShowDiff(input: Boolean) {
     showDiff = input
+  }
 
-  def setErrorOnFailed(input: Boolean): Unit =
+  def setErrorOnFailed(input: Boolean) {
     errorOnFailed = input
+  }
+
+  def setJavaCmd(input: File) {
+    javacmd = Some(input)
+  }
+
+  def setJavacCmd(input: File) {
+    javaccmd = Some(input)
+  }
+
+  def setScalacOpts(opts: String) {
+    scalacOpts = Some(opts)
+  }
+
+  def setTimeout(delay: String) {
+    timeout = Some(delay)
+  }
+
+  def setDebug(input: Boolean) {
+    debug = input
+  }
+
+  def setJUnitReportDir(input: File) {
+    jUnitReportDir = Some(input)
+  }
 
   private var classpath: Option[Path] = None
+  private var srcDir: Option[String] = None
   private var javacmd: Option[File] = None
+  private var javaccmd: Option[File] = None
   private var showDiff: Boolean = false
   private var showLog: Boolean = false
   private var runFailed: Boolean = false
   private var posFiles: Option[FileSet] = None
   private var negFiles: Option[FileSet] = None
   private var runFiles: Option[FileSet] = None
+  private var jvmFiles: Option[FileSet] = None
   private var residentFiles: Option[FileSet] = None
+  private var buildManagerFiles: Option[FileSet] = None
+  private var scalacheckFiles: Option[FileSet] = None
+  private var scriptFiles: Option[FileSet] = None
+  private var shootoutFiles: Option[FileSet] = None
+  private var scalapFiles: Option[FileSet] = None
   private var errorOnFailed: Boolean = false
+  private var scalacOpts: Option[String] = None
+  private var timeout: Option[String] = None
+  private var jUnitReportDir: Option[File] = None
+  private var debug = false
 
-  private def getPosFiles: Array[File] =
-    if (!posFiles.isEmpty) {
-      val files = posFiles.get
-      (files.getDirectoryScanner(getProject).getIncludedFiles map { fs => new File(files.getDir(getProject), fs) })
-    }
-    else
-      Array()
+  def fileSetToDir(fs: FileSet) = Directory(fs getDir getProject)
+  def fileSetToArray(fs: FileSet): Array[SPath] = {
+    val root = fileSetToDir(fs)
+    (fs getDirectoryScanner getProject).getIncludedFiles map (root / _)
+  }
 
-  private def getNegFiles: Array[File] =
-    if (!negFiles.isEmpty) {
-      val files = negFiles.get
-      (files.getDirectoryScanner(getProject).getIncludedFiles map { fs => new File(files.getDir(getProject), fs) })
-    }
-    else
-      Array()
+  private def getFiles(fileSet: Option[FileSet]): Array[File] = fileSet match {
+    case None     => Array()
+    case Some(fs) => fileSetToArray(fs) filterNot (_ hasExtension "log") map (_.jfile)
+  }
 
-  private def getRunFiles: Array[File] =
-    if (!runFiles.isEmpty) {
-      val files = runFiles.get
-      (files.getDirectoryScanner(getProject).getIncludedFiles map { fs => new File(files.getDir(getProject), fs) })
-    }
-    else
-      Array()
+  private def getFilesAndDirs(fileSet: Option[FileSet]): Array[File] = fileSet match {
+    case None     => Array()
+    case Some(fs) =>
+      def shouldExclude(name: String) = (name endsWith ".obj") || (name startsWith ".")
 
-  private def getResidentFiles: Array[File] =
-    if (!residentFiles.isEmpty) {
-      val files = residentFiles.get
-      (files.getDirectoryScanner(getProject).getIncludedFiles map { fs => new File(files.getDir(getProject), fs) })
-    }
-    else
-      Array()
+      val fileTests = getFiles(Some(fs)) filterNot (x => shouldExclude(x.getName))
+      val dirTests: Iterator[SPath] = fileSetToDir(fs).dirs filterNot (x => shouldExclude(x.name))
+      val dirResult = dirTests.toList.toArray map (_.jfile)
 
+      dirResult ++ fileTests
+  }
 
-  override def execute(): Unit = {
+  private def getPosFiles          = getFilesAndDirs(posFiles)
+  private def getNegFiles          = getFilesAndDirs(negFiles)
+  private def getRunFiles          = getFiles(runFiles)
+  private def getJvmFiles          = getFilesAndDirs(jvmFiles)
+  private def getResidentFiles     = getFiles(residentFiles)
+  private def getBuildManagerFiles = getFilesAndDirs(buildManagerFiles)
+  private def getScalacheckFiles   = getFiles(scalacheckFiles)
+  private def getScriptFiles       = getFiles(scriptFiles)
+  private def getShootoutFiles     = getFiles(shootoutFiles)
+  private def getScalapFiles       = getFiles(scalapFiles)
 
-    if (classpath.isEmpty)
-      error("Mandatory attribute 'classpath' is not set.")
+  override def execute() {
+    if (isPartestDebug)
+      setProp("partest.debug", "true")
 
-    val scalaLibrary =
-      (classpath.get.list map { fs => new File(fs) }) find { f =>
+    srcDir foreach (x => setProp("partest.srcdir", x))
+
+    val classpath = this.compilationPath getOrElse error("Mandatory attribute 'compilationPath' is not set.")
+
+    val scalaLibrary = {
+      (classpath.list map { fs => new File(fs) }) find { f =>
         f.getName match {
           case "scala-library.jar" => true
-          case "lib" if (f.getParentFile.getName == "library") => true
+          case "library" if (f.getParentFile.getName == "classes") => true
           case _ => false
         }
       }
+    } getOrElse error("Provided classpath does not contain a Scala library.")
 
-    if (scalaLibrary.isEmpty)
-      error("Provided classpath does not contain a Scala library.")
+    val antRunner = new scala.tools.partest.nest.AntRunner
+    val antFileManager = antRunner.fileManager
 
-    val classloader = this.getClass.getClassLoader
+    antFileManager.showDiff = showDiff
+    antFileManager.showLog = showLog
+    antFileManager.failed = runFailed
+    antFileManager.CLASSPATH = ClassPath.join(classpath.list: _*)
+    antFileManager.LATEST_LIB = scalaLibrary.getAbsolutePath
 
-    val antRunner: AnyRef =
-      classloader.loadClass("scala.tools.partest.nest.AntRunner").newInstance().asInstanceOf[AnyRef]
-    val antFileManager: AnyRef =
-      antRunner.getClass.getMethod("fileManager", Array()).invoke(antRunner, Array())
+    javacmd foreach (x => antFileManager.JAVACMD = x.getAbsolutePath)
+    javaccmd foreach (x => antFileManager.JAVAC_CMD = x.getAbsolutePath)
+    scalacOpts foreach (antFileManager.SCALAC_OPTS = _)
+    timeout foreach (antFileManager.timeout = _)
 
-    val runMethod =
-      antRunner.getClass.getMethod("reflectiveRunTestsForFiles", Array(classOf[Array[File]], classOf[String]))
+    type TFSet = (Array[File], String, String)
+    val testFileSets = List(
+      (getPosFiles, "pos", "Compiling files that are expected to build"),
+      (getNegFiles, "neg", "Compiling files that are expected to fail"),
+      (getRunFiles, "run", "Compiling and running files"),
+      (getJvmFiles, "jvm", "Compiling and running files"),
+      (getResidentFiles, "res", "Running resident compiler scenarii"),
+      (getBuildManagerFiles, "buildmanager", "Running Build Manager scenarii"),
+      (getScalacheckFiles, "scalacheck", "Running scalacheck tests"),
+      (getScriptFiles, "script", "Running script files"),
+      (getShootoutFiles, "shootout", "Running shootout tests"),
+      (getScalapFiles, "scalap", "Running scalap tests")
+    )
 
-    def runTestsForFiles(kindFiles: Array[File], kind: String): (Int, Int) = {
-      val result = runMethod.invoke(antRunner, Array(kindFiles, kind)).asInstanceOf[Int]
-      (result >> 16, result & 0x00FF)
+    def runSet(set: TFSet): (Int, Int, Iterable[String]) = {
+      val (files, name, msg) = set
+      if (files.isEmpty) (0, 0, List())
+      else {
+        log(msg)
+        val results: Iterable[(String, Int)] = antRunner.reflectiveRunTestsForFiles(files, name)
+        val (succs, fails) = resultsToStatistics(results)
+
+        val failed: Iterable[String] = results collect {
+          case (path, 1)    => path + " [FAILED]"
+          case (path, 2)    => path + " [TIMOUT]"
+        }
+
+        // create JUnit Report xml files if directory was specified
+        jUnitReportDir foreach { d =>
+          d.mkdir
+
+          val report = testReport(name, results, succs, fails)
+          scala.xml.XML.save(d.getAbsolutePath+"/"+name+".xml", report)
+        }
+
+        (succs, fails, failed)
+      }
     }
 
-    def setFileManagerBooleanProperty(name: String, value: Boolean) = {
-      val setMethod =
-        antFileManager.getClass.getMethod(name+"_$eq", Array(classOf[Boolean]))
-      setMethod.invoke(antFileManager, Array(java.lang.Boolean.valueOf(value)))
-    }
+    val _results = testFileSets map runSet
+    val allSuccesses = _results map (_._1) sum
+    val allFailures = _results map (_._2) sum
+    val allFailedPaths = _results flatMap (_._3)
 
-    def setFileManagerStringProperty(name: String, value: String) = {
-      val setMethod =
-        antFileManager.getClass.getMethod(name+"_$eq", Array(classOf[String]))
-      setMethod.invoke(antFileManager, Array(value))
-    }
+    def f = if (errorOnFailed && allFailures > 0) error(_) else log(_: String)
+    def s = if (allFailures > 1) "s" else ""
+    val msg =
+      if (allFailures > 0)
+        "Test suite finished with %d case%s failing:\n".format(allFailures, s)+
+        allFailedPaths.mkString("\n")
+      else if (allSuccesses == 0) "There were no tests to run."
+      else "Test suite finished with no failures."
 
-    setFileManagerBooleanProperty("showDiff", showDiff)
-    setFileManagerBooleanProperty("showLog", showLog)
-    setFileManagerBooleanProperty("failed", runFailed)
-    if (!javacmd.isEmpty)
-      setFileManagerStringProperty("JAVACMD", javacmd.get.getAbsolutePath)
-    setFileManagerStringProperty("CLASSPATH", classpath.get.list.mkString(File.pathSeparator))
-    setFileManagerStringProperty("LATEST_LIB", scalaLibrary.get.getAbsolutePath)
-
-    var allSucesses: int = 0
-    var allFailures: int = 0
-
-    if (getPosFiles.size > 0) {
-      log("Compiling files that are expected to build")
-      val (successes, failures) = runTestsForFiles(getPosFiles, "pos")
-      allSucesses += successes
-      allFailures += failures
-    }
-
-    if (getNegFiles.size > 0) {
-      log("Compiling files that are expected to fail")
-      val (successes, failures) = runTestsForFiles(getNegFiles, "neg")
-      allSucesses += successes
-      allFailures += failures
-    }
-
-    if (getRunFiles.size > 0) {
-      log("Compiling and running files")
-      val (successes, failures) = runTestsForFiles(getRunFiles, "run")
-      allSucesses += successes
-      allFailures += failures
-    }
-
-    if (getResidentFiles.size > 0) {
-      log("Running resident compiler scenarii")
-      val (successes, failures) = runTestsForFiles(getResidentFiles, "res")
-      allSucesses += successes
-      allFailures += failures
-    }
-
-    if ((getPosFiles.size + getNegFiles.size + getRunFiles.size + getResidentFiles.size) == 0)
-      log("There where no tests to run.")
-    else if (allFailures == 0)
-      log("Test suite finished with no failures.")
-    else if (errorOnFailed)
-      error("Test suite finished with " + allFailures + " case" + (if (allFailures > 1) "s" else "") + " failing.")
-    else
-      log("Test suite finished with " + allFailures + " case" + (if (allFailures > 1) "s" else "") + " failing.")
-
+    f(msg)
   }
+  def oneResult(res: (String, Int)) =
+    <testcase name={res._1}>{
+  	  res._2 match {
+  	    case 0 => scala.xml.NodeSeq.Empty
+        case 1 => <failure message="Test failed"/>
+        case 2 => <failure message="Test timed out"/>
+  	  }
+  	}</testcase>
 
+  def testReport(kind: String, results: Iterable[(String, Int)], succs: Int, fails: Int) =
+    <testsuite name={kind} tests={(succs + fails).toString} failures={fails.toString}>
+  	  <properties/>
+  	  {
+  	    results.map(oneResult(_))
+  	  }
+    </testsuite>
 }

@@ -1,11 +1,12 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode;
+package scala.tools.nsc
+package backend
+package icode;
 
 import java.io.PrintWriter;
 

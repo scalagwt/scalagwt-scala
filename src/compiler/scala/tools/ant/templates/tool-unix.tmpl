@@ -1,9 +1,7 @@
 #!/bin/sh
-
+#
 ##############################################################################
-# @name@ @version@
-##############################################################################
-# @copyright@
+# Copyright 2002-2010, LAMP/EPFL
 #
 # This is free software; see the distribution for copying conditions.
 # There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
@@ -11,10 +9,8 @@
 ##############################################################################
 
 cygwin=false;
-darwin=false;
 case "`uname`" in
     CYGWIN*) cygwin=true ;;
-    Darwin*) darwin=true ;;
 esac
 
 # Finding the root folder for this Scala distribution
@@ -30,33 +26,28 @@ while [ -h "$SOURCE" ]; do
         SOURCE=`dirname "$SOURCE"`/${TARGET:-.};
     fi;
 done;
-SCALA_HOME=`dirname "$SOURCE"`/..;
-SCALA_HOME=`cd "$SCALA_HOME"; pwd`;
+
+# see #2092
+SCALA_HOME=`dirname "$SOURCE"`
+SCALA_HOME=`cd "$SCALA_HOME"; pwd -P`
+SCALA_HOME=`cd "$SCALA_HOME"/..; pwd`
+
+# Remove spaces from SCALA_HOME on windows
 if $cygwin; then
     SCALA_HOME=`cygpath --windows --short-name "$SCALA_HOME"`
     SCALA_HOME=`cygpath --unix "$SCALA_HOME"`
 fi
 
 # Constructing the extension classpath
-EXTENSION_CLASSPATH="@extclasspath@"
-if [ -z "$EXTENSION_CLASSPATH" ] ; then
-    for ext in `ls -d "$SCALA_HOME"/lib/*` ; do
-        if [ -z "$EXTENSION_CLASSPATH" ] ; then
-            EXTENSION_CLASSPATH="$ext"
+TOOL_CLASSPATH="@classpath@"
+if [ -z "$TOOL_CLASSPATH" ] ; then
+    for ext in "$SCALA_HOME"/lib/* ; do
+        if [ -z "$TOOL_CLASSPATH" ] ; then
+            TOOL_CLASSPATH="$ext"
         else
-            EXTENSION_CLASSPATH="$EXTENSION_CLASSPATH:$ext"
+            TOOL_CLASSPATH="$TOOL_CLASSPATH:$ext"
         fi
     done
-fi
-
-# Setting the boot class-path to be the standard library (either as a JAR or a folder)
-BOOT_CLASSPATH="@bootclasspath@"
-if [ -z "$BOOT_CLASSPATH" ] ; then
-    if [ -f "$SCALA_HOME/lib/scala-library.jar" ] ; then
-        BOOT_CLASSPATH="$SCALA_HOME/lib/scala-library.jar"
-    elif [ -d "$SCALA_HOME/lib/library" ] ; then
-        BOOT_CLASSPATH="$SCALA_HOME/lib/library"
-    fi
 fi
 
 if $cygwin; then
@@ -66,11 +57,27 @@ if $cygwin; then
         format=windows
     fi
     SCALA_HOME=`cygpath --$format "$SCALA_HOME"`
-    EXTENSION_CLASSPATH=`cygpath --path --$format "$EXTENSION_CLASSPATH"`
-    BOOT_CLASSPATH=`cygpath --path --$format "$BOOT_CLASSPATH"`
+    TOOL_CLASSPATH=`cygpath --path --$format "$TOOL_CLASSPATH"`
 fi
 
 # Reminder: substitution ${JAVA_OPTS:=-Xmx256M -Xms16M} DO NOT work on Solaris
 [ -n "$JAVA_OPTS" ] || JAVA_OPTS="@javaflags@"
 
-${JAVACMD:=java} $JAVA_OPTS -Xbootclasspath/a:"$BOOT_CLASSPATH" -cp "$EXTENSION_CLASSPATH" -Dscala.home="$SCALA_HOME" -Denv.classpath="$CLASSPATH" -Denv.emacs="$EMACS" @properties@ @class@ @toolflags@ "$@@"
+# break out -D options and add them to JAVA_OPTS as well so they reach the
+# underlying JVM in time to do some good.
+for i
+do
+  case "$i" in
+    -D*)
+      JAVA_OPTS="$JAVA_OPTS $i" ;;
+    *)
+      ;;
+  esac
+done 
+
+
+if [ -z "$JAVACMD" -a -n "$JAVA_HOME" -a -x "$JAVA_HOME/bin/java" ]; then
+    JAVACMD="$JAVA_HOME/bin/java"
+fi
+
+exec "${JAVACMD:=java}" $JAVA_OPTS -cp "$TOOL_CLASSPATH" -Dscala.home="$SCALA_HOME" -Denv.emacs="$EMACS" @properties@ @class@ @toolflags@ "$@@"

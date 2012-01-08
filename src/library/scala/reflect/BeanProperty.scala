@@ -1,33 +1,34 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.reflect
 
+import annotation.target._
+
 /** <p>
- *    This attribute adds a setter and a getter method, following the
- *    Java Bean convention (first letter of the property is capitalized)
- *    used by popular Java web frameworks. For example:
+ *    When attached to a field, this annotation adds a setter and a getter
+ *    method following the  Java Bean convention. For example:
  *  </p><pre>
  *    @BeanProperty
  *    <b>var</b> status = ""</pre>
  *  <p>
- *    adds the following methods to the <b>generated</b> code
+ *    adds the following methods to the class:
  *  </p><pre>
  *    <b>def</b> setStatus(s: String) { <b>this</b>.status = s }
  *    <b>def</b> getStatus: String = <b>this</b>.status
  *  </pre>
  *  <p>
- *    However, you cannot call <code>setStatus</code> from
- *    <a href="http://scala-lang.org/" target="_top">Scala</a>,
- *    you should use the normal Scala access and assignment.
+ *    For fields of type <code>Boolean</code>, if you need a getter
+ *    named <code>isStatus</code>, use the
+ *    <code>scala.reflect.BooleanBeanProperty</code> annotation instead.
  *  </p>
  */
-class BeanProperty extends Annotation
+@field
+class BeanProperty extends StaticAnnotation

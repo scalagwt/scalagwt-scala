@@ -18,11 +18,11 @@ import scala.tools.nsc.symtab.SymbolTable
 trait JavaDefinitions {
   val global: SymbolTable
   import global._
-  
+
   object javaDefinitions {
     import definitions.{getMember, getModule}
     lazy val BoxesRuntimeModule = getModule("scala.runtime.BoxesRunTime")
-    
+
     /**
      * A map from symbols of primitive types to the static method
      * used to box them.
@@ -41,7 +41,7 @@ trait JavaDefinitions {
       (Map.empty[Symbol, Symbol] /: boxNames.keys) ((map,prim) =>
         map + (prim -> getMember(BoxesRuntimeModule, boxNames(prim))))
     }
-    
+
     /**
      * A map from symbols of primitive types to the static method
      * used to unbox them.
@@ -60,7 +60,7 @@ trait JavaDefinitions {
       (Map.empty[Symbol, Symbol] /: unboxNames.keys) ((map,prim) =>
         map + (prim -> getMember(BoxesRuntimeModule, unboxNames(prim))))
     }
-    
+
 
     lazy val JavaSourceMiscModule: Symbol = getModule("scala.runtime.JavaSourceMisc")
     lazy val JavaSourceMisc_hiddenThrow = getMember(JavaSourceMiscModule, "hiddenThrow")

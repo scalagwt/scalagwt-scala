@@ -2,14 +2,8 @@
 object Test {
 
   import scala.testing.SUnit._
-  import scala.xml.{MetaData, Null, Parsing, PrefixedAttribute, UnprefixedAttribute }
+  import scala.xml.{MetaData, Null, Utility, PrefixedAttribute, UnprefixedAttribute }
 
-  class ParsingTest extends TestCase("scala.xml.Parsing") with Assert {
-    override def runTest = {
-      assertTrue(Parsing.isNameStart('b'))
-      assertFalse(Parsing.isNameStart(':'))
-    }
-  }
   class MetaDataTest extends TestCase("scala.xml.MetaData") with Assert {
 
     import scala.xml.{HasKeyValue, TopScope, NamespaceBinding, Node, Atom, Text }
@@ -65,6 +59,10 @@ object Test {
 
   class UtilityTest extends TestCase("scala.xml.Utility") with Assert {
     def runTest() = {
+      assertTrue(Utility.isNameStart('b'))
+      assertFalse(Utility.isNameStart(':'))
+
+
     val x = <foo>
                <toomuchws/>
             </foo>
@@ -92,19 +90,20 @@ object Test {
 	 val pp = new xml.PrettyPrinter(80,5)
 	assertEquals("pretty print sorted attrib:"+pp.format(q), "<a a=\"2\" g=\"3\" j=\"2\" oo=\"2\"></a>", pp.format(q))
 
+    <hi>
+      <there/>
+      <guys/>
+    </hi>.hashCode // Bug #777
   }
   }
 
   def main(args:Array[String]) = {
     val ts = new TestSuite(
-      new ParsingTest,
       new MetaDataTest,
       new UtilityTest
     )
     val tr = new TestResult()
     ts.run(tr)
-    for(val failure <- tr.failures) {
-      Console.println(failure)
-    }
+    tr.failures foreach Console.println
   }
 }

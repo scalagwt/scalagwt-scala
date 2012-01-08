@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.symtab
+package scala.tools.nsc
+package symtab
 
 trait InfoTransformers {
   self: SymbolTable =>
@@ -31,6 +31,10 @@ trait InfoTransformers {
       }
     }
 
+    /** The InfoTransformer whose (pid == from).
+     *  If no such exists, the InfoTransformer with the next
+     *  higher pid.
+     */
     def nextFrom(from: Phase#Id): InfoTransformer =
       if (from == this.pid) this
       else if (from < this.pid)

@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -39,23 +37,13 @@ class NodeBuffer extends scala.collection.mutable.ArrayBuffer[Node] {
    */
   def &+(o: Any): NodeBuffer = {
     o match {
-      case null | _:Unit | Text("")=>
-	// ignore
-
-      case it:Iterator[_] =>
-        while (it.hasNext)
-          this &+ it.next
-
-      case n:Node =>
-        super.+(n)
-
-      case ns:Iterable[_] =>
-        this &+ ns.elements
-
-      case d =>
-        super.+(new Atom(d))
+      case null | _: Unit | Text("")  => // ignore
+      case it: Iterator[_]            => it foreach &+
+      case n: Node                    => super.+=(n)
+      case ns: Iterable[_]            => this &+ ns.iterator
+      case ns: Array[_]               => this &+ ns.iterator
+      case d                          => super.+=(new Atom(d))
     }
     this
   }
-
 }

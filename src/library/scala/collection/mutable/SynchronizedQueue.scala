@@ -1,25 +1,31 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
 
-/** This is a synchronized version of the <code>Queue[T]</code> class. It
+/** This is a synchronized version of the `Queue[T]` class. It
  *  implements a data structure that allows one to insert and retrieve
  *  elements in a first-in-first-out (FIFO) manner.
  *
+ *  @tparam A     type of elements contained in this synchronized queue.
+ *
  *  @author  Matthias Zenger
  *  @version 1.0, 03/05/2004
+ *  @since   1
+ *  @define Coll SynchronizedQueue
+ *  @define coll synchronized queue
  */
 class SynchronizedQueue[A] extends Queue[A] {
+  import scala.collection.Traversable
 
   /** Checks if the queue is empty.
    *
@@ -31,23 +37,15 @@ class SynchronizedQueue[A] extends Queue[A] {
    *
    *  @param  elem        the element to insert
    */
-  override def +=(elem: A): Unit = synchronized { super.+=(elem) }
+  override def +=(elem: A): this.type = synchronized[this.type] { super.+=(elem) }
 
-  /** Adds all elements provided by an <code>Iterable</code> object
+  /** Adds all elements provided by a `TraversableOnce` object
    *  at the end of the queue. The elements are prepended in the order they
    *  are given out by the iterator.
    *
-   *  @param  iter        an iterable object
+   *  @param  xs        a traversable object
    */
-  override def ++=(iter: Iterable[A]): Unit = synchronized { super.++=(iter) }
-
-  /** Adds all elements provided by an iterator
-   *  at the end of the queue. The elements are prepended in the order they
-   *  are given out by the iterator.
-   *
-   *  @param  it        an iterator
-   */
-  override def ++=(it: Iterator[A]): Unit = synchronized { super.++=(it) }
+  override def ++=(xs: TraversableOnce[A]): this.type = synchronized[this.type] { super.++=(xs) }
 
   /** Adds all elements to the queue.
    *
@@ -79,13 +77,6 @@ class SynchronizedQueue[A] extends Queue[A] {
    *  @return true, iff both queues contain the same sequence of elements.
    */
   override def equals(that: Any): Boolean = synchronized { super.equals(that) }
-
-  /** The hashCode method always yields an error, since it is not
-   *  safe to use mutable queues as keys in hash tables.
-   *
-   *  @return never.
-   */
-  override def hashCode(): Int = synchronized { super.hashCode() }
 
   /** Returns a textual representation of a queue as a string.
    *

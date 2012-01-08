@@ -1,19 +1,14 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala
-
-import scala.collection.jcl
-
-private[scala] object internedSymbols extends jcl.WeakHashMap[String, ref.WeakReference[Symbol]]
 
 /** <p>
  *    This class provides a simple way to get unique objects for
@@ -34,7 +29,6 @@ private[scala] object internedSymbols extends jcl.WeakHashMap[String, ref.WeakRe
  */
 @serializable
 final class Symbol private (val name: String) {
-
   /** Converts this symbol to a string.
    */
   override def toString(): String = "'" + name
@@ -43,27 +37,55 @@ final class Symbol private (val name: String) {
   private def readResolve(): Any = Symbol.apply(name)
 }
 
-object Symbol {
+object Symbol extends UniquenessCache[String, Symbol]
+{
+  protected def valueFromKey(name: String): Symbol = new Symbol(name)
+  protected def keyFromValue(sym: Symbol): Option[String] = Some(sym.name)
+}
 
-  /** <p>
-   *    Makes this symbol into a unique reference.
-   *  </p>
-   *  <p>
-   *    If two interened symbols are equal (i.e. they have the same name)
-   *    then they must be identical (wrt reference equality).
-   *  </p>
-   *
-   *  @return the unique reference to this string.
-   */
-  def apply(name: String): Symbol = internedSymbols.synchronized {
-    internedSymbols.get(name).flatMap(_.get) match {
-    case Some(sym) => sym
-    case _ =>
-      val sym = new Symbol(name)
-      internedSymbols(name) = new ref.WeakReference(sym)
-      sym
+/** This is private so it won't appear in the library API, but
+  * abstracted to offer some hope of reusability.  */
+private[scala] abstract class UniquenessCache[K, V >: Null]
+{
+  import java.lang.ref.WeakReference
+  import java.util.WeakHashMap
+  import java.util.concurrent.locks.ReentrantReadWriteLock
+
+  private val rwl = new ReentrantReadWriteLock()
+  private val rlock = rwl.readLock
+  private val wlock = rwl.writeLock
+  private val map = new WeakHashMap[K, WeakReference[V]]
+
+  protected def valueFromKey(k: K): V
+  protected def keyFromValue(v: V): Option[K]
+
+  def apply(name: K): V = {
+    def cached(): V = {
+      rlock.lock
+      try {
+        val reference = map get name
+        if (reference == null) null
+        else reference.get  // will be null if we were gc-ed
+      }
+      finally rlock.unlock
     }
-  }
+    def updateCache(): V = {
+      wlock.lock
+      try {
+        val res = cached()
+        if (res != null) res
+        else {
+          val sym = valueFromKey(name)
+          map.put(name, new WeakReference(sym))
+          sym
+        }
+      }
+      finally wlock.unlock
+    }
 
-  def unapply(other: Symbol): Option[String] = Some(other.name)
+    val res = cached()
+    if (res == null) updateCache()
+    else res
+  }
+  def unapply(other: V): Option[K] = keyFromValue(other)
 }

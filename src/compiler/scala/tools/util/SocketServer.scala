@@ -1,21 +1,30 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 package scala.tools.util
 
-import java.lang.System
-import java.io.PrintWriter
-import java.io.BufferedOutputStream
-import java.io.{BufferedReader, InputStreamReader}
-import java.io.IOException
-import java.net.ServerSocket
+import java.io.{ PrintWriter, BufferedOutputStream, BufferedReader, InputStreamReader, IOException }
+import java.net.{ Socket, ServerSocket, SocketException, SocketTimeoutException }
+
+object SocketServer
+{
+  // After 30 idle minutes, politely exit.
+  // Should the port file disappear, and the clients
+  // therefore unable to contact this server instance,
+  // the process will just eventually terminate by itself.
+  val IdleTimeout = 1800000
+  val BufferSize  = 10240
+
+  def bufferedReader(s: Socket) = new BufferedReader(new InputStreamReader(s.getInputStream()))
+  def bufferedOutput(s: Socket) = new BufferedOutputStream(s.getOutputStream, BufferSize)
+}
+import SocketServer._
 
 /** The abstract class <code>SocketServer</code> implements the server
  *  communication for the fast Scala compiler.
@@ -23,8 +32,8 @@ import java.net.ServerSocket
  *  @author  Martin Odersky
  *  @version 1.0
  */
-abstract class SocketServer {
-
+abstract class SocketServer
+{
   def shutDown: Boolean
   def session()
 
@@ -36,46 +45,55 @@ abstract class SocketServer {
     exit(1)
   }
 
-  val port: Int = try {
-    val s = new ServerSocket(0) // a port of 0 creates a socket on any free port.
-    val p = s.getLocalPort()
-    s.close()
-    p
-  } catch {
-    case e: IOException =>
-      fatal("Could not listen on any port; exiting.")
+  private def warn(msg: String) {
+    System.err.println(msg)
+  }
+
+  // called after a timeout is detected,
+  // for SocketServer subclasses to perform
+  // some cleanup, if any
+  def timeout() {}
+
+  val serverSocket =
+    try new ServerSocket(0)
+    catch { case e: IOException => fatal("Could not listen on any port; exiting.") }
+
+  val port: Int = serverSocket.getLocalPort()
+
+  // @todo: this is going to be a prime candidate for ARM
+  def doSession(clientSocket: Socket) = {
+    out = new PrintWriter(clientSocket.getOutputStream(), true)
+    in = bufferedReader(clientSocket)
+    val bufout = bufferedOutput(clientSocket)
+
+    scala.Console.withOut(bufout) { session() }
+
+    bufout.close()
+    out.close()
+    in.close()
   }
 
   def run() {
-    while (!shutDown) {
-      val serverSocket = try {
-        new ServerSocket(port)
-      } catch {
-        case e: IOException =>
-          fatal("Could not listen on port: " + port + "; exiting.")
-      }
-      val clientSocket = try {
-        serverSocket.accept()
-      } catch {
-        case e: IOException =>
-          fatal("Accept on port " + port + " failed; exiting.")
-      }
+    def fail(s: String) = fatal(s format port)
 
-      out = new PrintWriter(clientSocket.getOutputStream(), true)
-      in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))
-      val bufout = new BufferedOutputStream(clientSocket.getOutputStream, 10240)
-
-      scala.Console.withOut(bufout) {
-        session()
-      }
-
-      bufout.close()
-      out.close()
-      in.close()
-      clientSocket.close()
-      serverSocket.close()
+    try serverSocket setSoTimeout IdleTimeout catch {
+      case e: SocketException => fail("Could not set timeout on port: %d; exiting.")
     }
+
+    try {
+      while (!shutDown) {
+        val clientSocket = try serverSocket.accept() catch {
+          case e: IOException => fail("Accept on port %d failed; exiting.")
+        }
+        doSession(clientSocket)
+        clientSocket.close()
+      }
+    }
+    catch {
+      case e: SocketTimeoutException =>
+        warn("Timeout elapsed with no requests from clients on port %d; exiting" format port)
+        timeout()
+    }
+    serverSocket.close()
   }
-
 }
-

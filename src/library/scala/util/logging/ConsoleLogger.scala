@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.util.logging
@@ -18,11 +17,9 @@ package scala.util.logging
  *  @author  Burak Emir
  *  @version 1.0
  */
-trait ConsoleLogger {
+trait ConsoleLogger extends Logged {
 
   /** logs argument to Console using <code>Console.println</code>
-   *
-   *  @param msg ...
    */
-  def log(msg: String): Unit = Console.println(msg)
+  override def log(msg: String): Unit = Console.println(msg)
 }

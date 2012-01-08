@@ -1,44 +1,39 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |                                         **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
+package scala.collection
 
-package scala.collection;
+import generic._
+import mutable.Builder
 
 /** A map whose keys are sorted.
  *
  *  @author Sean McDirmid
+ *  @author Martin Odersky
+ *  @version 2.8
+ *  @since   2.4
  */
-trait SortedMap[K,+E] extends Map[K,E] with Sorted[K,Tuple2[K,E]] {
-  override def firstKey : K = elements.next._1;
-  override def lastKey : K = {
-    val i = elements;
-    var last : K = i.next._1;
-    while (i.hasNext) last = i.next._1;
-    last;
-  }
+trait SortedMap[A, +B] extends Map[A, B] with SortedMapLike[A, B, SortedMap[A, B]] {
+  /** Needs to be overridden in subclasses. */
+  override def empty: SortedMap[A, B] = SortedMap.empty[A, B]
 
-  // XXX: implement default version
-  override def rangeImpl(from : Option[K], until : Option[K]) : SortedMap[K,E];
-  override def from(from: K) = rangeImpl(Some(from), None);
-  override def until(until: K) = rangeImpl(None, Some(until));
-  override def range(from: K, until: K) = rangeImpl(Some(from),Some(until));
-
-  protected class DefaultKeySet extends SortedSet[K] {
-    def size = SortedMap.this.size
-    def contains(key : K) = SortedMap.this.contains(key)
-    def elements = SortedMap.this.elements.map(_._1)
-    def compare(k0 : K, k1 : K) = SortedMap.this.compare(k0, k1);
-    override def rangeImpl(from : Option[K], until : Option[K]) : SortedSet[K] = {
-      val map = SortedMap.this.rangeImpl(from,until);
-      new map.DefaultKeySet;
-    }
-  }
-  // XXX: implement default version
-  override def keySet : SortedSet[K] = new DefaultKeySet;
+  override protected[this] def newBuilder: Builder[(A, B), SortedMap[A, B]] =
+    immutable.SortedMap.newBuilder[A, B]
 }
+
+/**
+ * @since 2.8
+ */
+object SortedMap extends SortedMapFactory[SortedMap] {
+  def empty[A, B](implicit ord: Ordering[A]): immutable.SortedMap[A, B] = immutable.SortedMap.empty[A, B](ord)
+
+  implicit def canBuildFrom[A, B](implicit ord: Ordering[A]): CanBuildFrom[Coll, (A, B), SortedMap[A, B]] = new SortedMapCanBuildFrom[A, B]
+}
+
+
+

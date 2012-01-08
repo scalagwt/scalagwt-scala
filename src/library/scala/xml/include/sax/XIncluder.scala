@@ -1,29 +1,21 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-package scala.xml.include.sax
+package scala.xml
+package include.sax
 
-import org.xml.sax.SAXException
-import org.xml.sax.SAXParseException
-import org.xml.sax.ContentHandler
-import org.xml.sax.EntityResolver
-import org.xml.sax.helpers.XMLReaderFactory
-import org.xml.sax.XMLReader
-import org.xml.sax.Locator
-import org.xml.sax.Attributes
+import scala.xml.include._
+import collection.mutable.Stack
+
+import org.xml.sax.{ ContentHandler, XMLReader, Locator, Attributes }
 import org.xml.sax.ext.LexicalHandler
-
-import java.io.{File, IOException, OutputStream, OutputStreamWriter,
-                UnsupportedEncodingException, Writer}
-import java.net.{MalformedURLException, URL}
-import java.util.Stack
+import java.io.{ File, OutputStream, OutputStreamWriter, Writer, IOException }
 
 /** XIncluder is a SAX <code>ContentHandler</code>
  * that writes its XML document onto an output stream after resolving
@@ -33,8 +25,7 @@ import java.util.Stack
  *   based on Eliotte Rusty Harold's SAXXIncluder
  * </p>
  */
-class XIncluder(outs:OutputStream, encoding:String) extends Object
-with ContentHandler with LexicalHandler {
+class XIncluder(outs: OutputStream, encoding: String) extends ContentHandler with LexicalHandler {
 
   var out = new OutputStreamWriter(outs, encoding)
 
@@ -151,7 +142,7 @@ with ContentHandler with LexicalHandler {
   def startDTD(name: String, publicID: String, systemID: String) {
     inDTD = true
     // if this is the source document, output a DOCTYPE declaration
-    if (entities.size() == 0) {
+    if (entities.isEmpty) {
       var id = ""
       if (publicID != null) id = " PUBLIC \"" + publicID + "\" \"" + systemID + '"';
       else if (systemID != null) id = " SYSTEM \"" + systemID + '"';
@@ -167,7 +158,7 @@ with ContentHandler with LexicalHandler {
   def endDTD() {}
 
   def startEntity(name: String) {
-    entities.push(name)
+    entities push name
   }
 
   def endEntity(name: String) {

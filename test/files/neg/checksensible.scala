@@ -1,15 +1,13 @@
 class Test {
   var c = 0
-  println((c = 1) > 0)
-  println((c = 1) <= 0)
   println((c = 1) == 0)
 
   println(1 == "abc")
   println(1 != true)
 
-  println(((x: int) => x + 1) == null)
+  println(((x: Int) => x + 1) == null)
   println(new Object == new Object)
-  println(new Array(1) != new Array(1))
+  println(new Exception() != new Exception())
 
   val foo: Array[String] = Array("1","2","3")
   if (foo.length == null) //  == 0 makes more sense, but still
@@ -32,7 +30,7 @@ class Test {
   println(new Object == 1)
   println(1 == (new Object))
 
-  def isabstract: int
+  def isabstract: Int
 
   println(1 != println)
   println(1 != 'sym)

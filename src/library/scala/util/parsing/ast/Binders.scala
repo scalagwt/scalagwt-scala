@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -92,7 +92,7 @@ trait Binders extends AbstractSyntax with Mappable {
    */
   class Scope[binderType <: NameElement] extends Iterable[binderType]{
     private val substitution: Map[binderType, Element] =
-      new scala.collection.jcl.LinkedHashMap[binderType, Element] // a LinkedHashMap is ordered by insertion order -- important!
+      new scala.collection.mutable.LinkedHashMap[binderType, Element] // a LinkedHashMap is ordered by insertion order -- important!
 
     /** Returns a unique number identifying this Scope (only used for representation purposes).
      */
@@ -102,20 +102,20 @@ trait Binders extends AbstractSyntax with Mappable {
      * For a typical let-binding, this is just the variable name. For an argument list to a method body,
      * there is one binder per formal argument.
      */
-    def elements = substitution.keys
+    def iterator = substitution.keysIterator
 
     /** Return the `i'th binder in this scope.*/
-    def apply(i: Int): binderType = elements.toList(i)
+    def apply(i: Int): binderType = this.iterator.toList(i)
 
     /** Returns true if this container has a binder equal (==) to `b'
      */
     def binds(b: binderType): Boolean = substitution.contains(b)
 
     def indexFor(b: binderType): Option[Int] = {
-      val iter = elements.counted
-      for (that <- iter) {
+      val iter = this.iterator.zipWithIndex
+      for ((that, count) <- iter) {
         if (that.name == b.name) // TODO: why do name equals and structural equals differ?
-          return Some(iter.count)
+          return Some(count + 1)
         else
           Console.println(that+"!="+b)
       }
@@ -127,10 +127,8 @@ trait Binders extends AbstractSyntax with Mappable {
      * (e.g. the variable name in a local variable declaration)
      *
      * @param b a new binder that is distinct from the existing binders in this scope,
-     *           and shares their conceptual scope
-     * @pre canAddBinder(b)
-     * @post binds(b)
-     * @post getElementFor(b) eq b
+     *           and shares their conceptual scope. canAddBinder(b)` must hold.`
+     * @return `binds(b)` and `getElementFor(b) eq b` will hold.
      */
     def addBinder(b: binderType) { substitution += Pair(b, b) }
 
@@ -140,7 +138,7 @@ trait Binders extends AbstractSyntax with Mappable {
      *       linked to its `UnderBinder' (i.e., while parsing, BoundElements may be added to the Scope
      *       associated to the UnderBinder, but after that, no changes are allowed, except for substitution)?
      *
-     * @returns true if `b' had not been added yet
+     * @return true if `b' had not been added yet
      */
     def canAddBinder(b: binderType): Boolean = !binds(b)
 
@@ -150,30 +148,28 @@ trait Binders extends AbstractSyntax with Mappable {
      * a proxy for the element it is bound to by its binder, `substitute' may thus be thought of
      * as replacing all the bound occurrences of the given binder `b' by their new value `value'.
      *
-     * @param b    the binder whose bound occurrences should be given a new value
+     * @param b    the binder whose bound occurrences should be given a new value. `binds(b)` must hold.
      * @param value the new value for the bound occurrences of `b'
-     * @pre binds(b)
-     * @post getElementFor(b) eq value
+     * @return `getElementFor(b) eq value` will hold.
      */
     def substitute(b: binderType, value: Element): Unit = substitution(b) = value
 
     /** Returns the current value for the bound occurrences of `b'.
      *
-     * @param b the contained binder whose current value should be returned
-     * @pre binds(b)
+     * @param b the contained binder whose current value should be returned `binds(b)` must hold.
      */
     def getElementFor(b: binderType): Element = substitution(b)
 
-    override def toString: String =  elements.toList.mkString("[",", ","]")+"!"+id // TODO show substitution?
+    override def toString: String =  this.iterator.toList.mkString("[",", ","]")+"!"+id // TODO show substitution?
 
     /** Returns a list of strings that represent the binder elements, each tagged with this scope's id.*/
-    def bindersToString: List[String] = (for(val b <- elements) yield b+"!"+id).toList
+    def bindersToString: List[String] = (for(b <- this.iterator) yield b+"!"+id).toList
 
     /** Return a new inheriting scope that won't check whether binding is respected until the scope is left (so as to support forward references) **/
     def allowForwardRef: Scope[binderType] = this // TODO
 
     /** Return a nested scope -- binders entered into it won't be visible in this scope, but if this scope allows forward references,
-        the binding in the returned scope also does, and thus the check that all variables are bound is deferred until this scope is left  **/
+      * the binding in the returned scope also does, and thus the check that all variables are bound is deferred until this scope is left  **/
     def nested: Scope[binderType] = this // TODO
 
     def onEnter {}
@@ -193,7 +189,7 @@ trait Binders extends AbstractSyntax with Mappable {
    * A `BoundElement' is represented textually by its bound element, followed by its scope's `id'.
    * For example: `x@1' represents the variable `x' that is bound in the scope with `id' `1'.
    *
-   * @invar scope.binds(el)
+   * @note `scope.binds(el)` holds before and after.
    */
   case class BoundElement[boundElement <: NameElement](el: boundElement, scope: Scope[boundElement]) extends NameElement with Proxy with BindingSensitive {
     /** Returns the element this `BoundElement' stands for.
@@ -276,7 +272,7 @@ trait Binders extends AbstractSyntax with Mappable {
   implicit def ScopeIsMappable[bt <: NameElement <% Mappable[bt]](scope: Scope[bt]): Mappable[Scope[bt]] =
     new Mappable[Scope[bt]] {
       def gmap(f: Mapper): Scope[bt] = { val newScope = new Scope[bt]()
-        for(val b <- scope) newScope.addBinder(f(b))
+        for(b <- scope) newScope.addBinder(f(b))
         newScope
       }
     }
@@ -300,7 +296,7 @@ trait Binders extends AbstractSyntax with Mappable {
    *
    * The name `sequence' comes from the fact that this method's type is equal to the type of monadic sequence.
    *
-   * @pre !orig.isEmpty implies orig.forall(ub => ub.scope eq orig(0).scope)
+   * @note `!orig.isEmpty` implies `orig.forall(ub => ub.scope eq orig(0).scope)`
    *
    */
   def sequence[bt <: NameElement, st <% Mappable[st]](orig: List[UnderBinder[bt, st]]): UnderBinder[bt, List[st]] =

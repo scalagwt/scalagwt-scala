@@ -1,22 +1,21 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.tools.ant {
 
-  import scala.collection.Map
+  import scala.collection.DefaultMap
   import scala.collection.mutable.HashMap
   import java.io.{File, FileInputStream, FileOutputStream,
                   FileWriter, StringReader}
-  import java.net.{URL, URLClassLoader}
-  import java.util.{ArrayList, Vector}
+  import java.net.URL
+  import java.util.ArrayList
   import java.util.zip.{ZipOutputStream, ZipEntry}
 
   import org.apache.tools.ant.{AntClassLoader, BuildException,
@@ -56,7 +55,7 @@ package scala.tools.ant {
   class ScalaBazaar extends Task {
 
     /** The unique Ant file utilities instance to use in this task. */
-    private val fileUtils = FileUtils.newFileUtils()
+    private val fileUtils = FileUtils.getFileUtils()
 
 /******************************************************************************\
 **                             Ant user-properties                            **
@@ -78,17 +77,17 @@ package scala.tools.ant {
     private var link: Option[String] = None
 
     /** The sets of files to include in the package */
-    private object fileSetsMap extends Map[String, List[FileSet]] {
+    private object fileSetsMap extends DefaultMap[String, List[FileSet]] {
       private var content = new HashMap[String, List[FileSet]]()
       def get(key: String): Option[List[FileSet]] = content.get(key)
-      def size: Int = content.size
-      def update(key: String, value: FileSet) = {
+      override def size: Int = content.size
+      def update(key: String, value: FileSet) {
         if (content.contains(key) && content(key) != Nil)
           content.update(key, value :: content(key))
         else content.update(key, List(value))
       }
-      def fileSets = elements.toList
-      def elements = content.elements
+      def fileSets = content.toList
+      def iterator = content.iterator
     }
 
 
@@ -125,7 +124,7 @@ package scala.tools.ant {
     /** Sets the depends attribute. Used by Ant.
       * @param input The value for <code>depends</code>. */
     def setDepends(input: String) = {
-      depends = List.fromArray(input.split(",")).flatMap { s: String =>
+      depends = input.split(",").toList.flatMap { s: String =>
         val st = s.trim()
         (if (st != "") List(st) else Nil)
       }
@@ -177,19 +176,19 @@ package scala.tools.ant {
 \******************************************************************************/
 
     /** Gets the value of the file attribute in a Scala-friendly form.
-      * @returns The file as a file. */
+      * @return The file as a file. */
     private def getName: String =
       if (name.isEmpty) error("Name attribute must be defined first.")
       else name.get
 
     /** Gets the value of the file attribute in a Scala-friendly form.
-      * @returns The file as a file. */
+      * @return The file as a file. */
     private def getFile: File =
       if (file.isEmpty) error("Member 'file' is empty.")
       else getProject().resolveFile(file.get.toString())
 
     /** Gets the value of the adfile attribute in a Scala-friendly form.
-      * @returns The adfile as a file. */
+      * @return The adfile as a file. */
     private def getAdfile: File =
       if (adfile.isEmpty) error("Member 'adfile' is empty.")
       else getProject().resolveFile(adfile.get.toString())
@@ -291,7 +290,7 @@ package scala.tools.ant {
         for {
           Pair(folder, fileSets) <- fileSetsMap.fileSets
           fileSet <- fileSets
-          file <- List.fromArray(fileSet.getDirectoryScanner(getProject).getIncludedFiles)
+          file <- fileSet.getDirectoryScanner(getProject).getIncludedFiles.toList
         } yield Triple(folder, fileSet.getDir(getProject), file)
       val zip = new ZipOutputStream(new FileOutputStream(file.get, false))
       if (!zipContent.isEmpty) {

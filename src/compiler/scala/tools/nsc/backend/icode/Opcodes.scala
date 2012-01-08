@@ -1,12 +1,13 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
 
-package scala.tools.nsc.backend.icode
+package scala.tools.nsc
+package backend
+package icode
 
 import scala.tools.nsc.ast._
 import scala.tools.nsc.util.{Position,NoPosition}
@@ -57,7 +58,7 @@ trait Opcodes { self: ICodes =>
   /** This class represents an instruction of the intermediate code.
    *  Each case subclass will represent a specific operation.
    */
-  abstract class Instruction {
+  abstract class Instruction extends Cloneable {
 
     /** This abstract method returns the number of used elements on the stack */
     def consumed : Int = 0
@@ -77,18 +78,30 @@ trait Opcodes { self: ICodes =>
     def difference = produced-consumed
 
     /** The corresponding position in the source file */
-    var pos: Position = NoPosition
+    private var _pos: Position = NoPosition
+
+    def pos: Position = _pos
 
     /** Used by dead code elimination. */
     var useful: Boolean = false
 
     def setPos(p: Position): this.type = {
-      pos = p
+      _pos = p
       this
     }
+
+    /** Clone this instruction. */
+    override def clone: Instruction =
+      super.clone.asInstanceOf[Instruction]
   }
 
   object opcodes {
+
+    def mayThrow(i: Instruction): Boolean = i match {
+      case LOAD_LOCAL(_) | STORE_LOCAL(_) | CONSTANT(_) | THIS(_) | CZJUMP(_, _, _, _)
+              | DROP(_) | DUP(_) | RETURN(_) | LOAD_EXCEPTION() | JUMP(_) | CJUMP(_, _, _, _) => false
+      case _ => true
+    }
 
     /** Loads "this" on top of the stack.
      * Stack: ...
@@ -156,7 +169,7 @@ trait Opcodes { self: ICodes =>
     case class LOAD_FIELD(field: Symbol, isStatic: Boolean) extends Instruction {
       /** Returns a string representation of this instruction */
       override def toString(): String =
-        "LOAD_FIELD " + (if (isStatic) field.fullNameString else field.toString());
+        "LOAD_FIELD " + (if (isStatic) field.fullName else field.toString());
 
       override def consumed = if (isStatic) 0 else 1
       override def produced = 1
@@ -306,22 +319,25 @@ trait Opcodes { self: ICodes =>
     case class CALL_METHOD(method: Symbol, style: InvokeStyle) extends Instruction {
       /** Returns a string representation of this instruction */
       override def toString(): String =
-        "CALL_METHOD " + hostClass.fullNameString + method.fullNameString +" ("+style.toString()+")";
+        "CALL_METHOD " + hostClass.fullName + method.fullName +" ("+style.toString()+")";
 
       var hostClass: Symbol = method.owner;
       def setHostClass(cls: Symbol): this.type = { hostClass = cls; this }
 
-      override def consumed = {
-        var result = method.tpe.paramTypes.length;
-        result = result + (style match {
-          case Dynamic => 1
+      /** This is specifically for preserving the target native Array type long
+       *  enough that clone() can generate the right call.
+       */
+      var targetTypeKind: TypeKind = UNIT // the default should never be used, so UNIT should fail fast.
+      def setTargetTypeKind(tk: TypeKind) = targetTypeKind = tk
+
+      override def consumed = method.tpe.paramTypes.length + (
+        style match {
+          case Dynamic | InvokeDynamic => 1
           case Static(true) => 1
           case Static(false) => 0
           case SuperCall(_) => 1
-        });
-
-        result;
-      }
+        }
+      )
 
       override def consumedTypes = {
         val args = method.tpe.paramTypes map toTypeKind
@@ -338,7 +354,7 @@ trait Opcodes { self: ICodes =>
           0
         else 1
 
-      /** object idenity is equality for CALL_METHODs. Needed for
+      /** object identity is equality for CALL_METHODs. Needed for
        *  being able to store such instructions into maps, when more
        *  than one CALL_METHOD to the same method might exist.
        */
@@ -387,7 +403,7 @@ trait Opcodes { self: ICodes =>
       override def toString(): String ="CREATE_ARRAY "+elem.toString() + " x " + dims;
 
       override def consumed = dims;
-      override def consumedTypes = List.make(dims, INT)
+      override def consumedTypes = List.fill(dims)(INT)
       override def produced = 1;
     }
 
@@ -624,13 +640,18 @@ trait Opcodes { self: ICodes =>
       /** Returns a string representation of this style. */
       override def toString(): String = this match {
         case Dynamic =>  "dynamic"
+        case InvokeDynamic => "invoke-dynamic"
         case Static(false) => "static-class"
         case Static(true) =>  "static-instance"
         case SuperCall(mix) => "super(" + mix + ")"
       }
     }
 
+    /** Virtual calls */
     case object Dynamic extends InvokeStyle
+
+    /** InvokeDynamic a la JSR 292 (experimental). */
+    case object InvokeDynamic extends InvokeStyle
 
     /**
      * Special invoke. Static(true) is used for calls to private

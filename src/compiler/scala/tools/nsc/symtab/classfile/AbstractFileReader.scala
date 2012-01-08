@@ -1,11 +1,12 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
 
-package scala.tools.nsc.symtab.classfile
+package scala.tools.nsc
+package symtab
+package classfile
 
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
@@ -38,22 +39,21 @@ class AbstractFileReader(val file: AbstractFile) {
   @throws(classOf[IndexOutOfBoundsException])
   def nextByte: Byte = {
     val b = buf(bp)
-    bp = bp + 1
+    bp += 1
     b
   }
 
   /** read some bytes
    */
   def nextBytes(len: Int): Array[Byte] = {
-    bp = bp + len
-    buf.subArray(bp - len, bp)
+    bp += len
+    buf.slice(bp - len, bp)
   }
 
   /** read a character
    */
-  def nextChar: Char = {
+  def nextChar: Char =
     (((nextByte & 0xff) << 8) + (nextByte & 0xff)).toChar
-  }
 
   /** read an integer
    */

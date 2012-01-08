@@ -1,10 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
+
 
 package scala.tools.ant.sabbus
 
@@ -16,7 +17,7 @@ import org.apache.tools.ant.util.{GlobPatternMapper, SourceFileScanner}
 
 class Use extends MatchingTask {
 
-  def setId(input: String): Unit = {
+  def setId(input: String) {
     id = Some(input)
   }
 
@@ -24,11 +25,11 @@ class Use extends MatchingTask {
     sourceDir = Some(input)
   }
 
-  def setDestdir(input: File): Unit = {
+  def setDestdir(input: File) {
     destinationDir = Some(input)
   }
 
-  def setFailOnError(input: Boolean): Unit = {
+  def setFailOnError(input: Boolean) {
     failOnError = input
   }
 
@@ -37,7 +38,7 @@ class Use extends MatchingTask {
   private var destinationDir: Option[File] = None
   private var failOnError: Boolean = true
 
-  override def execute(): Unit = {
+  override def execute() {
     if (id.isEmpty) error("Mandatory attribute 'id' is not set.")
     if (sourceDir.isEmpty) error("Mandatory attribute 'srcdir' is not set.")
     val compiler = Compilers(id.get)
@@ -59,7 +60,7 @@ class Use extends MatchingTask {
         if (errors > 0)
           error("Compilation failed with " + errors + " error" + (if (errors > 1) "s" else "") + ".")
         else if (warnings > 0)
-          log("Compilation suceeded with " + warnings + " warning" + (if (warnings > 1) "s" else "") + ".")
+          log("Compilation succeeded with " + warnings + " warning" + (if (warnings > 1) "s" else "") + ".")
       }
       catch {
         case CompilationFailure(msg, ex) =>

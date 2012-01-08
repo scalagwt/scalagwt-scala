@@ -1,36 +1,29 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Parallel Testing               **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-package scala.tools.partest.nest
 
-import scala.actors.Actor._
+package scala.tools.partest
+package nest
 
 import java.io.File
-import java.net.URLClassLoader
-
-import org.apache.tools.ant.Task
-import org.apache.tools.ant.types.{Path, Reference, FileSet}
+import scala.tools.nsc.io.{ Directory }
 
 class AntRunner extends DirectRunner {
 
   val fileManager = new FileManager {
-
     var JAVACMD: String = "java"
-
+    var JAVAC_CMD: String = "javac"
     var CLASSPATH: String = _
-    var EXT_CLASSPATH: String = _
     var LATEST_LIB: String = _
-
+    val testRootPath: String = "test"
+    val testRootDir: Directory = Directory(testRootPath)
   }
 
-  def reflectiveRunTestsForFiles(kindFiles: Array[File], kind: String): Int = {
-    val (succs, fails) = runTestsForFiles(kindFiles.toList, kind)
-    succs << 16 | fails
-  }
-
+  def reflectiveRunTestsForFiles(kindFiles: Array[File], kind: String) =
+    runTestsForFiles(kindFiles.toList, kind)
 }

@@ -1,9 +1,9 @@
 #!/bin/sh
 
 ##############################################################################
-# Scala test runner 2.7.0-final
+# Scala test runner 2.8.0
 ##############################################################################
-# (c) 2002-2008 LAMP/EPFL
+# (c) 2002-2010 LAMP/EPFL
 #
 # This is free software; see the distribution for copying conditions.
 # There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
@@ -30,8 +30,12 @@ while [ -h "$SOURCE" ]; do
         SOURCE=`dirname "$SOURCE"`/${TARGET:-.};
     fi;
 done;
-SCALA_HOME=`dirname "$SOURCE"`/..;
-SCALA_HOME=`cd "$SCALA_HOME"; pwd`;
+
+# see #2092
+SCALA_HOME=`dirname "$SOURCE"`
+SCALA_HOME=`cd "$SCALA_HOME"; pwd -P`
+SCALA_HOME=`cd "$SCALA_HOME"/..; pwd`
+
 if $cygwin; then
     SCALA_HOME=`cygpath --windows --short-name "$SCALA_HOME"`
     SCALA_HOME=`cygpath --unix "$SCALA_HOME"`
@@ -41,16 +45,16 @@ fi
 EXT_CLASSPATH=""
 if [ -z "$EXT_CLASSPATH" ] ; then
     if [ -f "$SCALA_HOME/lib/scala-partest.jar" ] ; then
-        for ext in `ls -d "$SCALA_HOME"/lib/*` ; do
+        for ext in "$SCALA_HOME"/lib/* ; do
             if [ -z "$EXT_CLASSPATH" ] ; then
                 EXT_CLASSPATH="$ext"
             else
                 EXT_CLASSPATH="$EXT_CLASSPATH:$ext"
             fi
         done
-    elif [ -d "$SCALA_HOME/build/quick/lib/partest" ] ; then
-        for lib in `echo "partest library compiler actors fjbg.jar"`; do
-            ext="$SCALA_HOME/build/quick/lib/$lib"
+    elif [ -f "$SCALA_HOME/build/pack/lib/scala-partest.jar" ] ; then
+        for lib in `echo "partest library compiler"`; do
+            ext="$SCALA_HOME/build/pack/lib/scala-$lib.jar"
             if [ -z "$EXT_CLASSPATH" ] ; then
                 EXT_CLASSPATH="$ext"
             else
@@ -71,7 +75,12 @@ if $cygwin; then
 fi
 
 # Reminder: substitution ${JAVA_OPTS:=-Xmx256M -Xms16M} DO NOT work on Solaris
-[ -n "$JAVA_OPTS" ] || JAVA_OPTS="-Xmx256M -Xms16M"
+[ -n "$JAVA_OPTS" ] || JAVA_OPTS="-Xmx512M -Xms16M"
 [ -n "$SCALAC_OPTS" ] || SCALAC_OPTS="-deprecation"
 
-${JAVACMD:=java} $JAVA_OPTS -cp "$EXT_CLASSPATH" -Dscala.home="${SCALA_HOME}" -Dscalatest.javacmd="${JAVACMD}" -Dscalatest.java_options="${JAVA_OPTS}" -Dscalatest.scalac_options="${SCALAC_OPTS}" scala.tools.partest.nest.NestRunner  "$@"
+partestDebugStr=""
+if [ ! -z "${PARTEST_DEBUG}" ] ; then
+  partestDebugStr="-Dpartest.debug=${PARTEST_DEBUG}"
+fi
+
+${JAVACMD:=java} $JAVA_OPTS -cp "$EXT_CLASSPATH" ${partestDebugStr} -Dscala.home="${SCALA_HOME}" -Dpartest.javacmd="${JAVACMD}" -Dpartest.java_opts="${JAVA_OPTS}" -Dpartest.scalac_opts="${SCALAC_OPTS}" -Dpartest.javac_cmd="${JAVA_HOME}/bin/javac" scala.tools.partest.nest.NestRunner  "$@"

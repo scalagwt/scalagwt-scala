@@ -1,16 +1,15 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.xml.parsing
-
+package scala.xml
+package parsing
 
 import scala.xml.dtd._
 import scala.util.logging.Logged
@@ -51,7 +50,7 @@ abstract class ValidatingMarkupHandler extends MarkupHandler with Logged {
       log("advanceDFA(trans): " + trans)
       trans.get(ContentModel.ElemName(label)) match {
           case Some(qNew) => qCurrent = qNew
-          case _          => reportValidationError(pos, "DTD says, wrong element, expected one of "+trans.keys.toString());
+          case _          => reportValidationError(pos, "DTD says, wrong element, expected one of "+trans.keys);
         }
     }
     // advance in current automaton

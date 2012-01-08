@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.io
@@ -65,12 +64,12 @@ object BytePickle {
   def refDef: PU[RefDef] = new PU[RefDef] {
     def appP(b: RefDef, s: Array[Byte]): Array[Byte] =
       b match {
-        case Ref() => Array.concat(s, (List[Byte](0)).toArray)
-        case Def() => Array.concat(s, (List[Byte](1)).toArray)
+        case Ref() => Array.concat(s, Array[Byte](0))
+        case Def() => Array.concat(s, Array[Byte](1))
       };
     def appU(s: Array[Byte]): (RefDef, Array[Byte]) =
-      if (s(0) == 0) (Ref(), s.subArray(1, s.length))
-      else (Def(), s.subArray(1, s.length));
+      if (s(0) == (0: Byte)) (Ref(), s.slice(1, s.length))
+      else (Def(), s.slice(1, s.length));
   }
 
   val REF = 0
@@ -91,7 +90,7 @@ object BytePickle {
         } while ((b & 0x80) != 0);
         x
       }
-      (readNat, s.subArray(num, s.length))
+      (readNat, s.slice(num, s.length))
     }
   }
 
@@ -229,7 +228,7 @@ object BytePickle {
     sequ(j, pa, (x: a) => lift(i(x)))
 
   def appendByte(a: Array[Byte], b: Int): Array[Byte] =
-    Array.concat(a, (List[Byte](b.asInstanceOf[Byte])).toArray)
+    Array.concat(a, Array(b.toByte))
 
   def nat2Bytes(x: Int): Array[Byte] = {
     val buf = new ArrayBuffer[Byte]
@@ -260,19 +259,22 @@ object BytePickle {
         } while ((b & 0x80) != 0);
         x
       }
-      (readNat, new UnPicklerState(s.stream.subArray(num, s.stream.length), s.dict))
+      (readNat, new UnPicklerState(s.stream.slice(num, s.stream.length), s.dict))
     }
   }
 
   def byte: SPU[Byte] = new SPU[Byte] {
     def appP(b: Byte, s: PicklerState): PicklerState =
-      new PicklerState(Array.concat(s.stream, (List[Byte](b)).toArray), s.dict);
+      new PicklerState(Array.concat(s.stream, Array(b)), s.dict)
     def appU(s: UnPicklerState): (Byte, UnPicklerState) =
-      (s.stream(0), new UnPicklerState(s.stream.subArray(1, s.stream.length), s.dict));
+      (s.stream(0), new UnPicklerState(s.stream.slice(1, s.stream.length), s.dict));
   }
 
-  def string: SPU[String] =
-    share(wrap((a: Array[Byte]) => UTF8Codec.decode(a, 0, a.length), (s:String) => UTF8Codec.encode(s), bytearray));
+  def string: SPU[String] = share(wrap(
+    (a: Array[Byte]) => Codec toUTF8 a mkString,
+    (s: String) => Codec fromUTF8 s,
+    bytearray
+  ))
 
   def bytearray: SPU[Array[Byte]] = {
     wrap((l:List[Byte]) => l.toArray, (_.toList), list(byte))

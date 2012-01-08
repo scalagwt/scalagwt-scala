@@ -1,18 +1,19 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id: Lexical.scala 12268 2007-07-11 13:45:53Z michelou $
 
 
-package scala.util.parsing.combinator.lexical
+package scala.util.parsing
+package combinator
+package lexical
 
-import scala.util.parsing.syntax._
-import scala.util.parsing.input.CharArrayReader.EofCh
+import token._
+import input.CharArrayReader.EofCh
 
 /** <p>
  *    This component complements the <code>Scanners</code> component with

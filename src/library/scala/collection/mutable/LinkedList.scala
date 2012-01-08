@@ -1,47 +1,68 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
-/** This class implements single linked lists where both the head (<code>elem</code>)
- *  and the tail (<code>next</code>) are mutable.
+import generic._
+
+/** This class implements single linked lists where both the head (`elem`)
+ *  and the tail (`next`) are mutable.
  *
- *  @author  Matthias Zenger
- *  @version 1.0, 08/07/2003
+ *  @author Matthias Zenger
+ *  @author Martin Odersky
+ *  @version 2.8
+ *  @since   1
+ *
+ *  @tparam A     the type of the elements contained in this linked list.
+ *
+ *  @define Coll LinkedList
+ *  @define coll linked list
+ *  @define thatinfo the class of the returned collection. In the standard library configuration,
+ *    `That` is always `LinkedList[B]` because an implicit of type `CanBuildFrom[LinkedList, B, LinkedList[B]]`
+ *    is defined in object `LinkedList`.
+ *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *    result class `That` from the current representation type `Repr`
+ *    and the new element type `B`. This is usually the `canBuildFrom` value
+ *    defined in object `LinkedList`.
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
  */
-@serializable
-class LinkedList[A](var elem: A, var next: LinkedList[A])
-  extends SingleLinkedList[A, LinkedList[A]]
-{
+@serializable @SerialVersionUID(-7308240733518833071L)
+class LinkedList[A]() extends LinearSeq[A]
+                         with GenericTraversableTemplate[A, LinkedList]
+                         with LinkedListLike[A, LinkedList[A]] {
+  next = this
 
-  /** Compares two lists structurally; i.e. checks if all elements
-   *  contained in this list are also contained in the other list,
-   *  and vice versa.
-   *
-   *  @param that the other list
-   *  @return     <code>true</code> iff both lists contain exactly the
-   *              same mappings.
-   */
-  override def equals(obj: Any): Boolean = obj match {
-    case that: LinkedList[_] => this.toList equals that.toList
-    case _ => false
+  def this(elem: A, next: LinkedList[A]) {
+    this()
+    if (next != null) {
+      this.elem = elem
+      this.next = next
+    }
   }
 
-  /** A hash method compatible with <code>equals</code>
-   */
-  override def hashCode(): Int =
-    (0 /: elements) ((hash, kv) => hash + kv.hashCode)
-
-  override protected def stringPrefix: String = "LinkedList"
+  override def companion: GenericCompanion[LinkedList] = LinkedList
 }
 
+/** $factoryInfo
+ *  @define Coll LinkedList
+ *  @define coll linked list
+ */
+object LinkedList extends SeqFactory[LinkedList] {
 
+  override def empty[A]: LinkedList[A] = new LinkedList[A]
 
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, LinkedList[A]] = new GenericCanBuildFrom[A]
+  def newBuilder[A]: Builder[A, LinkedList[A]] =
+    (new MutableList) mapResult ((l: MutableList[A]) => l.toLinkedList)
+}

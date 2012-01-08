@@ -1,7 +1,6 @@
 //############################################################################
 // Programmation IV - 2002 - Week 13
 //############################################################################
-// $Id$
 
 class Tokenizer(s: String, delimiters: String) extends Iterator[String] {
 
@@ -13,7 +12,7 @@ class Tokenizer(s: String, delimiters: String) extends Iterator[String] {
     i < delimiters.length()
   }
 
-  def hasNext: boolean = {
+  def hasNext: Boolean = {
     while (i < s.length() && s.charAt(i) <= ' ') { i = i + 1 }
     i < s.length()
   }
@@ -67,7 +66,7 @@ object Terms {
     override def toString() =
       a + (if (ts.isEmpty) "" else ts.mkString("(", ",", ")"));
     def map(s: Subst): Term = Con(a, ts map (t => t map s));
-    def tyvars = (ts flatMap (t => t.tyvars)).removeDuplicates;
+    def tyvars = (ts flatMap (t => t.tyvars)).distinct;
   }
 
   private var count = 0;
@@ -114,7 +113,7 @@ object Programs {
 
   case class Clause(lhs: Term, rhs: List[Term]) {
     def tyvars =
-      (lhs.tyvars ::: (rhs flatMap (t => t.tyvars))).removeDuplicates;
+      (lhs.tyvars ::: (rhs flatMap (t => t.tyvars))).distinct;
     def newInstance = {
       var s: Subst = List();
       for (val a <- tyvars) { s = Binding(a, newVar(a)) :: s }

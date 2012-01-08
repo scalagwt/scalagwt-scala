@@ -1,10 +1,21 @@
-// $Id$
+/*                     __                                               *\
+**     ________ ___   / /  ___     Scala API                            **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
+** /____/\___/_/ |_/____/_/ | |                                         **
+**                          |/                                          **
+\*                                                                      */
 
-package scala.xml.parsing
 
-import scala.xml.dtd.{IntDef, ParsedEntityDecl}
+package scala.xml
+package parsing
 
-/* (c) David Pollak 2007 WorldWide Conferencing, LLC */
+import scala.xml.dtd.{ IntDef, ParsedEntityDecl }
+
+/** <p>
+ *    (c) David Pollak 2007 WorldWide Conferencing, LLC.
+ *  </p>
+ */
 object XhtmlEntities {
   val entList = List(("quot",34), ("amp",38), ("lt",60), ("gt",62), ("nbsp",160), ("iexcl",161), ("cent",162), ("pound",163), ("curren",164), ("yen",165),
       ("euro",8364), ("brvbar",166), ("sect",167), ("uml",168), ("copy",169), ("ordf",170), ("laquo",171), ("shy",173), ("reg",174), ("trade",8482),
@@ -34,7 +45,7 @@ object XhtmlEntities {
       ("xi",958), ("omicron",959), ("pi",960), ("rho",961), ("sigmaf",962), ("sigma",963), ("tau",964), ("upsilon",965), ("phi",966), ("chi",967),
       ("psi",968), ("omega",969), ("thetasym",977), ("upsih",978), ("piv",982))
 
-  val entMap: Map[String, Char] = Map.empty ++ entList.map { case (name, value) => (name, value.toChar)}
+  val entMap: Map[String, Char] = Map.empty[String, Char] ++ entList.map { case (name, value) => (name, value.toChar)}
 
   val entities = entList.
         map { case (name, value) => (name, new ParsedEntityDecl(name, new IntDef(value.toChar.toString)))}

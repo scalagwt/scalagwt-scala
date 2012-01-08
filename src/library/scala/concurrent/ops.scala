@@ -1,42 +1,50 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.concurrent
 
-
 import java.lang.Thread
+import scala.util.control.Exception.allCatch
 
 /** The object <code>ops</code> ...
  *
- *  @author  Martin Odersky, Stepan Koltsov
- *  @version 1.0, 12/03/2003
+ *  @author  Martin Odersky, Stepan Koltsov, Philipp Haller
  */
-object ops {
+object ops
+{
+  val defaultRunner: FutureTaskRunner = TaskRunners.threadRunner
 
   /**
-   *  @param p ...
+   *  If expression computed successfully return it in `Right`,
+   *  otherwise return exception in `Left`.
    */
-  def spawn(p: => Unit) = {
-    val t = new Thread() { override def run() = p }
-    t.start()
+  private def tryCatch[A](body: => A): Either[Throwable, A] =
+    allCatch[A] either body
+
+  private def getOrThrow[T <: Throwable, A](x: Either[T, A]): A =
+    x.fold[A](throw _, identity _)
+
+  /** Evaluates an expression asynchronously.
+   *
+   *  @param  p the expression to evaluate
+   */
+  def spawn(p: => Unit)(implicit runner: TaskRunner = defaultRunner): Unit = {
+    runner execute runner.functionAsTask(() => p)
   }
 
   /**
    *  @param p ...
    *  @return  ...
    */
-  def future[A](p: => A): () => A = {
-    val result = new SyncVar[A]
-    spawn { result setWithCatch p }
-    () => result.get
+  def future[A](p: => A)(implicit runner: FutureTaskRunner = defaultRunner): () => A = {
+    runner.futureAsFunction(runner submit runner.functionAsTask(() => p))
   }
 
   /**
@@ -45,9 +53,9 @@ object ops {
    *  @return   ...
    */
   def par[A, B](xp: => A, yp: => B): (A, B) = {
-    val y = new SyncVar[B]
-    spawn { y setWithCatch yp }
-    (xp, y.get)
+    val y = new SyncVar[Either[Throwable, B]]
+    spawn { y set tryCatch(yp) }
+    (xp, getOrThrow(y.get))
   }
 
   /**

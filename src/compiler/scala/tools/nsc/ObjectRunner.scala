@@ -1,15 +1,13 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Lex Spoon
  */
 
-// $Id$
 
 package scala.tools.nsc
 
-import java.lang.{Class, ClassNotFoundException, NoSuchMethodException}
-import java.lang.reflect.{Method, Modifier}
-import java.net.{URL, URLClassLoader}
+import java.net.URL
+import util.ScalaClassLoader
 
 /** An object that runs another object specified by name.
  *
@@ -17,41 +15,10 @@ import java.net.{URL, URLClassLoader}
  *  @version 1.1, 2007/7/13
  */
 object ObjectRunner {
-  /** Create a class loader for the specified class path */
-  private def makeClassLoader(classpath: List[URL]) =
-    new URLClassLoader(classpath.toArray, null)
-
-  /** Look up a class with a given class path. */
-  private def findClass(loader: ClassLoader, objectName: String)
-  : Option[Class[T] forSome { type T }] =
-  {
-    try {
-      Some(Class.forName(objectName, true, loader))
-    } catch {
-      case e: SecurityException =>
-        Console.println(e.getMessage)
-        None
-      case _: ClassNotFoundException =>
-        None
-    }
-  }
-
   /** Check whether a class with the specified name
    *  exists on the specified class path. */
-  def classExists(classpath: List[URL], objectName: String): Boolean =
-    !findClass(makeClassLoader(classpath), objectName).isEmpty
-
-  /** Set the Java context class loader while executing an action */
-  def withContextClassLoader[T](loader: ClassLoader)(action: =>T): T = {
-    val oldLoader = Thread.currentThread.getContextClassLoader
-    try {
-      Thread.currentThread.setContextClassLoader(loader)
-      action
-    } finally {
-      Thread.currentThread.setContextClassLoader(oldLoader)
-    }
-  }
-
+  def classExists(urls: List[URL], objectName: String): Boolean =
+    ScalaClassLoader.classExists(urls, objectName)
 
   /** Run a given object, specified by name, using a
    *  specified classpath and argument list.
@@ -60,19 +27,7 @@ object ObjectRunner {
    *  @throws NoSuchMethodError
    *  @throws InvocationTargetException
    */
-  def run(classpath: List[URL], objectName: String, arguments: Seq[String]) {
-    val loader = makeClassLoader(classpath)
-    val clsToRun = findClass(loader, objectName) match {
-      case Some(cls) => cls
-      case None => throw new ClassNotFoundException(objectName)
-    }
-
-    val method = clsToRun.getMethod("main", List(classOf[Array[String]]).toArray)
-    if ((method.getModifiers & Modifier.STATIC) == 0)
-      throw new NoSuchMethodException(objectName + ".main is not static")
-
-    withContextClassLoader(loader) {
-      method.invoke(null, List(arguments.toArray).toArray)
-    }
+  def run(urls: List[URL], objectName: String, arguments: Seq[String]) {
+    (ScalaClassLoader fromURLs urls).run(objectName, arguments)
   }
 }

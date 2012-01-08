@@ -1,74 +1,101 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.immutable
+package scala.collection
+package immutable
 
-/** The canonical factory of <a href="TreeSet.html">TreeSet</a>'s. */
+import generic._
+import mutable.{ Builder, AddingBuilder }
 
-object TreeSet {
+/** $factoryInfo
+ *  @define Coll immutable.TreeSet
+ *  @define coll immutable tree set
+ */
+object TreeSet extends ImmutableSortedSetFactory[TreeSet] {
+  implicit def implicitBuilder[A](implicit ordering: Ordering[A]): Builder[A, TreeSet[A]] = newBuilder[A](ordering)
+  override def newBuilder[A](implicit ordering: Ordering[A]): Builder[A, TreeSet[A]] =
+    new AddingBuilder(empty[A](ordering))
 
   /** The empty set of this type
    */
-  def empty[A <% Ordered[A]] = new TreeSet[A]
-
-  /** The canonical factory for this type
-   */
-  def apply[A <% Ordered[A]](elems: A*) : SortedSet[A] = empty[A] ++ elems
+  def empty[A](implicit ordering: Ordering[A]) = new TreeSet[A]
 }
 
 /** This class implements immutable sets using a tree.
  *
+ *  @tparam A         the type of the elements contained in this tree set
+ *  @param ordering   the implicit ordering used to compare objects of type `A`
+ *
  *  @author  Martin Odersky
  *  @version 2.0, 02/01/2007
+ *  @since   1
+ *  @define Coll immutable.TreeSet
+ *  @define coll immutable tree set
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
  */
+@serializable @SerialVersionUID(-234066569443569402L)
+class TreeSet[A](override val size: Int, t: RedBlack[A]#Tree[Unit])
+                (implicit val ordering: Ordering[A])
+  extends RedBlack[A] with SortedSet[A] with SortedSetLike[A, TreeSet[A]] {
 
-@serializable
-class TreeSet[A <% Ordered[A]](val size: Int, t: RedBlack[A]#Tree[Unit])
-  extends RedBlack[A] with SortedSet[A] {
+  override def stringPrefix = "TreeSet"
 
-  def isSmaller(x: A, y: A) = x < y
+  def isSmaller(x: A, y: A) = compare(x,y) < 0
 
-  def this() = this(0, null)
+  def this()(implicit ordering: Ordering[A]) = this(0, null)(ordering)
 
   protected val tree: RedBlack[A]#Tree[Unit] = if (size == 0) Empty else t
 
   private def newSet(s: Int, t: RedBlack[A]#Tree[Unit]) = new TreeSet[A](s, t)
 
-  /** A factory to create empty maps of the same type of keys.
+  /** A factory to create empty sets of the same type of keys.
    */
-  def empty[B]: Set[B] = ListSet.empty[B]
+  override def empty = TreeSet.empty
 
-  /** A new TreeSet with the entry added is returned,
+  /** Creates a new `TreeSet` with the entry added.
+   *
+   *  @param elem    a new element to add.
+   *  @return        a new $coll containing `elem` and all the elements of this $coll.
    */
   def + (elem: A): TreeSet[A] = {
     val newsize = if (tree.lookup(elem).isEmpty) size + 1 else size
     newSet(newsize, tree.update(elem, ()))
   }
 
-  /** A new TreeSet with the entry added is returned,
+  /** A new `TreeSet` with the entry added is returned,
    *  assuming that elem is <em>not</em> in the TreeSet.
+   *
+   *  @param elem    a new element to add.
+   *  @return        a new $coll containing `elem` and all the elements of this $coll.
    */
-  def insert (elem: A): TreeSet[A] = {
+  def insert(elem: A): TreeSet[A] = {
     assert(tree.lookup(elem).isEmpty)
     newSet(size + 1, tree.update(elem, ()))
   }
 
+  /** Creates a new `TreeSet` with the entry removed.
+   *
+   *  @param elem    a new element to add.
+   *  @return        a new $coll containing all the elements of this $coll except `elem`.
+   */
   def - (elem:A): TreeSet[A] =
     if (tree.lookup(elem).isEmpty) this
-    else newSet(size - 1, tree.delete(elem))
+    else newSet(size - 1, tree delete elem)
 
-  /** Checks if this set contains element <code>elem</code>.
+  /** Checks if this set contains element `elem`.
    *
    *  @param  elem    the element to check for membership.
-   *  @return true, iff <code>elem</code> is contained in this set.
+   *  @return true, iff `elem` is contained in this set.
    */
   def contains(elem: A): Boolean = !tree.lookup(elem).isEmpty
 
@@ -77,29 +104,16 @@ class TreeSet[A <% Ordered[A]](val size: Int, t: RedBlack[A]#Tree[Unit])
    *
    *  @return the new iterator
    */
-  def elements: Iterator[A] = tree.elements.elements map (_._1)
+  def iterator: Iterator[A] = tree.toStream.iterator map (_._1)
 
-  def elementsSlow = tree.elementsSlow map (_._1)
+  override def toStream: Stream[A] = tree.toStream map (_._1)
 
-  override def foreach(f: A => Unit) {
-    tree.visit[Unit](())((unit0, y, unit1) => Tuple2(true, f(y)))
+  override def foreach[U](f: A =>  U) = tree foreach { (x, y) => f(x) }
+
+  override def rangeImpl(from: Option[A], until: Option[A]): TreeSet[A] = {
+    val tree = this.tree.range(from, until)
+    newSet(tree.count, tree)
   }
-
-  override def forall(f: A => Boolean): Boolean =
-    tree.visit[Boolean](true)((input, a, unit) => f(a) match {
-    case ret if input => Tuple2(ret, ret)
-    })._2
-
-  override def exists(f: A => Boolean): Boolean =
-    tree.visit[Boolean](false)((input, a, unit) => f(a) match {
-    case ret if !input => Tuple2(!ret, ret)
-    })._2
-
-   override def rangeImpl(from: Option[A], until: Option[A]): TreeSet[A] = {
-     val tree = this.tree.range(from, until)
-     newSet(tree.count, tree)
-   }
-   override def firstKey = tree.first
-   override def lastKey = tree.last
-   override def compare(a0: A, a1: A) = a0.compare(a1)
+  override def firstKey = tree.first
+  override def lastKey = tree.last
 }

@@ -1,109 +1,93 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
 package scala.tools.nsc
 
+import java.io.IOException
+import scala.collection.mutable.ListBuffer
+import io.File
 
 /** A class representing command line info for scalac */
-class CompilerCommand(arguments: List[String], val settings: Settings,
-                      error: String => Unit, interactive: Boolean) {
+class CompilerCommand(arguments: List[String], val settings: Settings) {
+  def this(arguments: List[String], error: String => Unit) = this(arguments, new Settings(error))
+  type Setting = Settings#Setting
 
-  private var fs: List[String] = List()
-
-  /** All files to compile */
-  def files: List[String] = fs.reverse
+  /** file extensions of files that the compiler can process */
+  lazy val fileEndings = Properties.fileEndings
 
   /** The name of the command */
-  val cmdName = "scalac"
-
-  /** The file extension of files that the compiler can process */
-  def fileEnding = Properties.fileEndingString //todo: lazy val
+  def cmdName = "scalac"
+  private def isFsc = cmdName == "fsc"
 
   private val helpSyntaxColumnWidth: Int =
-    Iterable.max(settings.allSettings map (_.helpSyntax.length))
+    (settings.visibleSettings map (_.helpSyntax.length)) max
 
-  private def format(s: String): String = {
-    val buf = new StringBuilder(s)
-    var i = s.length
-    while (i < helpSyntaxColumnWidth) { buf.append(' '); i += 1 }
-    buf.toString()
-  }
+  private def format(s: String): String =
+    if (s.length >= helpSyntaxColumnWidth) s
+    else s + (" " * (helpSyntaxColumnWidth - s.length))
 
-  /** A message explaining usage and options */
-  def usageMsg: String = {
-    settings.allSettings
-      .filter(_.isStandard)
-      .map(setting =>
-           format(setting.helpSyntax) + "  " + setting.helpDescription)
-      .mkString("Usage: " + cmdName + " <options> <source files>\n" +
-                "where possible standard options include:\n  ",
-                "\n  ",
-                "\n")
-  }
+  /** Creates a help message for a subset of options based on cond */
+  def createUsageMsg(label: String, cond: (Setting) => Boolean): String =
+    settings.visibleSettings .
+      filter(cond) .
+      map(s => format(s.helpSyntax) + "  " + s.helpDescription) .
+      toList.sorted.mkString("Usage: %s <options> <source files>\n%s options include:\n  " .
+        format(cmdName, label), "\n  ", "\n")
 
-  /** A message explaining usage and options */
-  def xusageMsg: String = {
-    settings.allSettings
-      .filter(_.isAdvanced)
-      .map(setting =>
-           format(setting.helpSyntax) + "  " + setting.helpDescription)
-      .mkString("Possible advanced options include:\n  ",
-                "\n  ",
-                "\n")
-  }
+  /** Messages explaining usage and options */
+  def usageMsg    = createUsageMsg("where possible standard", _.isStandard)
+  def fscUsageMsg = createUsageMsg("where possible standard", ( st => st.isStandard || st.name == "-shutdown"))
+  def xusageMsg   = createUsageMsg("Possible advanced", _.isAdvanced)
+  def yusageMsg   = createUsageMsg("Possible private", _.isPrivate)
 
-  /** A message explaining usage and options */
-  def yusageMsg: String = {
-    settings.allSettings
-      .filter(_.isPrivate)
-      .map(setting =>
-           format(setting.helpSyntax) + "  " + setting.helpDescription)
-      .mkString("Possible private options include:\n  ",
-                "\n  ",
-                "\n")
-  }
+  // If any of these settings is set, the compiler shouldn't start;
+  // an informative message of some sort should be printed instead.
+  // (note: do not add "files.isEmpty" do this list)
+  val stopSettings = List[(() => Boolean, (Global) => String)](
+    ((() => (settings.help.value _)() && isFsc), fscUsageMsg + _.pluginOptionsHelp),
+    (settings.help.value _,         usageMsg + _.pluginOptionsHelp),
+    (settings.Xhelp.value _,        _ => xusageMsg),
+    (settings.Yhelp.value _,        _ => yusageMsg),
+    (settings.showPlugins.value _,  _.pluginDescriptions),
+    (settings.showPhases.value _,   _.phaseDescriptions)
+  )
+  def shouldStopWithInfo: Boolean = stopSettings exists { _._1() }
 
-
-  /** Whether the command was processed okay */
-  var ok = true
-
-  /** Process the arguments and update the settings accordingly.
-      This method is called only once, during initialization.  */
-  protected def processArguments() {
-    // initialization
-    var args = arguments
-
-    while (!args.isEmpty && ok) {
-      if (args.head startsWith "-") {
-	if (interactive) {
-          error("no options can be given in interactive mode")
-          ok = false
-        } else {
-          val args0 = args
-          for (setting <- settings.allSettings)
-            if (args eq args0)
-              args = setting.tryToSet(args)
-
-          if (args eq args0) {
-            error("bad option: '" + args.head + "'")
-            ok = false
-          }
-        }
-      } else if ((settings.script.value != "") || args.head.endsWith(fileEnding)) {
-        fs = args.head :: fs
-        args = args.tail
-      } else if (args.head.length == 0) {//quick fix
-        args = args.tail
-      } else {
-        error("don't know what to do with " + args.head)
-        ok = false
-      }
+  def getInfoMessage(compiler: Global): String =
+    stopSettings.find(pair => (pair._1)()) match {
+      case Some((test, getMessage)) => getMessage(compiler)
+      case None => ""
     }
-    ok &&= settings.checkDependencies
+
+  /**
+   * Expands all arguments starting with @ to the contents of the
+   * file named like each argument.
+   */
+  def expandArg(arg: String): List[String] = {
+    def stripComment(s: String) = s takeWhile (_ != '#')
+    val file = File(arg stripPrefix "@")
+    if (!file.exists)
+      throw new java.io.FileNotFoundException("argument file %s could not be found" format file.name)
+
+    settings splitParams (file.lines() map stripComment mkString " ")
   }
 
-  processArguments()
+  // override this if you don't want arguments processed here
+  def shouldProcessArguments: Boolean = true
+
+  def processArguments: (Boolean, List[String]) = {
+    // expand out @filename to the contents of that filename
+    val expandedArguments = arguments flatMap {
+      case x if x startsWith "@"  => expandArg(x)
+      case x                      => List(x)
+    }
+
+    settings.processArguments(expandedArguments, true)
+  }
+
+  val (ok, files) =
+    if (shouldProcessArguments) processArguments
+    else (true, Nil)
 }

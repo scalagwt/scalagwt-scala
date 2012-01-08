@@ -1,100 +1,122 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
+import generic._
+import BitSetLike.{LogWL, updateArray}
 
-/**
- * The class <code>BitSet</code> implements mutable, resizable Bit sets
+/** A class for mutable bitsets.
  *
- * @author  Burak Emir, Nikolay Mihaylov
- * @version 1.1
+ *  $bitsetinfo
  *
- * @param initSize: initial size in bits
+ *  @define Coll BitSet
+ *  @define coll bitset
+ *  @define thatinfo the class of the returned collection. In the standard library configuration,
+ *    `That` is always `BitSet[B]` because an implicit of type `CanBuildFrom[BitSet, B, BitSet]`
+ *    is defined in object `BitSet`.
+ *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *    result class `That` from the current representation type `Repr`
+ *    and the new element type `B`. This is usually the `canBuildFrom` value
+ *    defined in object `BitSet`.
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
  */
+@serializable @SerialVersionUID(8483111450368547763L)
+class BitSet(protected var elems: Array[Long]) extends Set[Int]
+                                                  with scala.collection.BitSet
+                                                  with BitSetLike[BitSet]
+                                                  with SetLike[Int, BitSet] {
 
-@serializable
-class BitSet(initSize: Int) extends collection.BitSet with Set[Int] {
+  override def empty = BitSet.empty
 
-  import compat.Platform.{arraycopy, arrayclear}
+  /** Creates the bitset of a certain initial size.
+   *
+   *  @param initSize    initial size of the bitset.
+   */
+  def this(initSize: Int) = this(new Array[Long]((initSize + 63) >> 6 max 1))
 
-  /** default constructor, initial size of 512 bits. */
   def this() = this(0)
 
-  /** Ensures that this bitset can store at least <code>n</code> bits.
+  protected def nwords = elems.length
+  protected def word(idx: Int): Long =
+    if (idx < nwords) elems(idx) else 0L
+
+  private def updateWord(idx: Int, w: Long) {
+    if (idx >= nwords) {
+      var newlen = nwords
+      while (idx >= newlen) newlen = newlen * 2
+      val elems1 = new Array[Long](newlen)
+      Array.copy(elems, 0, elems1, 0, nwords)
+      elems = elems1
+    }
+    elems(idx) = w
+  }
+
+  protected def fromArray(words: Array[Long]): BitSet = new BitSet(words)
+
+  override def add(elem: Int): Boolean = {
+    require(elem >= 0)
+    if (contains(elem)) false
+    else {
+      val idx = elem >> LogWL
+      updateWord(idx, word(idx) | (1L << elem))
+      true
+    }
+  }
+
+  override def remove(elem: Int): Boolean = {
+    require(elem >= 0)
+    if (contains(elem)) {
+      val idx = elem >> LogWL
+      updateWord(idx, word(idx) & ~(1L << elem))
+      true
+    } else false
+  }
+
+  def += (elem: Int): this.type = { add(elem); this }
+  def -= (elem: Int): this.type = { remove(elem); this }
+
+  override def clear() {
+    elems = new Array[Long](elems.length)
+  }
+
+  /** Wraps this bitset as an immutable bitset backed by the array of bits
+   *  of this bitset.
    *
-   *  @param n ...
-   */
-  def ensureCapacity(n: Int): Unit =
-    if (capacity < n) {
-      if (nbits(arr.length) < n) {
-        val newn = memsize(n)
-        var newsize = if (arr.length == 0) newn else arr.length * 2
-        while (newn > newsize)
-          newsize = newsize * 2;
-        val newarr = new Array[Int](newsize)
-        arraycopy(arr, 0, newarr, 0, arr.length)
-        arr = newarr
-      }
-      capacity = n
-    }
-
-  /**
-   * Sets <code>i-th</code> bit to true.
-   * No restriction on <code>i</code>
-   */
-  def +=(i: Int): Unit = {
-    ensureCapacity(i+1)
-    val oldInt = arr(offset(i))
-    val newInt = oldInt | mask(i)
-    if (oldInt != newInt) {
-      arr(offset(i)) = newInt
-      size = size + 1
-    }
-  }
-
-  /** Clears the <code>i</code>-th bit.
+   *  @note Subsequent changes in this bitset will be reflected in the returned immutable bitset.
    *
-   *  @param i the <code>i</code>-th element of the bit set.
+   *  @return an immutable set containing all the elements of this set.
    */
-  def -=(i: Int): Unit = {
-    if (i >= capacity) return;
-    val oldInt = arr(offset(i))
-    val newInt = oldInt & ~mask(i)
-    if (oldInt != newInt) {
-      arr(offset(i)) = newInt
-      size = size - 1
-    }
+  def toImmutable = immutable.BitSet.fromArray(elems)
+
+  override def clone(): BitSet = {
+    val elems1 = new Array[Long](elems.length)
+    Array.copy(elems, 0, elems1, 0, elems.length)
+    new BitSet(elems1)
   }
+}
 
-  /** Clears all bits of the set.
-   */
-  override def clear(): Unit = {
-    arrayclear(arr)
-    size = 0
-  }
+/** $factoryInfo
+ *  @define coll bitset
+ *  @define Coll BitSet
+ */
+object BitSet extends BitSetFactory[BitSet] {
+  def empty: BitSet = new BitSet
 
-  def toImmutable: collection.immutable.BitSet =
-    new immutable.BitSet(size, capacity, arr, true)
+  /** A growing builder for mutable Sets. */
+  def newBuilder: Builder[Int, BitSet] = new GrowingBuilder[Int, BitSet](empty)
 
-  override def clone(): BitSet = new BitSet(capacity) {
-    arraycopy(BitSet.this.arr, 0, arr, 0, arr.length)
-    size = BitSet.this.size
-    capacity = BitSet.this.capacity
-  }
-
-  var size: Int = 0
-
-  var capacity: Int = initSize
-
-  protected var arr: Array[Int] = new Array[Int](memsize(initSize))
-
+  /** $bitsetCanBuildFrom */
+  implicit def canBuildFrom: CanBuildFrom[BitSet, Int, BitSet] = bitsetCanBuildFrom
 }

@@ -1,4 +1,4 @@
-package examples.tcpoly.collection;
+package examples.tcpoly.collection
 
 trait HOSeq {
   // an internal interface that encapsulates the accumulation of elements (of type elT) to produce
@@ -18,21 +18,21 @@ trait HOSeq {
     type m[+x]
 
     //def unit[a](orig: a): m[a]
-    def elements: Iterator[t]
+    def iterator: Iterator[t]
 
     // construct an empty accumulator that will produce the same structure as this iterable, with elements of type t
     def accumulator[t]: Accumulator[m, t]
 
     def filter(p: t => Boolean): m[t] = {
       val buf = accumulator[t]
-      val elems = elements
+      val elems = iterator
       while (elems.hasNext) { val x = elems.next; if (p(x)) buf += x }
       buf.result
     }
 
     def map[s](f: t => s): m[s] = {
       val buf = accumulator[s]
-      val elems = elements
+      val elems = iterator
       while (elems.hasNext) buf += f(elems.next)
       buf.result
     }
@@ -44,9 +44,9 @@ trait HOSeq {
     def flatMap[resColl[+x] <: Iterable[x], s](f: t => resColl[s])(implicit buf: Accumulator[resColl, s]): resColl[s] = {
         // TODO:  would a viewbound for resColl[x] be better?
         // -- 2nd-order type params are not yet in scope in view bound
-      val elems = elements
+      val elems = iterator
       while (elems.hasNext) {
-        val elemss: Iterator[s] = f(elems.next).elements
+        val elemss: Iterator[s] = f(elems.next).iterator
         while (elemss.hasNext) buf += elemss.next
       }
       buf.result
@@ -56,13 +56,13 @@ trait HOSeq {
   final class ListBuffer[A] {
     private var start: List[A] = Nil
     private var last: ::[A] = _
-    private var exported: boolean = false
+    private var exported: Boolean = false
 
     /** Appends a single element to this buffer.
      *
      *  @param x  the element to append.
      */
-    def += (x: A): unit = {
+    def += (x: A) {
       if (exported) copy
       if (start.isEmpty) {
         last = new HOSeq.this.:: (x, Nil)
@@ -83,13 +83,13 @@ trait HOSeq {
 
     /** Clears the buffer contents.
      */
-    def clear: unit = {
+    def clear {
       start = Nil
       exported = false
     }
 
     /** Copy contents of this buffer */
-    private def copy = {
+    private def copy {
       var cursor = start
       val limit = last.tail
       clear
@@ -101,36 +101,36 @@ trait HOSeq {
   }
 
   implicit def listAccumulator[elT]: Accumulator[List, elT] = new Accumulator[List, elT] {
-          private[this] val buff = new ListBuffer[elT]
-          def += (el: elT): Unit = buff += el
-          def result: List[elT] = buff.toList
+    private[this] val buff = new ListBuffer[elT]
+    def += (el: elT): Unit = buff += el
+    def result: List[elT] = buff.toList
   }
 
   trait List[+t] extends Iterable[t] {
-          type m[+x] = List[x]
+    type m[+x] = List[x]
 
-          def head: t
-          def tail: List[t]
-          def isEmpty: Boolean
-          def elements: Iterator[t] = new Iterator[t] {
-            var these = List.this
-            def hasNext: Boolean = !these.isEmpty
-            def next: t =
-              if (!hasNext)
-                throw new NoSuchElementException("next on empty Iterator")
-              else {
-                val result = these.head; these = these.tail; result
-              }
-          }
-          // construct an empty accumulator that will produce the same structure as this iterable, with elements of type t
-          def accumulator[t]: Accumulator[List, t] = listAccumulator[t]
+    def head: t
+    def tail: List[t]
+    def isEmpty: Boolean
+    def iterator: Iterator[t] = new Iterator[t] {
+      var these = List.this
+      def hasNext: Boolean = !these.isEmpty
+      def next: t =
+        if (!hasNext)
+          throw new NoSuchElementException("next on empty Iterator")
+        else {
+          val result = these.head; these = these.tail; result
+        }
+    }
+    // construct an empty accumulator that will produce the same structure as this iterable, with elements of type t
+    def accumulator[t]: Accumulator[List, t] = listAccumulator[t]
   }
 
   // TODO: the var tl approach does not seem to work because subtyping isn't fully working yet
   final case class ::[+b](hd: b, private val tl: List[b]) extends List[b] {
     def head = hd
     def tail = if(tl==null) this else tl // hack
-    override def isEmpty: boolean = false
+    override def isEmpty: Boolean = false
   }
 
   case object Nil extends List[Nothing] {

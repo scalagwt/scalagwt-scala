@@ -38,6 +38,14 @@ object Test {
       // clear
       x.clear
       assertEquals("length F ", x.length, 0)
+
+      // copyToBuffer
+      x += "a"
+      x += "b"
+      val dest = new ArrayBuffer[String]
+      x copyToBuffer dest
+      assertEquals("dest", List("a", "b"), dest.toList)
+      assertEquals("source", List("a", "b"), x.toList)
     }
   }
 
@@ -88,7 +96,7 @@ object Test {
     )
     val tr = new TestResult()
     ts.run(tr)
-    for(val failure <- tr.failures) {
+    for (failure <- tr.failures) {
       Console.println(failure)
     }
   }

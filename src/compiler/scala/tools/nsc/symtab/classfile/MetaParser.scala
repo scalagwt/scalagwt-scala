@@ -1,15 +1,15 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.symtab.classfile
+package scala.tools.nsc
+package symtab
+package classfile
 
 import java.util.{StringTokenizer, NoSuchElementException}
 
 import scala.collection.mutable.ListBuffer
-import scala.tools.nsc.util.{Position,NoPosition}
 
 abstract class MetaParser{
 
@@ -72,11 +72,11 @@ abstract class MetaParser{
     nextToken()
     val lo =
       if (token == ">") { nextToken(); parseType() }
-      else definitions.AllClass.tpe
+      else definitions.NothingClass.tpe
     val hi =
       if (token == "<") { nextToken(); parseType() }
       else definitions.AnyClass.tpe
-    sym.setInfo(mkTypeBounds(lo, hi))
+    sym.setInfo(TypeBounds(lo, hi))
     locals enter sym;
     sym
   }
@@ -108,7 +108,7 @@ abstract class MetaParser{
   }
 
   protected def parseClass() {
-    locals = newScope
+    locals = new Scope
     def parse(): Type = {
       nextToken()
       if (token == "[") {
@@ -130,11 +130,14 @@ abstract class MetaParser{
 
   protected def parseMethod() {
     val globals = locals
-    locals = if (locals eq null) newScope else newScope(locals)
+    locals = if (locals eq null) new Scope else new Scope(locals)
     def parse(): Type = {
       nextToken();
       if (token == "[") PolyType(parseTypeParams(), parse())
-      else if (token == "(") MethodType(parseParams(), parse())
+      else if (token == "(") {
+        val formals = parseParams()
+        MethodType(owner.newSyntheticValueParams(formals), parse())
+      }
       else parseType()
     }
     owner.setInfo(parse())
@@ -151,7 +154,10 @@ abstract class MetaParser{
   protected def parseConstr() {
     def parse(): Type = {
       nextToken()
-      if (token == "(") MethodType(parseParams(), parse())
+      if (token == "(") {
+        val formals = parseParams()
+        MethodType(owner.newSyntheticValueParams(formals), parse())
+      }
       else owner.owner.tpe
     }
     owner.setInfo(parse())

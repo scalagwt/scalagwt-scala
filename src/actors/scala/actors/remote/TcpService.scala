@@ -1,22 +1,23 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.actors.remote
+package scala.actors
+package remote
 
 
 import java.io.{DataInputStream, DataOutputStream, IOException}
 import java.lang.{Thread, SecurityException}
-import java.net.{InetAddress, ServerSocket, Socket, UnknownHostException, URLClassLoader}
+import java.net.{InetAddress, ServerSocket, Socket, UnknownHostException}
 
 import scala.collection.mutable.HashMap
+import scala.util.Random
 
 /* Object TcpService.
  *
@@ -35,6 +36,7 @@ object TcpService {
         val service = new TcpService(port, cl)
         ports += Pair(port, service)
         service.start()
+        Debug.info("created service at "+service.node)
         service
     }
 
@@ -122,7 +124,12 @@ class TcpService(port: Int, cl: ClassLoader) extends Thread with Service {
 
   def terminate() {
     shouldTerminate = true
-    new Socket(internalNode.address, internalNode.port)
+    try {
+      new Socket(internalNode.address, internalNode.port)
+    } catch {
+      case ce: java.net.ConnectException =>
+        Debug.info(this+": caught "+ce)
+    }
   }
 
   private var shouldTerminate = false
@@ -131,7 +138,7 @@ class TcpService(port: Int, cl: ClassLoader) extends Thread with Service {
     try {
       val socket = new ServerSocket(port)
       while (!shouldTerminate) {
-        Debug.info(this+": waiting for new connection...")
+        Debug.info(this+": waiting for new connection on port "+port+"...")
         val nextClient = socket.accept()
         if (!shouldTerminate) {
           val worker = new TcpServiceWorker(this, nextClient)
@@ -142,18 +149,11 @@ class TcpService(port: Int, cl: ClassLoader) extends Thread with Service {
           nextClient.close()
       }
     } catch {
-      case ioe: IOException =>
-        Debug.info(this+": caught "+ioe)
-      case sec: SecurityException =>
-        Debug.info(this+": caught "+sec)
       case e: Exception =>
         Debug.info(this+": caught "+e)
     } finally {
       Debug.info(this+": shutting down...")
-
-      var workers: List[TcpServiceWorker] = List()
-      connections.values foreach { w => workers = w :: workers }
-      workers foreach { w => w.halt }
+      connections foreach { case (_, worker) => worker.halt }
     }
   }
 
@@ -175,8 +175,8 @@ class TcpService(port: Int, cl: ClassLoader) extends Thread with Service {
   }
 
   def connect(n: Node): TcpServiceWorker = synchronized {
-    val sock = new Socket(n.address, n.port)
-    val worker = new TcpServiceWorker(this, sock)
+    val socket = new Socket(n.address, n.port)
+    val worker = new TcpServiceWorker(this, socket)
     worker.sendNode(n)
     worker.start()
     addConnection(n, worker)
@@ -185,13 +185,11 @@ class TcpService(port: Int, cl: ClassLoader) extends Thread with Service {
 
   def disconnectNode(n: Node) = synchronized {
     connections.get(n) match {
-      case None => {
+      case None =>
         // do nothing
-      }
-      case Some(worker) => {
+      case Some(worker) =>
         connections -= n
         worker.halt
-      }
     }
   }
 
@@ -212,27 +210,23 @@ class TcpService(port: Int, cl: ClassLoader) extends Thread with Service {
 }
 
 
-class TcpServiceWorker(parent: TcpService, so: Socket) extends Thread {
-  val in = so.getInputStream()
-  val out = so.getOutputStream()
-
-  val datain = new DataInputStream(in)
-  val dataout = new DataOutputStream(out)
+private[actors] class TcpServiceWorker(parent: TcpService, so: Socket) extends Thread {
+  val datain = new DataInputStream(so.getInputStream)
+  val dataout = new DataOutputStream(so.getOutputStream)
 
   var connectedNode: Node = _
 
-  def sendNode(n: Node) = {
+  def sendNode(n: Node) {
     connectedNode = n
     parent.serializer.writeObject(dataout, parent.node)
   }
 
-  def readNode = {
+  def readNode {
     val node = parent.serializer.readObject(datain)
     node match {
-      case n: Node => {
+      case n: Node =>
         connectedNode = n
         parent.addConnection(n, this)
-      }
     }
   }
 
@@ -265,6 +259,6 @@ class TcpServiceWorker(parent: TcpService, so: Socket) extends Thread {
         Debug.info(this+": caught "+e)
         parent nodeDown connectedNode
     }
-    Debug.info(this+": terminated")
+    Debug.info(this+": service terminated at "+parent.node)
   }
 }

@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2002-2008 LAMP/EPFL
+ * Copyright 2002-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.reporters
+package scala.tools.nsc
+package reporters
 
 import scala.tools.nsc.util._
 
@@ -14,23 +14,24 @@ import scala.tools.nsc.util._
  */
 abstract class Reporter {
   object severity extends Enumeration
-  abstract class Severity extends severity.Value {
+  class Severity(_id: Int) extends severity.Value {
     var count: Int = 0
+    def id = _id
   }
-  object INFO    extends Severity { def id = 0 }
-  object WARNING extends Severity { def id = 1 }
-  object ERROR   extends Severity { def id = 2 }
+  val INFO = new Severity(0)
+  val WARNING = new Severity(1)
+  val ERROR = new Severity(2)
 
-  def reset: Unit = {
+  def reset {
     INFO.count = 0
     ERROR.count   = 0
     WARNING.count = 0
     cancelled = false
   }
 
-
   var cancelled: Boolean = false
-  def hasErrors: Boolean = ERROR.count != 0 || cancelled
+  def hasErrors: Boolean = ERROR.count > 0 || cancelled
+  def hasWarnings: Boolean = WARNING.count > 0
 
   /** Flush all output */
   def flush() { }
@@ -40,10 +41,21 @@ abstract class Reporter {
   private var source: SourceFile = _
   def setSource(source: SourceFile) { this.source = source }
   def getSource: SourceFile = source
+  def withSource[A](src: SourceFile)(op: => A) = {
+    val oldSource = source
+    try {
+      source = src
+      op
+    } finally {
+      source = oldSource
+    }
+  }
 
-  def    info(pos: Position, msg: String, force: Boolean): Unit = info0(pos, msg,    INFO, force)
-  def warning(pos: Position, msg: String                ): Unit = info0(pos, msg, WARNING, false)
-  def   error(pos: Position, msg: String                ): Unit = info0(pos, msg,   ERROR, false)
+  def    info(pos: Position, msg: String, force: Boolean) { info0(pos, msg,    INFO, force) }
+  def warning(pos: Position, msg: String                ) { info0(pos, msg, WARNING, false) }
+  def   error(pos: Position, msg: String                ) { info0(pos, msg,   ERROR, false) }
+
+  def comment(pos: Position, msg: String) {}
 
   /** An error that could possibly be fixed if the unit were longer.
    *  This is used only when the interpreter tries
@@ -53,14 +65,18 @@ abstract class Reporter {
    * Should be re-factored into a subclass.
    */
   var incompleteInputError: (Position, String) => Unit = error
+  var incompleteHandled: Boolean = false
 
   def withIncompleteHandler[T](handler: (Position, String) => Unit)(thunk: => T) = {
     val savedHandler = incompleteInputError
+    val savedHandled = incompleteHandled
     try {
       incompleteInputError = handler
+      incompleteHandled = true
       thunk
     } finally {
       incompleteInputError = savedHandler
+      incompleteHandled = savedHandled
     }
   }
 

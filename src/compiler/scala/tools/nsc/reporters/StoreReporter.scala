@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2002-2007 LAMP/EPFL
+ * Copyright 2002-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.reporters
+package scala.tools.nsc
+package reporters
 
 import java.io.{BufferedReader, InputStreamReader, IOException, PrintWriter}
 

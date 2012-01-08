@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 package scala.tools.ant
 
@@ -49,11 +48,7 @@ class FastScalac extends Scalac {
    *  @param input The value for <code>server</code>.
    */
   def setServer(input: String): Unit = {
-    def isHostNameValid(host: String): Boolean =
-      try { val _ = java.net.InetAddress.getByName(host); true }
-      catch { case _ => false }
-    if (isHostNameValid(input)) serverAddr = Some(input)
-    else error("Unknown server '" + input + "'")
+    serverAddr = Some(input)
   }
 
   /** Sets the <code>shutdown</code> attribute. Used by Ant.
@@ -69,36 +64,44 @@ class FastScalac extends Scalac {
 
   /** Performs the compilation. */
   override def execute() = {
-    val Pair(settings, sourceFiles) = initialize
+    val (settings, sourceFiles, javaOnly) = initialize
+    val s = settings
 
-    if (!sourceFiles.isEmpty) {
+    if (!sourceFiles.isEmpty && !javaOnly) {
       def trim(xs: List[String]) = xs filter (x => x.length > 0)
       val reset = settings.BooleanSetting("-reset", "Reset compile server caches")
       val shutdown = settings.BooleanSetting("-shutdown", "Shutdown compile server")
 
       reset.value = resetCaches
       shutdown.value = shutdownServer
+
+      val stringSettings =
+        List(s.outdir, s.classpath, s.bootclasspath, s.extdirs, s.encoding) flatMap (x => List(x.name, x.value))
+
+      val serverOption =
+        serverAddr.toList flatMap (x => List("-server", x))  // '-server' option
+
+      val choiceSettings =
+        List(s.debuginfo, s.target) map (x => "%s:%s".format(x.name, x.value))
+
+      val booleanSettings =
+        List(s.debug, s.deprecation, s.nopredefs, s.verbose, reset, shutdown) map (x => if (x.value) List(x.name) else Nil) flatten
+
+      val phaseSetting = {
+        val s = settings.log
+        if (s.value.isEmpty) Nil
+        else List("%s:%s".format(s.name, s.value.mkString(",")))
+      }
+
       val cmdOptions =
-        // StringSetting
-        List.flatten(
-          List(settings.outdir, settings.classpath, settings.bootclasspath,
-               settings.extdirs, settings.encoding) map (s => List(s.name, s.value))) :::
-        // '-server' option
-        (if (serverAddr.isEmpty) Nil else List("-server", serverAddr.get)) :::
-        // ChoiceSetting
-        (List(settings.debuginfo, settings.target) map (s => s.name + ":" + s.value)) :::
-        // BooleanSetting
-        trim(
-          List(settings.debug, settings.deprecation, settings.nopredefs,
-               settings.verbose, reset, shutdown) map (s => if (s.value) s.name else "")) :::
-        // PhaseSetting
-        trim(
-          List(settings.log) map (s => if (s.value.isEmpty) "" else s.name + ":" + s.value))
+        stringSettings ::: serverOption ::: choiceSettings ::: booleanSettings ::: phaseSetting
 
       val args = (cmdOptions ::: (sourceFiles map (_.toString))).toArray
       try {
-        nsc.CompileClient.main0(args)
-      } catch {
+        if (scala.tools.nsc.CompileClient.main0(args) > 0 && failonerror)
+          error("Compile failed; see the compiler error output for details.")
+      }
+      catch {
         case exception: Throwable if (exception.getMessage ne null) =>
           exception.printStackTrace()
           error("Compile failed because of an internal compiler error (" +

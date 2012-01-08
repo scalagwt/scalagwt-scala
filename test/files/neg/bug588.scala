@@ -1,6 +1,6 @@
 abstract class Test0 {
-  def visit(f: int => unit): boolean
-  def visit(f: int => String): boolean
+  def visit(f: Int => Unit): Boolean
+  def visit(f: Int => String): Boolean
 }
 trait Test {
   type TypeA <: TraitA;

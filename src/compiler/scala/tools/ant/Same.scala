@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Ant Tasks                      **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id: ScalaTool.scala 11911 2007-06-05 15:57:59Z odersky $
 
 package scala.tools.ant
 
@@ -37,7 +36,7 @@ import org.apache.tools.ant.types.Mapper
 class Same extends MatchingTask {
 
   /** The unique Ant file utilities instance to use in this task. */
-  private val fileUtils = FileUtils.newFileUtils()
+  private val fileUtils = FileUtils.getFileUtils()
 
 /*============================================================================*\
 **                             Ant user-properties                            **

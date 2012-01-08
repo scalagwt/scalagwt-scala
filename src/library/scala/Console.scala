@@ -1,22 +1,19 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala
 
 import java.io.{BufferedReader, InputStream, InputStreamReader,
-                OutputStream, PrintStream, Reader}
+                IOException, OutputStream, PrintStream, Reader}
 import java.text.MessageFormat
-
 import scala.util.DynamicVariable
-import Predef._
 
 
 /** The <code>Console</code> object implements functionality for
@@ -58,13 +55,13 @@ object Console {
   final val INVISIBLE  = "\033[8m"
 
   private val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
+  private val errVar = new DynamicVariable[PrintStream](java.lang.System.err)
   private val inVar = new DynamicVariable[BufferedReader](
     new BufferedReader(new InputStreamReader(java.lang.System.in)))
 
   def out = outVar.value
+  def err = errVar.value
   def in = inVar.value
-
-  val err = java.lang.System.err
 
   /** Set the default output stream.
    *
@@ -85,7 +82,7 @@ object Console {
 
   /** Set the default output stream.
    *
-   *  @param@ out the new output stream.
+   *  @param out the new output stream.
    */
   def setOut(out: OutputStream): Unit =
     setOut(new PrintStream(out))
@@ -102,11 +99,47 @@ object Console {
     withOut(new PrintStream(out))(thunk)
 
 
+  /** Set the default error stream.
+   *
+   *  @param err the new error stream.
+   */
+  def setErr(err: PrintStream) { errVar.value = err }
+
+  /** Set the default error stream for the duration
+   *  of execution of one thunk.
+   *
+   *  @param err the new error stream.
+   *  @param thunk the code to execute with
+   *               the new error stream active
+   *  @return ...
+   */
+  def withErr[T](err: PrintStream)(thunk: =>T): T =
+    errVar.withValue(err)(thunk)
+
+  /** Set the default error stream.
+   *
+   *  @param err the new error stream.
+   */
+  def setErr(err: OutputStream): Unit =
+    setErr(new PrintStream(err))
+
+  /** Set the default error stream for the duration
+   *  of execution of one thunk.
+   *
+   *  @param err the new error stream.
+   *  @param thunk the code to execute with
+   *               the new error stream active
+   *  @return ...
+   */
+  def withErr[T](err: OutputStream)(thunk: =>T): T =
+    withErr(new PrintStream(err))(thunk)
+
+
   /** Set the default input stream.
    *
    *  @param reader specifies the new input stream.
    */
-  def setIn(reader: Reader): Unit = {
+  def setIn(reader: Reader) {
     inVar.value = new BufferedReader(reader)
   }
 
@@ -117,16 +150,17 @@ object Console {
    *  @param thunk the code to execute with
    *               the new input stream active
    */
-    def withIn[T](reader: Reader)(thunk: =>T): T =
-      inVar.withValue(new BufferedReader(reader))(thunk)
+  def withIn[T](reader: Reader)(thunk: =>T): T =
+    inVar.withValue(new BufferedReader(reader))(thunk)
 
 
   /** Set the default input stream.
    *
    *  @param in the new input stream.
    */
-  def setIn(in: InputStream): Unit =
+  def setIn(in: InputStream) {
     setIn(new InputStreamReader(in))
+  }
 
   /** Set the default input stream for the duration
    *  of execution of one thunk.
@@ -142,8 +176,9 @@ object Console {
    *
    *  @param obj the object to print.
    */
-  def print(obj: Any): Unit =
+  def print(obj: Any) {
     out.print(if (null == obj) "null" else obj.toString())
+  }
 
   /** Flush the output stream. This function is required when partial
    *  output (i.e. output not terminated by a new line character) has
@@ -153,13 +188,13 @@ object Console {
 
   /** Print a new line character on the terminal.
    */
-  def println(): Unit = out.println()
+  def println() { out.println() }
 
   /** Print out an object followed by a new line character.
    *
    *  @param x the object to print.
    */
-  def println(x: Any): Unit = out.println(x)
+  def println(x: Any) { out.println(x) }
 
   /** <p>
    *    Prints its arguments as a formatted string, based on a string
@@ -167,93 +202,171 @@ object Console {
    *  </p>
    *  <p>
    *    The interpretation of the formatting patterns is described in
-   *    <a href="" target="contentFrame" class="java/text/MessageFormat">
-   *    <code>java.text.MessageFormat</code></a>.
+   *    <a href="" target="contentFrame" class="java/util/Formatter">
+   *    <code>java.util.Formatter</code></a>.
    *  </p>
    *
    *  @param text the pattern for formatting the arguments.
    *  @param args the arguments used to instantiating the pattern.
    *  @throws java.lang.IllegalArgumentException
    */
-  def printf(text: String, args: Any*) { format(text, args: _*) }
+  def printf(text: String, args: Any*) { out.print(text format (args : _*)) }
 
-  /**
-   *  @see <a href="#printf(java.lang.String,scala.Any*)"
-   *       target="contentFrame">Console.printf</a>.
-   */
-  def format(text: String, args: Any*): Unit =
-    out.print(
-      if (text eq null) "null"
-      else MessageFormat.format(text, textParams(args))
-    )
-
-  /** Read a full line from the terminal.
+  /** Read a full line from the terminal.  Returns <code>null</code> if the end of the
+   * input stream has been reached.
    *
-   *  @return the string read from the terminal.
+   * @return the string read from the terminal.
    */
   def readLine(): String = in.readLine()
 
-  /** Print a formatted text and read a full line from the terminal
+  /** Print a formatted text and read a full line from the terminal.
+   * Returns null if the end of the input stream has been reached.
    *
    *  @param text the format of the text to print out.
    *  @param args the parameters used to instantiate the format.
    *  @return the string read from the terminal.
    */
   def readLine(text: String, args: Any*): String = {
-    format(text, args: _*)
+    printf(text, args: _*)
     readLine()
   }
 
-
   /** Read a boolean value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
    *
    *  @return the boolean value read from the terminal.
+   *  @throws java.io.EOFException
    */
-  def readBoolean(): Boolean = readLine().toLowerCase() match {
-    case "true" => true
-    case "t" => true
-    case "yes" => true
-    case "y" => true
-    case _ => false
+  def readBoolean(): Boolean = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toLowerCase() match {
+        case "true" => true
+        case "t" => true
+        case "yes" => true
+        case "y" => true
+        case _ => false
+      }
   }
 
   /** Read a byte value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readByte(): Byte = readLine().toByte
+  def readByte(): Byte = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toByte
+  }
 
   /** Read a short value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readShort(): Short = readLine().toShort
+  def readShort(): Short = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toShort
+  }
 
   /** Read a char value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readChar(): Char = readLine() charAt 0
+  def readChar(): Char = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s charAt 0
+  }
 
   /** Read an int value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readInt(): Int = readLine().toInt
+  def readInt(): Int = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toInt
+  }
 
   /** Read an int value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readLong(): Long = readLine().toLong
+  def readLong(): Long = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toLong
+  }
 
   /** Read a float value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readFloat(): Float = readLine().toFloat
+  def readFloat(): Float = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toFloat
+  }
 
   /** Read a double value from the terminal.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
+   *
+   *  @throws java.io.EOFException
    */
-  def readDouble(): Double = readLine().toDouble
+  def readDouble(): Double = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      s.toDouble
+  }
 
   /** Read in some structured input, specified by a format specifier.
    *  See class <code>java.text.MessageFormat</code> for details of
    *  the format specification.
+   *  Throws <code>EOFException</code> if the end of the
+   *  input stream has been reached.
    *
    *  @param format the format of the input.
    *  @return a list of all extracted values.
+   *  @throws java.io.EOFException
    */
-  def readf(format: String): List[Any] =
-    textComponents(new MessageFormat(format).parse(readLine()))
+  def readf(format: String): List[Any] = {
+    val s = readLine()
+    if (s == null)
+      throw new java.io.EOFException("Console has reached end of input")
+    else
+      textComponents(new MessageFormat(format).parse(s))
+  }
 
   /** Read in some structured input, specified by a format specifier.
    *  Opposed to <code>readf</code>, this function only returns the
@@ -307,38 +420,6 @@ object Console {
         case x => x
       }) :: res;
       i -= 1
-    }
-    res
-  }
-
-  private def textParams(s: Seq[Any]): Array[AnyRef] = {
-    val res = new Array[AnyRef](s.length)
-    var i: Int = 0
-    val iter = s.elements
-    while (iter.hasNext) {
-      res(i) = iter.next match {
-        case x: Boolean => java.lang.Boolean.valueOf(x)
-        /** Should use java.lang.Byte.valueOf(Byte), but only available
-         * in Java 1.5 and above. */
-        case x: Byte    => new java.lang.Byte(x)
-        /** Should use java.lang.Short.valueOf(Short), but only available
-         * in Java 1.5 and above. */
-        case x: Short   => new java.lang.Short(x)
-        /** Should use java.lang.Character.valueOf(Char), but only available
-         * in Java 1.5 and above. */
-        case x: Char    => new java.lang.Character(x)
-        /** Should use java.lang.Integer.valueOf(Int), but only available
-         * in Java 1.5 and above. */
-        case x: Int     => new java.lang.Integer(x)
-        /** Should use java.lang.Long.valueOf(Long), but only available
-         * in Java 1.5 and above. */
-        case x: Long    => new java.lang.Long(x)
-        case x: Float   => new java.lang.Float(x)
-        case x: Double  => new java.lang.Double(x)
-        case x: Unit    => "()"
-        case x: AnyRef  => x
-      }
-      i += 1
     }
     res
   }

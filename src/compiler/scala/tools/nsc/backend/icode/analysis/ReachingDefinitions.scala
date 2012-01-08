@@ -1,14 +1,14 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode.analysis
+package scala.tools.nsc
+package backend.icode.analysis
 
 import scala.collection.immutable.{Set, ListSet, HashSet}
-import scala.collection.jcl.{HashMap, Map}
+import scala.collection.mutable.{HashMap, Map}
 
 /** Compute reaching definitions. We are only interested in reaching
  *  definitions for local variables, since values on the stack
@@ -37,24 +37,24 @@ abstract class ReachingDefinitions {
     }, Nil)
 
     /** The least upper bound is set inclusion for locals, and pairwise set inclusion for stacks. */
-    def lub2(a: Elem, b: Elem): Elem =
+    def lub2(exceptional: Boolean)(a: Elem, b: Elem): Elem =
       if (bottom == a) b
       else if (bottom == b) a
       else {
         val locals = a.vars ++ b.vars
-        val stack = if (a.stack == Nil)
-          b.stack
-        else if (b.stack == Nil) a.stack
-        else List.map2(a.stack, b.stack) (_ ++ _)
+        val stack =
+          if (a.stack == Nil) b.stack
+          else if (b.stack == Nil) a.stack
+          else (a.stack, b.stack).zipped map (_ ++ _)
 
-        val res = IState(locals, stack)
+        IState(locals, stack)
 
-//        Console.println("\tlub2: " + a + ", " + b)
-//        Console.println("\tis: " + res)
-
-//        if (res._1 eq bottom._1) (new ListSet[Definition], Nil)
-//        else res
-        res
+        // val res = IState(locals, stack)
+        // Console.println("\tlub2: " + a + ", " + b)
+        // Console.println("\tis: " + res)
+        // if (res._1 eq bottom._1) (new ListSet[Definition], Nil)
+        // else res
+        // res
       }
   }
 
@@ -104,7 +104,7 @@ abstract class ReachingDefinitions {
     def genAndKill(b: BasicBlock): (Set[Definition], Set[Local]) = {
       var genSet: Set[Definition] = new HashSet
       var killSet: Set[Local] = new HashSet
-      for (val (i, idx) <- b.toList.zipWithIndex) i match {
+      for ((i, idx) <- b.toList.zipWithIndex) i match {
         case STORE_LOCAL(local) =>
           killSet = killSet + local
           genSet  = updateReachingDefinition(b, idx, genSet)
@@ -118,7 +118,7 @@ abstract class ReachingDefinitions {
       var drops = 0
       var stackOut: List[Set[(BasicBlock, Int)]] = Nil
 
-      for (val (instr, idx) <- b.toList.zipWithIndex) {
+      for ((instr, idx) <- b.toList.zipWithIndex) {
         if (instr == LOAD_EXCEPTION())
           ()
         else if (instr.consumed > depth) {
@@ -132,7 +132,7 @@ abstract class ReachingDefinitions {
         var prod = instr.produced
         depth = depth + prod
         while (prod > 0) {
-          stackOut = (new collection.immutable.Set1((b, idx))) :: stackOut
+          stackOut = collection.immutable.Set((b, idx)) :: stackOut
           prod = prod - 1
         }
       }
@@ -184,7 +184,7 @@ abstract class ReachingDefinitions {
 
       var prod = instr.produced
       while (prod > 0) {
-        stack = (new collection.immutable.Set1((b, idx))) :: stack
+        stack = collection.immutable.Set((b, idx)) :: stack
         prod -= 1
       }
 
@@ -196,7 +196,7 @@ abstract class ReachingDefinitions {
      *  value found below the topmost element of the stack.
      */
     def findDefs(bb: BasicBlock, idx: Int, m: Int, depth: Int): List[(BasicBlock, Int)] = if (idx > 0) {
-      assert(bb.isClosed)
+      assert(bb.closed)
       var instrs = bb.getArray
       var res: List[(BasicBlock, Int)] = Nil
       var i = idx
@@ -209,8 +209,9 @@ abstract class ReachingDefinitions {
         if (prod > d) {
           res = (bb, i) :: res
           n   = n - (prod - d)
-          if (bb(i) != LOAD_EXCEPTION)
+          if (instrs(i) != LOAD_EXCEPTION()) {
             d = instrs(i).consumed
+          }
         } else {
           d -= prod
           d += instrs(i).consumed
@@ -228,7 +229,7 @@ abstract class ReachingDefinitions {
     } else {
       val stack = this.in(bb).stack
       assert(stack.length >= m, "entry stack is too small, expected: " + m + " found: " + stack)
-      stack.take(m) flatMap (_.toList)
+      stack.drop(depth).take(m) flatMap (_.toList)
     }
 
     /** Return the definitions that produced the topmost 'm' elements on the stack,

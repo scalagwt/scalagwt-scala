@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.util.logging
@@ -16,7 +15,7 @@ package scala.util.logging
  *    support for logging. For instance, the developer of a library writes
  *  </p>
  *  <pre>
- *    <b>class</b> MyClass <b>with</b> Logged { /* do stuff, call log */ }
+ *    <b>class</b> MyClass <b>extends</b> Logged { /* do stuff, call log */ }
  *  </pre>
  *  <p>
  *    The user of the library instantiates:

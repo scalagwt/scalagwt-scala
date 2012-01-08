@@ -1,11 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend
+package scala.tools.nsc
+package backend
 
 import scala.tools.nsc.backend.icode._
 
@@ -93,6 +93,7 @@ abstract class ScalaPrimitives {
   final val AS = 81                            // x.as[y]
   final val ISERASED = 85                      // x.is$erased[y]
   final val ASERASED = 86                      // x.as$erased[y]
+  final val HASH = 87                          // x.##
 
   // AnyRef operations
   final val SYNCHRONIZED = 90                  // x.synchronized(y)
@@ -106,15 +107,15 @@ abstract class ScalaPrimitives {
   // RunTime operations
   final val BOX = 110                          // RunTime.box_<X>(x)
   final val UNBOX = 111                        // RunTime.unbox_<X>(x)
-  final val NEW_ZARRAY = 112                   // RunTime.zarray(x)
-  final val NEW_BARRAY = 113                   // RunTime.barray(x)
-  final val NEW_SARRAY = 114                   // RunTime.sarray(x)
-  final val NEW_CARRAY = 115                   // RunTime.carray(x)
-  final val NEW_IARRAY = 116                   // RunTime.iarray(x)
-  final val NEW_LARRAY = 117                   // RunTime.larray(x)
-  final val NEW_FARRAY = 118                   // RunTime.farray(x)
-  final val NEW_DARRAY = 119                   // RunTime.darray(x)
-  final val NEW_OARRAY = 120                   // RunTime.oarray(x)
+//   final val NEW_ZARRAY = 112                   // RunTime.zarray(x)
+//   final val NEW_BARRAY = 113                   // RunTime.barray(x)
+//   final val NEW_SARRAY = 114                   // RunTime.sarray(x)
+//   final val NEW_CARRAY = 115                   // RunTime.carray(x)
+//   final val NEW_IARRAY = 116                   // RunTime.iarray(x)
+//   final val NEW_LARRAY = 117                   // RunTime.larray(x)
+//   final val NEW_FARRAY = 118                   // RunTime.farray(x)
+//   final val NEW_DARRAY = 119                   // RunTime.darray(x)
+//   final val NEW_OARRAY = 120                   // RunTime.oarray(x)
 
   final val ZARRAY_LENGTH = 131                // RunTime.zarray_length(x)
   final val BARRAY_LENGTH = 132                // RunTime.barray_length(x)
@@ -214,8 +215,7 @@ abstract class ScalaPrimitives {
     addPrimitive(Any_!=, NE)
     addPrimitive(Any_isInstanceOf, IS)
     addPrimitive(Any_asInstanceOf, AS)
-    addPrimitive(Any_isInstanceOfErased, ISERASED)
-    addPrimitive(Any_asInstanceOfErased, ASERASED)
+    addPrimitive(Any_##, HASH)
 
     // java.lang.Object
     addPrimitive(Object_eq, ID)
@@ -237,15 +237,12 @@ abstract class ScalaPrimitives {
     // scala.Boolean
     addPrimitives(BooleanClass, nme.EQ, EQ)
     addPrimitives(BooleanClass, nme.NE, NE)
-    addPrimitive(Boolean_not, ZNOT)
-    addPrimitive(Boolean_or, ZOR)
-    addPrimitive(Boolean_and, ZAND)
+    addPrimitives(BooleanClass, nme.UNARY_!, ZNOT)
+    addPrimitives(BooleanClass, nme.ZOR, ZOR)
+    addPrimitives(BooleanClass, nme.ZAND, ZAND)
     addPrimitives(BooleanClass, nme.OR, OR)
     addPrimitives(BooleanClass, nme.AND, AND)
     addPrimitives(BooleanClass, nme.XOR, XOR)
-//    addPrimitives(BooleanClass, nme.ADD, CONCAT)
-    // unary !
-//  addPrimitives(BooleanClass, nme.UNARY_!, ZNOT)
 
     // scala.Byte
     addPrimitives(ByteClass, nme.EQ, EQ)
@@ -276,10 +273,8 @@ abstract class ScalaPrimitives {
     addPrimitives(ByteClass, nme.UNARY_-, NEG)
     addPrimitives(ByteClass, nme.UNARY_~, NOT)
 
-    if (!forCLDC) {
-      addPrimitives(ByteClass, nme.toFloat,  B2F)
-      addPrimitives(ByteClass, nme.toDouble, B2D)
-    }
+    addPrimitives(ByteClass, nme.toFloat,  B2F)
+    addPrimitives(ByteClass, nme.toDouble, B2D)
 
     // scala.Short
     addPrimitives(ShortClass, nme.EQ, EQ)
@@ -310,10 +305,8 @@ abstract class ScalaPrimitives {
     addPrimitives(ShortClass, nme.UNARY_-, NEG)
     addPrimitives(ShortClass, nme.UNARY_~, NOT)
 
-    if (!forCLDC) {
-      addPrimitives(ShortClass, nme.toFloat,  S2F)
-      addPrimitives(ShortClass, nme.toDouble, S2D)
-    }
+    addPrimitives(ShortClass, nme.toFloat,  S2F)
+    addPrimitives(ShortClass, nme.toDouble, S2D)
 
     // scala.Char
     addPrimitives(CharClass, nme.EQ, EQ)
@@ -343,10 +336,8 @@ abstract class ScalaPrimitives {
     addPrimitives(CharClass, nme.UNARY_+, POS)
     addPrimitives(CharClass, nme.UNARY_-, NEG)
     addPrimitives(CharClass, nme.UNARY_~, NOT)
-    if (!forCLDC) {
-      addPrimitives(CharClass, nme.toFloat,  C2F)
-      addPrimitives(CharClass, nme.toDouble, C2D)
-    }
+    addPrimitives(CharClass, nme.toFloat,  C2F)
+    addPrimitives(CharClass, nme.toDouble, C2D)
 
     // scala.Int
     addPrimitives(IntClass, nme.EQ, EQ)
@@ -376,10 +367,8 @@ abstract class ScalaPrimitives {
     addPrimitives(IntClass, nme.UNARY_+, POS)
     addPrimitives(IntClass, nme.UNARY_-, NEG)
     addPrimitives(IntClass, nme.UNARY_~, NOT)
-    if (!forCLDC) {
-      addPrimitives(IntClass, nme.toFloat,  I2F)
-      addPrimitives(IntClass, nme.toDouble, I2D)
-    }
+    addPrimitives(IntClass, nme.toFloat,  I2F)
+    addPrimitives(IntClass, nme.toDouble, I2D)
 
     // scala.Long
     addPrimitives(LongClass, nme.EQ, EQ)
@@ -409,62 +398,56 @@ abstract class ScalaPrimitives {
     addPrimitives(LongClass, nme.UNARY_+, POS)
     addPrimitives(LongClass, nme.UNARY_-, NEG)
     addPrimitives(LongClass, nme.UNARY_~, NOT)
-    if (!forCLDC) {
-      addPrimitives(LongClass, nme.toFloat,  L2F)
-      addPrimitives(LongClass, nme.toDouble, L2D)
-    }
+    addPrimitives(LongClass, nme.toFloat,  L2F)
+    addPrimitives(LongClass, nme.toDouble, L2D)
 
-    if (!forCLDC) {
-      // scala.Float
-      addPrimitives(FloatClass, nme.EQ, EQ)
-      addPrimitives(FloatClass, nme.NE, NE)
-      addPrimitives(FloatClass, nme.ADD, ADD)
-      addPrimitives(FloatClass, nme.SUB, SUB)
-      addPrimitives(FloatClass, nme.MUL, MUL)
-      addPrimitives(FloatClass, nme.DIV, DIV)
-      addPrimitives(FloatClass, nme.MOD, MOD)
-      addPrimitives(FloatClass, nme.LT, LT)
-      addPrimitives(FloatClass, nme.LE, LE)
-      addPrimitives(FloatClass, nme.GT, GT)
-      addPrimitives(FloatClass, nme.GE, GE)
-      // conversions
-      addPrimitives(FloatClass, nme.toByte,   F2B)
-      addPrimitives(FloatClass, nme.toShort,  F2S)
-      addPrimitives(FloatClass, nme.toChar,   F2C)
-      addPrimitives(FloatClass, nme.toInt,    F2I)
-      addPrimitives(FloatClass, nme.toLong,   F2L)
-      addPrimitives(FloatClass, nme.toFloat,  F2F)
-      addPrimitives(FloatClass, nme.toDouble, F2D)
-      // unary methods
-      addPrimitives(FloatClass, nme.UNARY_+, POS)
-      addPrimitives(FloatClass, nme.UNARY_-, NEG)
+    // scala.Float
+    addPrimitives(FloatClass, nme.EQ, EQ)
+    addPrimitives(FloatClass, nme.NE, NE)
+    addPrimitives(FloatClass, nme.ADD, ADD)
+    addPrimitives(FloatClass, nme.SUB, SUB)
+    addPrimitives(FloatClass, nme.MUL, MUL)
+    addPrimitives(FloatClass, nme.DIV, DIV)
+    addPrimitives(FloatClass, nme.MOD, MOD)
+    addPrimitives(FloatClass, nme.LT, LT)
+    addPrimitives(FloatClass, nme.LE, LE)
+    addPrimitives(FloatClass, nme.GT, GT)
+    addPrimitives(FloatClass, nme.GE, GE)
+    // conversions
+    addPrimitives(FloatClass, nme.toByte,   F2B)
+    addPrimitives(FloatClass, nme.toShort,  F2S)
+    addPrimitives(FloatClass, nme.toChar,   F2C)
+    addPrimitives(FloatClass, nme.toInt,    F2I)
+    addPrimitives(FloatClass, nme.toLong,   F2L)
+    addPrimitives(FloatClass, nme.toFloat,  F2F)
+    addPrimitives(FloatClass, nme.toDouble, F2D)
+    // unary methods
+    addPrimitives(FloatClass, nme.UNARY_+, POS)
+    addPrimitives(FloatClass, nme.UNARY_-, NEG)
 
-      // scala.Double
-      addPrimitives(DoubleClass, nme.EQ, EQ)
-      addPrimitives(DoubleClass, nme.NE, NE)
-      addPrimitives(DoubleClass, nme.ADD, ADD)
-      addPrimitives(DoubleClass, nme.SUB, SUB)
-      addPrimitives(DoubleClass, nme.MUL, MUL)
-      addPrimitives(DoubleClass, nme.DIV, DIV)
-      addPrimitives(DoubleClass, nme.MOD, MOD)
-      addPrimitives(DoubleClass, nme.LT, LT)
-      addPrimitives(DoubleClass, nme.LE, LE)
-      addPrimitives(DoubleClass, nme.GT, GT)
-      addPrimitives(DoubleClass, nme.GE, GE)
-      // conversions
-      addPrimitives(DoubleClass, nme.toByte,   D2B)
-      addPrimitives(DoubleClass, nme.toShort,  D2S)
-      addPrimitives(DoubleClass, nme.toChar,   D2C)
-      addPrimitives(DoubleClass, nme.toInt,    D2I)
-      addPrimitives(DoubleClass, nme.toLong,   D2L)
-      addPrimitives(DoubleClass, nme.toFloat,  D2F)
-      addPrimitives(DoubleClass, nme.toDouble, D2D)
-      // unary methods
-      addPrimitives(DoubleClass, nme.UNARY_+, POS)
-      addPrimitives(DoubleClass, nme.UNARY_-, NEG)
-    }
-    // and the type map!
-    initPrimitiveTypeMap
+    // scala.Double
+    addPrimitives(DoubleClass, nme.EQ, EQ)
+    addPrimitives(DoubleClass, nme.NE, NE)
+    addPrimitives(DoubleClass, nme.ADD, ADD)
+    addPrimitives(DoubleClass, nme.SUB, SUB)
+    addPrimitives(DoubleClass, nme.MUL, MUL)
+    addPrimitives(DoubleClass, nme.DIV, DIV)
+    addPrimitives(DoubleClass, nme.MOD, MOD)
+    addPrimitives(DoubleClass, nme.LT, LT)
+    addPrimitives(DoubleClass, nme.LE, LE)
+    addPrimitives(DoubleClass, nme.GT, GT)
+    addPrimitives(DoubleClass, nme.GE, GE)
+    // conversions
+    addPrimitives(DoubleClass, nme.toByte,   D2B)
+    addPrimitives(DoubleClass, nme.toShort,  D2S)
+    addPrimitives(DoubleClass, nme.toChar,   D2C)
+    addPrimitives(DoubleClass, nme.toInt,    D2I)
+    addPrimitives(DoubleClass, nme.toLong,   D2L)
+    addPrimitives(DoubleClass, nme.toFloat,  D2F)
+    addPrimitives(DoubleClass, nme.toDouble, D2D)
+    // unary methods
+    addPrimitives(DoubleClass, nme.UNARY_+, POS)
+    addPrimitives(DoubleClass, nme.UNARY_-, NEG)
   }
 
   /** Add a primitive operation to the map */
@@ -487,16 +470,28 @@ abstract class ScalaPrimitives {
 
   def isCoercion(code: Int): Boolean = (code >= B2B) && (code <= D2D)
 
+  final val typeOfArrayOp: Map[Int, TypeKind] = Map(
+    (List(ZARRAY_LENGTH, ZARRAY_GET, ZARRAY_SET) map (_ -> BOOL)) ++
+    (List(BARRAY_LENGTH, BARRAY_GET, BARRAY_SET) map (_ -> BYTE)) ++
+    (List(SARRAY_LENGTH, SARRAY_GET, SARRAY_SET) map (_ -> SHORT)) ++
+    (List(CARRAY_LENGTH, CARRAY_GET, CARRAY_SET) map (_ -> CHAR)) ++
+    (List(IARRAY_LENGTH, IARRAY_GET, IARRAY_SET) map (_ -> INT)) ++
+    (List(LARRAY_LENGTH, LARRAY_GET, LARRAY_SET) map (_ -> LONG)) ++
+    (List(FARRAY_LENGTH, FARRAY_GET, FARRAY_SET) map (_ -> FLOAT)) ++
+    (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
+    (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> REFERENCE(AnyRefClass))) : _*
+  )
+
   /** Check whether the given operation code is an array operation. */
   def isArrayOp(code: Int): Boolean =
-    isArrayNew(code) | isArrayLength(code) | isArrayGet(code) | isArraySet(code)
+    /*isArrayNew(code) |*/ isArrayLength(code) | isArrayGet(code) | isArraySet(code)
 
-  def isArrayNew(code: Int): Boolean = code match {
-    case NEW_ZARRAY | NEW_BARRAY | NEW_SARRAY | NEW_CARRAY |
-         NEW_IARRAY | NEW_LARRAY | NEW_FARRAY | NEW_DARRAY |
-         NEW_OARRAY => true
-    case _ => false
-  }
+//   def isArrayNew(code: Int): Boolean = code match {
+//     case NEW_ZARRAY | NEW_BARRAY | NEW_SARRAY | NEW_CARRAY |
+//          NEW_IARRAY | NEW_LARRAY | NEW_FARRAY | NEW_DARRAY |
+//          NEW_OARRAY => true
+//     case _ => false
+//   }
 
   def isArrayLength(code: Int): Boolean = code match {
     case ZARRAY_LENGTH | BARRAY_LENGTH | SARRAY_LENGTH | CARRAY_LENGTH |
@@ -526,6 +521,8 @@ abstract class ScalaPrimitives {
 
     case _ => false
   }
+  def isUniversalEqualityOp(code: Int): Boolean = (code == EQ) || (code == NE)
+  def isReferenceEqualityOp(code: Int): Boolean = (code == ID) || (code == NI)
 
   def isArithmeticOp(code: Int): Boolean = code match {
     case POS | NEG | NOT => true; // unary
@@ -564,9 +561,9 @@ abstract class ScalaPrimitives {
 
   def isPrimitive(sym: Symbol): Boolean = primitives contains sym
 
-  /** Return the code for the givem symbol. */
+  /** Return the code for the given symbol. */
   def getPrimitive(sym: Symbol): Int = {
-    assert(isPrimitive(sym), "Unkown primitive " + sym)
+    assert(isPrimitive(sym), "Unknown primitive " + sym)
     primitives(sym)
   }
 
@@ -580,17 +577,14 @@ abstract class ScalaPrimitives {
    *            operations
    */
   def getPrimitive(fun: Symbol, tpe: Type): Int = {
-    import definitions._
-    val code = getPrimitive(fun)
 
-    var elem: Type = null
-    tpe match {
-      case TypeRef(_, sym, _elem :: Nil)
-           if (sym == ArrayClass) => elem = _elem
-      case _ => ()
+    def elem: Type = tpe match {
+      case TypeRef(_, sym, List(elemtype)) if (sym == definitions.ArrayClass) =>
+        elemtype
+      case _ => null
     }
 
-    code match {
+    getPrimitive(fun) match {
 
       case APPLY =>
         toTypeKind(elem) match {
@@ -638,7 +632,7 @@ abstract class ScalaPrimitives {
             abort("Unexpected array element type: " + elem)
         }
 
-      case _ =>
+      case code @ _ =>
         code
     }
   }

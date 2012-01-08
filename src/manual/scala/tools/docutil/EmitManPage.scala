@@ -1,9 +1,8 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Stephane Micheloud
  * Adapted from Lex Spoon's sbaz manual
  */
-//$Id$
 
 package scala.tools.docutil
 
@@ -19,12 +18,12 @@ object EmitManPage {
   def escape(text: String) =
     text.replaceAll("-", "\\-")
 
-  def emitSection(section: Section, depth: int) {
+  def emitSection(section: Section, depth: Int) {
     def emitPara(text: AbstractText) {
       emitText(text)
       out.println("\n.IP")
     }
-    def emitText(text: AbstractText): Unit =
+    def emitText(text: AbstractText) {
       text match {
         case seq:SeqText =>
           seq.components.foreach(emitText)
@@ -82,8 +81,9 @@ object EmitManPage {
         case _ =>
           error("unknown text node: " + text)
       }
+    }
 
-    def emitParagraph(para: Paragraph): Unit =
+    def emitParagraph(para: Paragraph) {
       para match {
         case TextParagraph(text) =>
           out.println(".PP")
@@ -130,6 +130,7 @@ object EmitManPage {
         case _ =>
           error("unknown paragraph node: " + para)
       }
+    }
 
     out.println(".\\\"")
     out.println(".\\\" ############################## " + section.title + " ###############################")
@@ -147,7 +148,7 @@ object EmitManPage {
     out.println(".\\\" ##########################################################################")
     out.println(".\\\" #                      __                                                #")
     out.println(".\\\" #      ________ ___   / /  ___     Scala 2 On-line Manual Pages          #")
-    out.println(".\\\" #     / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL              #")
+    out.println(".\\\" #     / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL              #")
     out.println(".\\\" #   __\\ \\/ /__/ __ |/ /__/ __ |                                          #")
     out.println(".\\\" #  /____/\\___/_/ |_/____/_/ | |    http://scala-lang.org/                #")
     out.println(".\\\" #                           |/                                           #")
@@ -162,13 +163,12 @@ object EmitManPage {
     doc.sections.foreach(s => emitSection(s, 1))
   }
 
-  def main(args: Array[String]) =
+  def main(args: Array[String]) {
     try {
       val cl = this.getClass.getClassLoader()
       val clasz = cl.loadClass(args(0))
-      type AnyClass = Class[_]
-      val meth = clasz.getDeclaredMethod("manpage", Array[AnyClass]())
-      val doc = meth.invoke(null, Array[Object]()).asInstanceOf[Document]
+      val meth = clasz.getDeclaredMethod("manpage")
+      val doc = meth.invoke(null).asInstanceOf[Document]
       emitDocument(doc)
     } catch {
       case ex: Exception =>
@@ -176,5 +176,10 @@ object EmitManPage {
         System.err.println("Error in EmitManPage")
         exit(1)
     }
+  }
 
+  def emitManPage(classname: String, outStream: java.io.OutputStream) {
+    out.setOut(outStream)
+    main(Array(classname))
+  }
 }

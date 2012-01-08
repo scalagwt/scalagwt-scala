@@ -7,13 +7,15 @@
 \*                                                                      */
 
 // $Id$
-package scala.tools.nsc.backend.jvm
-import nsc.symtab.SymbolTable
-import nsc.backend.icode.TypeKinds
+package scala.tools.nsc
+package backend
+package jvm
+import symtab.SymbolTable
+import backend.icode.TypeKinds
 
 /**
  * Utilities for formatting Scala constructs in Java syntax.
- * 
+ *
  *  @author  Lex Spoon
  */
 trait JavaSourceFormatting {
@@ -28,25 +30,25 @@ trait JavaSourceFormatting {
   }
 
   protected def javaName(sym: Symbol, fullyQualify: Boolean): String = {
-    import nsc.symtab.Flags._
+    import symtab.Flags._
     def suffix = if (sym.isModuleClass && !sym.isTrait && !sym.hasFlag(JAVA)) "$" else ""
 
     // TODO(spoon): why the special cases?  double check that they are needed
-    if (sym == definitions.AllClass)
+    if (sym == definitions.NothingClass)
       return "scala.runtime.Nothing$"
-    else if (sym == definitions.AllRefClass)
+    else if (sym == definitions.NullClass)
       return "scala.runtime.Null$"
 
-    val name = if (fullyQualify) sym.fullNameString('.') else sym.simpleName
+    val name = if (fullyQualify) sym.fullName('.') else sym.simpleName
     name + suffix
   }
-  
+
   protected def javaShortName(sym: Symbol): String =
     javaName(sym, false)
-  
+
   protected def javaName(sym: Symbol): String =
     javaName(sym, true)
-  
+
   protected def javaName(tpe: Type): String = {
     def tpstr(typ: TypeKind): String =
       typ match {
@@ -64,7 +66,7 @@ trait JavaSourceFormatting {
       }
     return tpstr(toTypeKind(tpe))
   }
-  
+
   protected def javaPrimName(prim: Int): String = {
     import scalaPrimitives._
 
@@ -73,24 +75,24 @@ trait JavaSourceFormatting {
 	  case POS => "+"                            // +x
 	  case NEG => "-"                           // -x
 	  case NOT => "~"                           // ~x
-	
+
 	  // Arithmetic binary operations
 	  case ADD => "+"                          // x + y
 	  case SUB => "-"                           // x - y
 	  case MUL => "*"                           // x * y
 	  case DIV => "/"                           // x / y
 	  case MOD => "%"                           // x % y
-	
+
 	  // Bitwise operations
 	  case OR  => "|"                           // x | y
 	  case XOR => "^"                           // x ^ y
 	  case AND => "&"                           // x & y
-	
+
 	  // Shift operations
 	  case LSL => "<<"                           // x << y
 	  case LSR => ">>"                           // x >>> y
 	  case ASR => ">>>"                           // x >> y
-	
+
 	  // Comparison operations
 	  case ID => "=="                            // x eq y
 	  case NI => "!="                            // x ne y
@@ -100,19 +102,19 @@ trait JavaSourceFormatting {
 	  case LE => "<="                            // x <= y
 	  case GE => ">="                            // x > y
 	  case GT => ">"                            // x >= y
-	
+
 	  // Boolean unary operations
 	  case ZNOT => "!"                          // !x
-	
+
 	  // Boolean binary operations
 	  case ZOR => "||"                           // x || y
 	  case ZAND => "&&"                          // x && y
-	
+
 	  // Array operations
 	  case LENGTH => ""                        // x.length
 	  case APPLY  => ""                        // x(y)
 	  case UPDATE => ""                        // x(y) => ""z
-	
+
 	  // String operations
 	  case CONCAT => "+"                       // String.valueOf(x)+String.valueOf(y)
     }

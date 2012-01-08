@@ -1,11 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode.analysis
+package scala.tools.nsc
+package backend.icode.analysis
 
 import scala.collection.mutable.{HashMap, Map}
 import scala.collection.immutable.{Set, ListSet}
@@ -32,7 +32,7 @@ abstract class Liveness {
       override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
     }
 
-    def lub2(a: Elem, b: Elem): Elem = a ++ b
+    def lub2(exceptional: Boolean)(a: Elem, b: Elem): Elem = a ++ b
   }
 
   final class LivenessAnalysis extends DataFlowAnalysis[livenessLattice.type] {
@@ -70,7 +70,7 @@ abstract class Liveness {
     def genAndKill(b: BasicBlock): (Set[Local], Set[Local]) = {
       var genSet = new ListSet[Local]
       var killSet = new ListSet[Local]
-      for (i <- b.toList) i match {
+      for (i <- b) i match {
         case LOAD_LOCAL(local)  if (!killSet(local)) => genSet = genSet + local
         case STORE_LOCAL(local) if (!genSet(local))  => killSet = killSet + local
         case _ => ()

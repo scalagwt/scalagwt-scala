@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2006 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 /** A sample transform.
  */
@@ -14,7 +14,6 @@ abstract class SampleTransform extends Transform {
   import global._                  // the global environment
   import definitions._             // standard classes and methods
   import typer.{typed, atOwner}    // methods to type trees
-  import posAssigner.atPos         // for filling in tree positions
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "sample-phase"
@@ -31,7 +30,7 @@ abstract class SampleTransform extends Transform {
           expr
         case Block(defs, sup @ Super(qual, mix)) => // A hypthothetic transformation, which replaces
                                                     // {super} by {super.sample}
-          copy.Block(                           // `copy' is the usual lazy tree copier
+          treeCopy.Block(                           // `copy' is the usual lazy tree copier
             tree1, defs,
             typed(                              // `typed' assigns types to its tree argument
               atPos(tree1.pos)(                 // `atPos' fills in position of its tree argument

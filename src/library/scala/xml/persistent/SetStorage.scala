@@ -1,14 +1,14 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-package scala.xml.persistent
+package scala.xml
+package persistent
 
 import scala.collection.mutable
 import java.io.File
@@ -27,7 +27,7 @@ class SetStorage(file: File) extends CachedFileStorage(file) {
   {
     val it = super.initialNodes
     dirty = it.hasNext
-    for(val x <- it) {
+    for(x <- it) {
       theSet += x;
     }
   }
@@ -38,6 +38,6 @@ class SetStorage(file: File) extends CachedFileStorage(file) {
 
   def -= (e: Node): Unit = synchronized { this.dirty = true; theSet -= e }
 
-  def nodes = synchronized { theSet.elements }
+  def nodes = synchronized { theSet.iterator }
 
 }

@@ -1,11 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode.analysis
+package scala.tools.nsc
+package backend.icode.analysis
 
 /** A complete lattice.
  */
@@ -27,7 +27,7 @@ trait CompleteLattice {
   }
 
   /** Return the least upper bound of <code>a</code> and <code>b</code> */
-  def lub2(a: Elem, b: Elem): Elem
+  def lub2(exceptional: Boolean)(a: Elem, b: Elem): Elem
 
   /** Return the top element. */
   def top: Elem
@@ -36,10 +36,10 @@ trait CompleteLattice {
   def bottom: Elem
 
   /** Compute the least upper bound of a list of elements. */
-  def lub(xs: List[Elem]): Elem = try {
-    if (xs == Nil) bottom else xs reduceLeft lub2
+  def lub(xs: List[Elem], exceptional: Boolean): Elem = try {
+    if (xs == Nil) bottom else xs reduceLeft lub2(exceptional)
   } catch {
-      case e: LubError =>
+      case e: LubException =>
         Console.println("Lub on blocks: " + xs)
         throw e
   }

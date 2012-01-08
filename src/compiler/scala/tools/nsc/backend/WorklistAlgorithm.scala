@@ -1,14 +1,14 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2006 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend
+package scala.tools.nsc
+package backend
 
 import scala.tools.nsc.ast._
-import scala.collection.mutable.MutableList
+import scala.collection.mutable.Stack
 
 /**
  * Simple implementation of a worklist algorithm. A processing
@@ -26,7 +26,7 @@ import scala.collection.mutable.MutableList
  */
 trait WorklistAlgorithm {
   type Elem
-  type WList <: MutableList[Elem]
+  type WList = Stack[Elem]
 
   val worklist: WList
 

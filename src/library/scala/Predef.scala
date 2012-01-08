@@ -1,106 +1,158 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala
 
+import collection.immutable.StringOps
+import collection.mutable.ArrayOps
+import collection.generic.CanBuildFrom
+import annotation.elidable
+import annotation.elidable.ASSERTION
 
 /** The <code>Predef</code> object provides definitions that are
  *  accessible in all Scala compilation units without explicit
  *  qualification.
  */
-object Predef {
-
-  // classOf dummy ------------------------------------------------------
-
-  /** Return the runtime representation of a class type. */
+object Predef extends LowPriorityImplicits {
+  /** Return the runtime representation of a class type.  This is a stub method.
+   *  The actual implementation is filled in by the compiler.
+   */
   def classOf[T]: Class[T] = null
-
-  // aliases ------------------------------------------------------------
-
-  type byte    = scala.Byte
-  type short   = scala.Short
-  type char    = scala.Char
-  type int     = scala.Int
-  type long    = scala.Long
-  type float   = scala.Float
-  type double  = scala.Double
-  type boolean = scala.Boolean
-  type unit    = scala.Unit
-
-  /** @deprecated use <code>java.lang.Integer</code> instead */
-  @deprecated type Integer = java.lang.Integer
-  /** @deprecated use <code>java.lang.Character</code> instead */
-  @deprecated type Character = java.lang.Character
 
   type String        = java.lang.String
   type Class[T]      = java.lang.Class[T]
-  type Runnable      = java.lang.Runnable
-
-  type Throwable = java.lang.Throwable
-  type Exception = java.lang.Exception
-  type Error     = java.lang.Error
-
-  type RuntimeException                = java.lang.RuntimeException
-  type NullPointerException            = java.lang.NullPointerException
-  type ClassCastException              = java.lang.ClassCastException
-  type IndexOutOfBoundsException       = java.lang.IndexOutOfBoundsException
-  type ArrayIndexOutOfBoundsException  = java.lang.ArrayIndexOutOfBoundsException
-  type StringIndexOutOfBoundsException = java.lang.StringIndexOutOfBoundsException
-  type UnsupportedOperationException   = java.lang.UnsupportedOperationException
-  type IllegalArgumentException        = java.lang.IllegalArgumentException
-  type NoSuchElementException          = java.util.NoSuchElementException
-  type NumberFormatException           = java.lang.NumberFormatException
 
   // miscelleaneous -----------------------------------------------------
-
-  val $scope = scala.xml.TopScope
+  scala.`package`                         // to force scala package object to be seen.
+  scala.collection.immutable.List         // to force Nil, :: to be seen.
+  scala.collection.mutable.StringBuilder  // to force StringBuilder to be seen.
 
   type Function[-A, +B] = Function1[A, B]
 
-  type Map[A, B] = collection.immutable.Map[A, B]
+  type Map[A, +B] = collection.immutable.Map[A, B]
   type Set[A] = collection.immutable.Set[A]
-
   val Map = collection.immutable.Map
   val Set = collection.immutable.Set
 
+  type Manifest[T] = scala.reflect.Manifest[T]
+  type ClassManifest[T] = scala.reflect.ClassManifest[T]
+  def implicitly[T](implicit e: T) = e
+  def manifest[T](implicit m: Manifest[T]) = m
+  def classManifest[T](implicit m: ClassManifest[T]) = m
+
+  // @see `conforms` for the implicit version
+  def identity[A](x: A): A = x
+
+  def currentThread = java.lang.Thread.currentThread()
+
+  @inline def locally[T](x: T): T = x
+
   // errors and asserts -------------------------------------------------
 
-  def error(message: String): Nothing = throw new Error(message)
+  def error(message: String): Nothing = throw new RuntimeException(message)
 
-  def exit: Nothing = exit(0)
+  def exit(): Nothing = exit(0)
 
   def exit(status: Int): Nothing = {
     java.lang.System.exit(status)
     throw new Throwable()
   }
 
+  /** Tests an expression, throwing an AssertionError if false.
+   *  Calls to this method will not be generated if -Xelide-below
+   *  is at least ASSERTION.
+   *
+   *  @see elidable
+   *  @param p   the expression to test
+   */
+  @elidable(ASSERTION)
   def assert(assertion: Boolean) {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed")
   }
 
-  def assert(assertion: Boolean, message: Any) {
+  /** Tests an expression, throwing an AssertionError if false.
+   *  Calls to this method will not be generated if -Xelide-below
+   *  is at least ASSERTION.
+   *
+   *  @see elidable
+   *  @param p   the expression to test
+   *  @param msg a String to include in the failure message
+   */
+  @elidable(ASSERTION)
+  def assert(assertion: Boolean, message: => Any) {
     if (!assertion)
-      throw new java.lang.AssertionError("assertion failed: " + message)
+      throw new java.lang.AssertionError("assertion failed: "+ message)
   }
 
+  /** Tests an expression, throwing an AssertionError if false.
+   *  This method differs from assert only in the intent expressed:
+   *  assert contains a predicate which needs to be proven, while
+   *  assume contains an axiom for a static checker.  Calls to this method
+   *  will not be generated if -Xelide-below is at least ASSERTION.
+   *
+   *  @see elidable
+   *  @param p   the expression to test
+   */
+  @elidable(ASSERTION)
   def assume(assumption: Boolean) {
     if (!assumption)
-      throw new IllegalArgumentException("assumption failed")
+      throw new java.lang.AssertionError("assumption failed")
   }
 
-  def assume(assumption: Boolean, message: Any) {
+  /** Tests an expression, throwing an AssertionError if false.
+   *  This method differs from assert only in the intent expressed:
+   *  assert contains a predicate which needs to be proven, while
+   *  assume contains an axiom for a static checker.  Calls to this method
+   *  will not be generated if -Xelide-below is at least ASSERTION.
+   *
+   *  @see elidable
+   *  @param p   the expression to test
+   *  @param msg a String to include in the failure message
+   */
+  @elidable(ASSERTION)
+  def assume(assumption: Boolean, message: => Any) {
     if (!assumption)
-      throw new IllegalArgumentException(message.toString)
+      throw new java.lang.AssertionError("assumption failed: "+ message)
   }
+
+  /** Tests an expression, throwing an IllegalArgumentException if false.
+   *  This method is similar to assert, but blames the caller of the method
+   *  for violating the condition.
+   *
+   *  @param p   the expression to test
+   */
+  def require(requirement: Boolean) {
+    if (!requirement)
+      throw new IllegalArgumentException("requirement failed")
+  }
+
+  /** Tests an expression, throwing an IllegalArgumentException if false.
+   *  This method is similar to assert, but blames the caller of the method
+   *  for violating the condition.
+   *
+   *  @param p   the expression to test
+   *  @param msg a String to include in the failure message
+   */
+  def require(requirement: Boolean, message: => Any) {
+    if (!requirement)
+      throw new IllegalArgumentException("requirement failed: "+ message)
+  }
+
+  final class Ensuring[A](val x: A) {
+    def ensuring(cond: Boolean): A = { assert(cond); x }
+    def ensuring(cond: Boolean, msg: Any): A = { assert(cond, msg); x }
+    def ensuring(cond: A => Boolean): A = { assert(cond(x)); x }
+    def ensuring(cond: A => Boolean, msg: Any): A = { assert(cond(x), msg); x }
+  }
+  implicit def any2Ensuring[A](x: A): Ensuring[A] = new Ensuring(x)
 
   // tupling ------------------------------------------------------------
 
@@ -116,28 +168,19 @@ object Predef {
     def unapply[A, B, C](x: Tuple3[A, B, C]): Option[Tuple3[A, B, C]] = Some(x)
   }
 
-  class ArrowAssoc[A](x: A) {
-    def -> [B](y: B): Tuple2[A, B] = Tuple2(x, y)
+  final class ArrowAssoc[A](val x: A) {
+    @inline def -> [B](y: B): Tuple2[A, B] = Tuple2(x, y)
+    def →[B](y: B): Tuple2[A, B] = ->(y)
   }
   implicit def any2ArrowAssoc[A](x: A): ArrowAssoc[A] = new ArrowAssoc(x)
-
-  def Tuple[A1](x1: A1) = Tuple1(x1)
-  def Tuple[A1, A2](x1: A1, x2: A2) = Tuple2(x1, x2)
-  def Tuple[A1, A2, A3](x1: A1, x2: A2, x3: A3) = Tuple3(x1, x2, x3)
-  def Tuple[A1, A2, A3, A4](x1: A1, x2: A2, x3: A3, x4: A4) = Tuple4(x1, x2, x3, x4)
-  def Tuple[A1, A2, A3, A4, A5](x1: A1, x2: A2, x3: A3, x4: A4, x5: A5) = Tuple5(x1, x2, x3, x4, x5)
-  def Tuple[A1, A2, A3, A4, A5, A6](x1: A1, x2: A2, x3: A3, x4: A4, x5: A5, x6: A6) = Tuple6(x1, x2, x3, x4, x5, x6)
-  def Tuple[A1, A2, A3, A4, A5, A6, A7](x1: A1, x2: A2, x3: A3, x4: A4, x5: A5, x6: A6, x7: A7) = Tuple7(x1, x2, x3, x4, x5, x6, x7)
-  def Tuple[A1, A2, A3, A4, A5, A6, A7, A8](x1: A1, x2: A2, x3: A3, x4: A4, x5: A5, x6: A6, x7: A7, x8: A8) = Tuple8(x1, x2, x3, x4, x5, x6, x7, x8)
-  def Tuple[A1, A2, A3, A4, A5, A6, A7, A8, A9](x1: A1, x2: A2, x3: A3, x4: A4, x5: A5, x6: A6, x7: A7, x8: A8, x9: A9) = Tuple9(x1, x2, x3, x4, x5, x6, x7, x8, x9)
 
   // printing and reading -----------------------------------------------
 
   def print(x: Any) = Console.print(x)
   def println() = Console.println()
   def println(x: Any) = Console.println(x)
-  def printf(text: String, xs: Any*) = Console.printf(text, xs: _*)
-  def format(text: String, xs: Any*) = Console.format(text, xs: _*)
+  def printf(text: String, xs: Any*) = Console.print(format(text, xs: _*))
+  def format(text: String, xs: Any*) = augmentString(text).format(xs: _*)
 
   def readLine(): String = Console.readLine()
   def readLine(text: String, args: Any*) = Console.readLine(text, args)
@@ -156,8 +199,6 @@ object Predef {
 
   // views --------------------------------------------------------------
 
-  implicit def identity[A](x: A): A = x
-
   implicit def byteWrapper(x: Byte)     = new runtime.RichByte(x)
   implicit def shortWrapper(x: Short)   = new runtime.RichShort(x)
   implicit def intWrapper(x: Int)       = new runtime.RichInt(x)
@@ -165,116 +206,36 @@ object Predef {
   implicit def longWrapper(x: Long)     = new runtime.RichLong(x)
   implicit def floatWrapper(x: Float)   = new runtime.RichFloat(x)
   implicit def doubleWrapper(x: Double) = new runtime.RichDouble(x)
-
-  implicit def booleanWrapper(x: Boolean)  = new runtime.RichBoolean(x)
-
-  implicit def stringWrapper(x: String) = new runtime.RichString(x)
-  implicit def stringBuilderWrapper(x : StringBuilder) = new runtime.RichStringBuilder(x)
-
-  implicit def any2stringadd(x: Any) = new runtime.StringAdd(x)
+  implicit def booleanWrapper(x: Boolean) = new runtime.RichBoolean(x)
 
   implicit def exceptionWrapper(exc: Throwable) = new runtime.RichException(exc)
 
-  implicit def unit2ordered(x: Unit): Ordered[Unit] = new Ordered[Unit] with Proxy {
-    def self: Any = x
-    def compare(y: Unit): Int = 0
+  implicit def genericArrayOps[T](xs: Array[T]): ArrayOps[T] = (xs: AnyRef) match { // !!! drop the AnyRef and get unreachable code errors!
+    case x: Array[AnyRef] => refArrayOps[AnyRef](x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Int] => intArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Double] => doubleArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Long] => longArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Float] => floatArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Char] => charArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Byte] => byteArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Short] => shortArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Boolean] => booleanArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case x: Array[Unit] => unitArrayOps(x).asInstanceOf[ArrayOps[T]]
+    case null => null
   }
 
-  implicit def iterable2ordered[A <% Ordered[A]](xs: Iterable[A]): Ordered[Iterable[A]] =
-    new Ordered[Iterable[A]] with Proxy {
-      val self = xs
-      def compare(that: Iterable[A]): Int = {
-        var res = 0
-        val these = xs.elements
-        val those = that.elements
-        while (res == 0 && these.hasNext)
-          res = if (those.hasNext) these.next compare those.next else 1
-        if (res == 0) {
-          if (those.hasNext) -1 else 0
-        } else
-          res
-      }
-    }
+  implicit def refArrayOps[T <: AnyRef](xs: Array[T]): ArrayOps[T] = new ArrayOps.ofRef[T](xs)
+  implicit def intArrayOps(xs: Array[Int]): ArrayOps[Int] = new ArrayOps.ofInt(xs)
+  implicit def doubleArrayOps(xs: Array[Double]): ArrayOps[Double] = new ArrayOps.ofDouble(xs)
+  implicit def longArrayOps(xs: Array[Long]): ArrayOps[Long] = new ArrayOps.ofLong(xs)
+  implicit def floatArrayOps(xs: Array[Float]): ArrayOps[Float] = new ArrayOps.ofFloat(xs)
+  implicit def charArrayOps(xs: Array[Char]): ArrayOps[Char] = new ArrayOps.ofChar(xs)
+  implicit def byteArrayOps(xs: Array[Byte]): ArrayOps[Byte] = new ArrayOps.ofByte(xs)
+  implicit def shortArrayOps(xs: Array[Short]): ArrayOps[Short] = new ArrayOps.ofShort(xs)
+  implicit def booleanArrayOps(xs: Array[Boolean]): ArrayOps[Boolean] = new ArrayOps.ofBoolean(xs)
+  implicit def unitArrayOps(xs: Array[Unit]): ArrayOps[Unit] = new ArrayOps.ofUnit(xs)
 
-  implicit def tuple22ordered[A1 <% Ordered[A1], A2 <% Ordered[A2]](x: Tuple2[A1, A2]): Ordered[Tuple2[A1, A2]] =
-    new Ordered[Tuple2[A1, A2]] with Proxy {
-      val self = x
-      def compare(y: Tuple2[A1, A2]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) x._2 compare y._2
-        else res
-      }
-    }
-
-  implicit def tuple32ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3]](x: Tuple3[A1, A2, A3]): Ordered[Tuple3[A1, A2, A3]] =
-    new Ordered[Tuple3[A1, A2, A3]] with Proxy {
-      val self = x
-      def compare(y: Tuple3[A1, A2, A3]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple2(x._2, x._3) compare Tuple2(y._2, y._3)
-        else res
-      }
-    }
-
-  implicit def tuple42ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3], A4 <% Ordered[A4]](x: Tuple4[A1, A2, A3, A4]): Ordered[Tuple4[A1, A2, A3, A4]] =
-    new Ordered[Tuple4[A1, A2, A3, A4]] with Proxy {
-      val self = x
-      def compare(y: Tuple4[A1, A2, A3, A4]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple3(x._2, x._3, x._4) compare Tuple3(y._2, y._3, y._4)
-        else res
-      }
-    }
-
-  implicit def tuple52ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3], A4 <% Ordered[A4], A5 <% Ordered[A5]](x: Tuple5[A1, A2, A3, A4, A5]): Ordered[Tuple5[A1, A2, A3, A4, A5]] =
-    new Ordered[Tuple5[A1, A2, A3, A4, A5]] with Proxy {
-      val self = x
-      def compare(y: Tuple5[A1, A2, A3, A4, A5]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple4(x._2, x._3, x._4, x._5) compare Tuple4(y._2, y._3, y._4, y._5)
-        else res
-      }
-    }
-
-  implicit def tuple62ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3], A4 <% Ordered[A4], A5 <% Ordered[A5], A6 <% Ordered[A6]](x: Tuple6[A1, A2, A3, A4, A5, A6]): Ordered[Tuple6[A1, A2, A3, A4, A5, A6]] =
-    new Ordered[Tuple6[A1, A2, A3, A4, A5, A6]] with Proxy {
-      val self = x
-      def compare(y: Tuple6[A1, A2, A3, A4, A5, A6]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple5(x._2, x._3, x._4, x._5, x._6) compare Tuple5(y._2, y._3, y._4, y._5, y._6)
-        else res
-      }
-    }
-
-  implicit def tuple72ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3], A4 <% Ordered[A4], A5 <% Ordered[A5], A6 <% Ordered[A6], A7 <% Ordered[A7]](x: Tuple7[A1, A2, A3, A4, A5, A6, A7]): Ordered[Tuple7[A1, A2, A3, A4, A5, A6, A7]] =
-    new Ordered[Tuple7[A1, A2, A3, A4, A5, A6, A7]] with Proxy {
-      val self = x
-      def compare(y: Tuple7[A1, A2, A3, A4, A5, A6, A7]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple6(x._2, x._3, x._4, x._5, x._6, x._7) compare Tuple6(y._2, y._3, y._4, y._5, y._6, y._7)
-        else res
-      }
-    }
-
-  implicit def tuple82ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3], A4 <% Ordered[A4], A5 <% Ordered[A5], A6 <% Ordered[A6], A7 <% Ordered[A7], A8 <% Ordered[A8]](x: Tuple8[A1, A2, A3, A4, A5, A6, A7, A8]): Ordered[Tuple8[A1, A2, A3, A4, A5, A6, A7, A8]] =
-    new Ordered[Tuple8[A1, A2, A3, A4, A5, A6, A7, A8]] with Proxy {
-      val self = x
-      def compare(y: Tuple8[A1, A2, A3, A4, A5, A6, A7, A8]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple7(x._2, x._3, x._4, x._5, x._6, x._7, x._8) compare Tuple7(y._2, y._3, y._4, y._5, y._6, y._7, y._8)
-        else res
-      }
-    }
-
-  implicit def tuple92ordered[A1 <% Ordered[A1], A2 <% Ordered[A2], A3 <% Ordered[A3], A4 <% Ordered[A4], A5 <% Ordered[A5], A6 <% Ordered[A6], A7 <% Ordered[A7], A8 <% Ordered[A8], A9 <% Ordered[A9]](x: Tuple9[A1, A2, A3, A4, A5, A6, A7, A8, A9]): Ordered[Tuple9[A1, A2, A3, A4, A5, A6, A7, A8, A9]] =
-    new Ordered[Tuple9[A1, A2, A3, A4, A5, A6, A7, A8, A9]] with Proxy {
-      val self = x
-      def compare(y: Tuple9[A1, A2, A3, A4, A5, A6, A7, A8, A9]): Int = {
-        val res = x._1 compare y._1
-        if (res == 0) Tuple8(x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9) compare Tuple8(y._2, y._3, y._4, y._5, y._6, y._7, y._8, y._9)
-        else res
-      }
-    }
+  // Primitive Widenings --------------------------------------------------------------
 
   implicit def byte2short(x: Byte): Short = x.toShort
   implicit def byte2int(x: Byte): Int = x.toInt
@@ -301,30 +262,74 @@ object Predef {
 
   implicit def float2double(x: Float): Double = x.toDouble
 
-  /** Should use java.lang.Byte.valueOf(Byte), but only available
-   * in Java 1.5 and above. */
-  implicit def byte2Byte(x: Byte) = new java.lang.Byte(x)
-  /** Should use java.lang.Short.valueOf(Short), but only available
-   * in Java 1.5 and above. */
-  implicit def short2Short(x: Short) = new java.lang.Short(x)
-  /** Should use java.lang.Character.valueOf(Char), but only available
-   * in Java 1.5 and above. */
-  implicit def char2Character(x: Char) = new java.lang.Character(x)
-  /** Should use java.lang.Integer.valueOf(Int), but only available
-   * in Java 1.5 and above. */
-  implicit def int2Integer(x: Int) = new java.lang.Integer(x)
-  /** Should use java.lang.Long.valueOf(Long), but only available
-   * in Java 1.5 and above. */
-  implicit def long2Long(x: Long) = new java.lang.Long(x)
-  implicit def float2Float(x: Float) = new java.lang.Float(x)
-  implicit def double2Double(x: Double) = new java.lang.Double(x)
-  implicit def boolean2Boolean(x: Boolean) = java.lang.Boolean.valueOf(x)
+  // "Autoboxing" --------------------------------------------------------------
 
-  /** any array projection can be automatically converted into an array */
-  implicit def forceArrayProjection[A](x: Array.Projection[A]): Array[A] = x.force
-  /** any random access character seq (including rich string can be converted into a string */
-  implicit def forceRandomAccessCharSeq(x: runtime.RichString): String = x.mkString
+  implicit def byte2Byte(x: Byte)           = java.lang.Byte.valueOf(x)
+  implicit def short2Short(x: Short)        = java.lang.Short.valueOf(x)
+  implicit def char2Character(x: Char)      = java.lang.Character.valueOf(x)
+  implicit def int2Integer(x: Int)          = java.lang.Integer.valueOf(x)
+  implicit def long2Long(x: Long)           = java.lang.Long.valueOf(x)
+  implicit def float2Float(x: Float)        = java.lang.Float.valueOf(x)
+  implicit def double2Double(x: Double)     = java.lang.Double.valueOf(x)
+  implicit def boolean2Boolean(x: Boolean)  = java.lang.Boolean.valueOf(x)
 
-  def currentThread = java.lang.Thread.currentThread()
+  // Strings and CharSequences --------------------------------------------------------------
 
+  implicit def any2stringadd(x: Any) = new runtime.StringAdd(x)
+  implicit def augmentString(x: String): StringOps = new StringOps(x)
+  implicit def unaugmentString(x: StringOps): String = x.repr
+
+  implicit def stringCanBuildFrom: CanBuildFrom[String, Char, String] =
+    new CanBuildFrom[String, Char, String] {
+      def apply(from: String) = new scala.collection.mutable.StringBuilder
+      def apply() = new scala.collection.mutable.StringBuilder
+    }
+
+  implicit def seqToCharSequence(xs: collection.IndexedSeq[Char]): CharSequence = new CharSequence {
+    def length: Int = xs.length
+    def charAt(index: Int): Char = xs(index)
+    def subSequence(start: Int, end: Int): CharSequence = seqToCharSequence(xs.slice(start, end))
+    override def toString: String = xs.mkString("")
+  }
+
+  implicit def arrayToCharSequence(xs: Array[Char]): CharSequence = new CharSequence {
+    def length: Int = xs.length
+    def charAt(index: Int): Char = xs(index)
+    def subSequence(start: Int, end: Int): CharSequence = arrayToCharSequence(xs.slice(start, end))
+    override def toString: String = xs.mkString("")
+  }
+
+  // Type Constraints --------------------------------------------------------------
+
+  // used, for example, in the encoding of generalized constraints
+  // we need a new type constructor `<:<` and evidence `conforms`, as
+  // reusing `Function2` and `identity` leads to ambiguities (any2stringadd is inferred)
+  // to constrain any abstract type T that's in scope in a method's argument list (not just the method's own type parameters)
+  // simply add an implicit argument of type `T <:< U`, where U is the required upper bound (for lower-bounds, use: `U <: T`)
+  // in part contributed by Jason Zaugg
+  sealed abstract class <:<[-From, +To] extends (From => To)
+  implicit def conforms[A]: A <:< A = new (A <:< A) {def apply(x: A) = x} // not in the <:< companion object because it is also intended to subsume identity (which is no longer implicit)
+
+  sealed abstract class =:=[From, To] extends (From => To)
+  object =:= {
+    implicit def tpEquals[A]: A =:= A = new (A =:= A) {def apply(x: A) = x}
+  }
+
+  sealed abstract class <%<[-From, +To] extends (From => To)
+  object <%< {
+    implicit def conformsOrViewsAs[A <% B, B]: A <%< B = new (A <%< B) {def apply(x: A) = x}
+  }
+
+  /** A type for which there is always an implicit value.
+   *  @see fallbackCanBuildFrom in Array.scala
+   */
+  class DummyImplicit
+
+  object DummyImplicit {
+
+    /** An implicit value yielding a DummyImplicit.
+     *   @see fallbackCanBuildFrom in Array.scala
+     */
+    implicit def dummyImplicit: DummyImplicit = new DummyImplicit
+  }
 }

@@ -1,49 +1,93 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
+import generic._
 
-object LinkedHashSet {
-  /** The empty map of this type */
-  def empty[A] = new LinkedHashSet[A]
+/** This class implements mutable sets using a hashtable.
+ *  The iterator and all traversal methods of this class visit elements in the order they were inserted.
+ *
+ *  @author  Matthias Zenger
+ *  @author  Martin Odersky
+ *  @version 2.0, 31/12/2006
+ *  @since   1
+ *
+ *  @tparam A     the type of the elements contained in this set.
+ *
+ *  @define Coll LinkedHashSet
+ *  @define coll linked hash set
+ *  @define thatinfo the class of the returned collection. In the standard library configuration,
+ *    `That` is always `LinkedHashSet[B]` because an implicit of type `CanBuildFrom[LinkedHashSet, B, LinkedHashSet[B]]`
+ *    is defined in object `LinkedHashSet`.
+ *  @define $bfinfo an implicit value of class `CanBuildFrom` which determines the
+ *    result class `That` from the current representation type `Repr`
+ *    and the new element type `B`. This is usually the `canBuildFrom` value
+ *    defined in object `LinkedHashSet`.
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ *  @define orderDependent
+ *  @define orderDependentFold
+ */
+@serializable @SerialVersionUID(1L)
+class LinkedHashSet[A] extends Set[A]
+                          with GenericSetTemplate[A, LinkedHashSet]
+                          with SetLike[A, LinkedHashSet[A]]
+                          with FlatHashTable[A]
+{
+  override def companion: GenericCompanion[LinkedHashSet] = LinkedHashSet
 
-  /** The canonical factory for this type
-   */
-  def apply[A](elems: A*) = empty[A] ++ elems
-}
+  @transient private[this] var ordered = new ListBuffer[A]
 
-@serializable
-class LinkedHashSet[A] extends Set[A] with FlatHashTable[A] {
-  private var ordered = List[A]()
+  override def size = tableSize
 
   def contains(elem: A): Boolean = containsEntry(elem)
 
-  def +=(elem: A) { add(elem) }
+  def += (elem: A): this.type = { add(elem); this }
+  def -= (elem: A): this.type = { remove(elem); this }
 
-  def add(elem: A): Boolean = {
-    if (addEntry(elem)) {
-      ordered = elem :: ordered
-      true
-    } else false
-  }
-  def -=(elem: A) { remove(elem) }
-  def remove(elem: A) : Boolean = removeEntry(elem) match {
-    case None => false
-    case Some(elem) => ordered = ordered.filter(_ != elem); true
-  }
+  override def add(elem: A): Boolean =
+    if (addEntry(elem)) { ordered += elem; true }
+    else false
+
+  override def remove(elem: A): Boolean =
+    removeEntry(elem) match {
+      case None => false
+      case _ => ordered -= elem; true
+    }
 
   override def clear() {
-    ordered = Nil
-    super.clear()
+    ordered.clear()
+    clearTable()
   }
-  override def clone(): Set[A] = new LinkedHashSet[A] ++ this
-  override def elements = ordered.reverse.elements
+
+  override def iterator: Iterator[A] = ordered.iterator
+
+  override def foreach[U](f: A => U) = ordered foreach f
+
+  private def writeObject(s: java.io.ObjectOutputStream) {
+    serializeTo(s)
+  }
+
+  private def readObject(in: java.io.ObjectInputStream) {
+    ordered = new ListBuffer[A]
+    init(in, ordered += )
+  }
 }
+
+/** $factoryInfo
+ *  @define Coll LinkedHashSet
+ *  @define coll linked hash set
+ */
+object LinkedHashSet extends MutableSetFactory[LinkedHashSet] {
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, LinkedHashSet[A]] = setCanBuildFrom[A]
+  override def empty[A]: LinkedHashSet[A] = new LinkedHashSet[A]
+}
+

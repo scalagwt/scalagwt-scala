@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -17,55 +15,27 @@ package scala.xml
  *  @version 1.0
  */
 @serializable
-case class Group(val nodes: Seq[Node]) extends Node {
-
+final case class Group(val nodes: Seq[Node]) extends Node {
   override def theSeq = nodes
 
-  /** structural equality */
-  override def equals(x: Any) = x match {
-    case z:Group     => (length == z.length) && sameElements(z)
-    case z:Node      => (length == 1) && z == apply(0)
-    case z:Seq[_]    => sameElements(z)
-    case z:String    => text == z
-    case _           => false
+  override def canEqual(other: Any) = other match {
+    case x: Group => true
+    case _        => false
   }
-
-  /**
-   * @throws Predef.UnsupportedOperationException (always)
-   */
-  final def label =
-    throw new UnsupportedOperationException("class Group does not support method 'label'")
-
-  /**
-   * @throws Predef.UnsupportedOperationException (always)
-   */
-  final override def attributes =
-    throw new UnsupportedOperationException("class Group does not support method 'attributes'")
-
-  /**
-   * @throws Predef.UnsupportedOperationException (always)
-   */
-  final override def namespace =
-    throw new UnsupportedOperationException("class Group does not support method 'namespace'")
-
-  /**
-   * @throws Predef.UnsupportedOperationException (always)
-   */
-  final override def child =
-    throw new UnsupportedOperationException("class Group does not support method 'child'")
-
-  /**
-   * @throws Predef.UnsupportedOperationException (always)
-   */
-  def toString(sb: StringBuilder) =
-    throw new UnsupportedOperationException(
-      "class Group does not support method toString(StringBuilder)")
-
-  override def text = { // same impl as NodeSeq
-    val sb = new StringBuilder()
-    val it = elements
-    while (it.hasNext)
-      sb.append(it.next.text)
-    sb.toString()
+  override def strict_==(other: Equality) = other match {
+    case Group(xs)  => nodes sameElements xs
+    case _          => false
   }
+  override def basisForHashCode = nodes
+
+  /** Since Group is very much a hack it throws an exception if you
+   *  try to do anything with it.
+   */
+  private def fail(msg: String) = throw new UnsupportedOperationException("class Group does not support method '%s'" format msg)
+
+  def label                           = fail("label")
+  override def attributes             = fail("attributes")
+  override def namespace              = fail("namespace")
+  override def child                  = fail("child")
+  def buildString(sb: StringBuilder)  = fail("toString(StringBuilder)")
 }

@@ -6,8 +6,8 @@ abstract class Field {
   var internalValue: FieldType;
 }
 
-case class IntField(value: int) extends Field {
-  type FieldType = int;
+case class IntField(value: Int) extends Field {
+  type FieldType = Int;
 
   var internalValue: FieldType = value;
 }
@@ -19,7 +19,7 @@ case class StringField(value: String) extends Field {
 }
 
 object Test {
-  def main (ars:scala.Array[String]): unit = {
+  def main (args: scala.Array[String]) {
     Console.println(List(new StringField ("bar"), new IntField(8)))
   }
 }

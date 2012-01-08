@@ -1,7 +1,6 @@
 //############################################################################
 // Enumerations
 //############################################################################
-// $Id$
 
 object Test1 {
 
@@ -13,7 +12,7 @@ object Test1 {
     ! (d == WeekDays.Sat || d == WeekDays.Sun);
 
   def run: Int = {
-    val it = WeekDays filter (isWorkingDay);
+    val it = WeekDays.values filter (isWorkingDay);
     it.toList.length
   }
 }
@@ -30,7 +29,7 @@ object Test2 {
   }
 
   def run: Int = {
-    val it = for (val s <- ThreadState; s.id != 0) yield s;
+    val it = for (val s <- ThreadState.values; s.id != 0) yield s;
     it.toList.length
   }
 }
@@ -42,8 +41,27 @@ object Test3 {
   }
 
   def run: Int = {
-    val it = for (val d <- Direction; d.toString() startsWith "N") yield d;
+    val it = for (val d <- Direction.values; d.toString() startsWith "N") yield d;
     it.toList.length
+  }
+}
+
+object Test4 {
+
+  object Direction extends Enumeration("North", "South", "East", "West") {
+    val North, South, East, West = Value;
+  }
+
+  def run: Int = {
+    val dir = Direction.withName("North")
+    assert(dir.toString == "North")
+    try {
+      Direction.withName("Nord")
+      assert(false)
+    } catch {
+      case e: Exception => /* do nothing */
+    }
+    0
   }
 }
 
@@ -74,6 +92,7 @@ object Test {
     check_success("Test1", Test1.run, 5);
     check_success("Test2", Test2.run, 5);
     check_success("Test3", Test3.run, 1);
+    check_success("Test4", Test4.run, 0);
     Console.println;
   }
 }

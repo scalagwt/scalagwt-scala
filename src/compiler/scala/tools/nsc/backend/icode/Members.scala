@@ -1,11 +1,12 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode
+package scala.tools.nsc
+package backend
+package icode
 
 import java.io.PrintWriter
 
@@ -34,6 +35,14 @@ trait Members { self: ICodes =>
     var producedStack: TypeStack = null
 
     private var currentLabel: Int = 0
+    private var _touched = false
+
+    def touched = _touched
+    def touched_=(b: Boolean): Unit = if (b) {
+      blocks foreach (_.touched = true)
+      _touched = true
+    } else
+      _touched = false
 
     // Constructor code
     startBlock = newBlock
@@ -50,52 +59,11 @@ trait Members { self: ICodes =>
       if (b == startBlock)
         startBlock = b.successors.head;
       blocks -= b
-    }
+      assert(!blocks.contains(b))
+      for (handler <- method.exh if handler.covers(b))
+        handler.covered -= b
 
-    /**
-     * Apply a function to all basic blocks, for side-effects. It starts at
-     * the given startBlock and checks that are no predecessors of the given node.
-     * Only blocks that are reachable via a path from startBlock are ever visited.
-     */
-    def traverseFrom(startBlock: BasicBlock, f: BasicBlock => Unit) = {
-      val visited: Set[BasicBlock] = new HashSet();
-
-      def traverse0(toVisit: List[BasicBlock]): Unit = toVisit match {
-        case Nil => ();
-        case b :: bs => if (!visited.contains(b)) {
-          f(b);
-          visited += b;
-          traverse0(bs ::: b.successors);
-        } else
-          traverse0(bs);
-      }
-      assert(startBlock.predecessors == Nil,
-             "Starting traverse from a block with predecessors: " + this);
-      traverse0(startBlock :: Nil)
-    }
-
-    def traverse(f: BasicBlock => Unit) = blocks.toList foreach f;
-
-    /* This method applies the given function to each basic block. */
-    def traverseFeedBack(f: (BasicBlock, HashMap[BasicBlock, Boolean]) => Unit) = {
-      val visited : HashMap[BasicBlock, Boolean] = new HashMap;
-      visited ++= blocks.elements.map(x => (x, false));
-
-      var blockToVisit: List[BasicBlock] = List(startBlock)
-
-      while (!blockToVisit.isEmpty) {
-        blockToVisit match {
-	  case b::xs =>
-	    if (!visited(b)) {
-	      f(b, visited);
-	      blockToVisit = b.successors ::: xs;
-	      visited += (b -> true)
-	    } else
-	      blockToVisit = xs
-          case _ =>
-            error("impossible match")
-	}
-      }
+      touched = true
     }
 
     /** This methods returns a string representation of the ICode */
@@ -110,6 +78,7 @@ trait Members { self: ICodes =>
     /* Create a new block and append it to the list
      */
     def newBlock: BasicBlock = {
+      touched = true
       val block = new BasicBlock(nextLabel, method);
       blocks += block;
       block
@@ -121,6 +90,7 @@ trait Members { self: ICodes =>
     var fields: List[IField] = Nil
     var methods: List[IMethod] = Nil
     var cunit: CompilationUnit = _
+    var bootstrapClass: Option[String] = None
 
     def addField(f: IField): this.type = {
       fields = f :: fields;
@@ -137,11 +107,16 @@ trait Members { self: ICodes =>
       this
     }
 
-    override def toString() = symbol.fullNameString;
+    override def toString() = symbol.fullName
 
-    def lookupField(s: Symbol) = fields find ((f) => f.symbol == s);
-    def lookupMethod(s: Symbol) = methods find ((m) => m.symbol == s);
-    def lookupMethod(s: Name) = methods find ((m) => m.symbol.name == s);
+    def lookupField(s: Symbol) = fields find (_.symbol == s)
+    def lookupMethod(s: Symbol) = methods find (_.symbol == s)
+    def lookupMethod(s: Name) = methods find (_.symbol.name == s)
+
+    /* determines whether or not this class contains a static ctor. */
+    def containsStaticCtor: Boolean = methods.exists(_.isStaticCtor)
+    /* returns this methods static ctor if it has one. */
+    def lookupStaticCtor: Option[IMethod] = methods.find(_.isStaticCtor)
   }
 
   /** Represent a field in ICode */
@@ -220,15 +195,17 @@ trait Members { self: ICodes =>
       native
     );
 
-    def isStatic: Boolean =
-      symbol.hasFlag(Flags.STATIC) || symbol.hasFlag(Flags.STATICMEMBER) || symbol.owner.isImplClass;
+    def isStatic: Boolean = symbol.isStaticMember
 
-    override def toString() = symbol.fullNameString
+    /* determines whether or not this method is the class static constructor. */
+    def isStaticCtor: Boolean = isStatic && symbol.rawname == nme.CONSTRUCTOR
+
+    override def toString() = symbol.fullName
 
     import opcodes._
     def checkLocals: Unit = if (code ne null) {
       Console.println("[checking locals of " + this + "]")
-      for (bb <- code.blocks; i <- bb.toList) i match {
+      for (bb <- code.blocks; i <- bb) i match {
         case LOAD_LOCAL(l) =>
           if (!this.locals.contains(l))
             Console.println("Local " + l + " is not declared in " + this)
@@ -248,13 +225,13 @@ trait Members { self: ICodes =>
     def normalize: Unit = if (this.code ne null) {
       import scala.collection.mutable.{Map, HashMap}
       val nextBlock: Map[BasicBlock, BasicBlock] = HashMap.empty
-      for (val b <- code.blocks.toList;
-        b.successors.length == 1;
+      for (b <- code.blocks.toList
+        if b.successors.length == 1;
         val succ = b.successors.head;
-        succ ne b;
-        succ.predecessors.length == 1;
-        succ.predecessors.head eq b;
-        !(exh.exists { (e: ExceptionHandler) =>
+        if succ ne b;
+        if succ.predecessors.length == 1;
+        if succ.predecessors.head eq b;
+        if !(exh.exists { (e: ExceptionHandler) =>
             (e.covers(succ) && !e.covers(b)) || (e.covers(b) && !e.covers(succ)) })) {
           nextBlock(b) = succ
       }
@@ -270,11 +247,11 @@ trait Members { self: ICodes =>
             succ.toList foreach { i => bb.emit(i, i.pos) }
             code.removeBlock(succ)
             nextBlock -= bb
-            exh foreach { e => e.covered = e.covered.remove { b1 => b1 == succ } }
+            exh foreach { e => e.covered = e.covered - succ }
           } while (nextBlock.isDefinedAt(succ))
           bb.close
         } else
-          bb = nextBlock.keys.next
+          bb = nextBlock.keysIterator.next
       }
     }
 
@@ -302,6 +279,8 @@ trait Members { self: ICodes =>
       other.isInstanceOf[Local] &&
       other.asInstanceOf[Local].sym == this.sym
     );
+
+    override def hashCode = sym.hashCode
 
     override def toString(): String = sym.toString()
   }

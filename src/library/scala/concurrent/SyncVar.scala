@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.concurrent
@@ -28,6 +27,28 @@ class SyncVar[A] {
     else throw exception.get
   }
 
+  def get(timeout: Long): Option[A] = synchronized {
+    if (!isDefined) {
+      try {
+        wait(timeout)
+      } catch {
+        case _: InterruptedException =>
+      }
+    }
+    if (exception.isEmpty) {
+      if (isDefined) Some(value) else None
+    } else
+      throw exception.get
+  }
+
+  def take() = synchronized {
+    try {
+      get
+    } finally {
+      unset()
+    }
+  }
+
   def set(x: A) = synchronized {
     value = x
     isDefined = true
@@ -41,22 +62,18 @@ class SyncVar[A] {
     notifyAll()
   }
 
-  def setWithCatch(x: => A) = synchronized {
-    try {
-      this set x
-    } catch {
-      case e =>
-        this setException e
-        throw e
-    }
+  def put(x: A) = synchronized {
+    while (isDefined) wait()
+    set(x)
   }
 
   def isSet: Boolean = synchronized {
     isDefined
   }
 
-  def unset = synchronized {
+  def unset(): Unit = synchronized {
     isDefined = false
+    notifyAll()
   }
 
 }

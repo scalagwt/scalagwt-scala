@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.mobile
@@ -160,24 +159,14 @@ class Code(clazz: java.lang.Class[_]) {
   ////////////////////// private functions ///////////////////////
 
   private def boxValue(value: Any) = value match {
-    /** Should use java.lang.Byte.valueOf(Byte), but only available
-     * in Java 1.5 and above. */
-    case x: Byte    => (new java.lang.Byte(x),        java.lang.Byte.TYPE)
-    case x: Boolean => (java.lang.Boolean.valueOf(x), java.lang.Boolean.TYPE)
-    /** Should use java.lang.Character.valueOf(Char), but only available
-     * in Java 1.5 and above. */
-    case x: Char    => (new java.lang.Character(x),   java.lang.Character.TYPE)
-    /** Should use java.lang.Short.valueOf(Short), but only available
-     * in Java 1.5 and above. */
-    case x: Short   => (new java.lang.Short(x),       java.lang.Short.TYPE)
-    /** Should use java.lang.Integer.valueOf(Int), but only available
-     * in Java 1.5 and above. */
-    case x: Int     => (new java.lang.Integer(x),     java.lang.Integer.TYPE)
-    /** Should use java.lang.Long.valueOf(Long), but only available
-     * in Java 1.5 and above. */
-    case x: Long    => (new java.lang.Long(x),        java.lang.Long.TYPE)
-    case x: Float   => (new java.lang.Float(x),       java.lang.Float.TYPE)
-    case x: Double  => (new java.lang.Double(x),      java.lang.Double.TYPE)
+    case x: Byte    => (java.lang.Byte.valueOf(x),        java.lang.Byte.TYPE)
+    case x: Boolean => (java.lang.Boolean.valueOf(x),     java.lang.Boolean.TYPE)
+    case x: Char    => (java.lang.Character.valueOf(x),   java.lang.Character.TYPE)
+    case x: Short   => (java.lang.Short.valueOf(x),       java.lang.Short.TYPE)
+    case x: Int     => (java.lang.Integer.valueOf(x),     java.lang.Integer.TYPE)
+    case x: Long    => (java.lang.Long.valueOf(x),        java.lang.Long.TYPE)
+    case x: Float   => (java.lang.Float.valueOf(x),       java.lang.Float.TYPE)
+    case x: Double  => (java.lang.Double.valueOf(x),      java.lang.Double.TYPE)
     case _          =>
       val x = value.asInstanceOf[JObject]
       (x, x.getClass())
@@ -195,7 +184,7 @@ class Code(clazz: java.lang.Class[_]) {
   private def applyFun(methName: String, args: Array[JObject],
                        argTypes: Array[Class[T] forSome { type T }]): JObject = {
     try {
-      val method = clazz.getMethod(methName, argTypes)
+      val method = clazz.getMethod(methName, argTypes : _*)
       var obj: JObject = null
       if (! Modifier.isStatic(method.getModifiers())) {
         if (instance eq null) {
@@ -205,7 +194,7 @@ class Code(clazz: java.lang.Class[_]) {
             val cs = clazz.getConstructors()
 //Console.println("cs.length=" + cs.length);
             if (cs.length > 0) {
-              cs(0).newInstance(Array("")).asInstanceOf[AnyRef]
+              cs(0).newInstance("").asInstanceOf[AnyRef]
             } else {
               error("class " + clazz.getName() + " has no public constructor")
               null
@@ -214,15 +203,15 @@ class Code(clazz: java.lang.Class[_]) {
         }
         obj = instance
       }
-      val result = method.invoke(obj, args)
+      val result = method.invoke(obj, args : _*)
       if (result eq null) ().asInstanceOf[JObject] else result
     }
     catch {
       case me: NoSuchMethodException =>
         if (isConstructorName(methName)) {
           try {
-            val cstr = clazz.getConstructor(argTypes)
-            instance = cstr.newInstance(args).asInstanceOf[AnyRef]
+            val cstr = clazz.getConstructor(argTypes : _*)
+            instance = cstr.newInstance(args : _*).asInstanceOf[AnyRef]
             instance
           }
           catch {
@@ -244,4 +233,3 @@ class Code(clazz: java.lang.Class[_]) {
     }
 
 }
-

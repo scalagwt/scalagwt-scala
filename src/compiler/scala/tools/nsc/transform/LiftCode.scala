@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Gilles Dubochet
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 import symtab._
 import Flags._
@@ -24,7 +24,6 @@ abstract class LiftCode extends Transform with Reifiers {
   import global._                  // the global environment
   import definitions._             // standard classes and methods
   import typer.{typed, atOwner}    // methods to type trees
-  import posAssigner.atPos         // for filling in tree positions
 
   val symbols: global.type = global
 
@@ -64,7 +63,7 @@ abstract class LiftCode extends Transform with Reifiers {
     }
 
     def objectName(value: Any): String = value match {
-      case Nil                => "scala.Nil"
+      case Nil                => "scala.collection.immutable.Nil"
       case reflect.NoSymbol   => "scala.reflect.NoSymbol"
       case reflect.RootSymbol => "scala.reflect.RootSymbol"
       case reflect.NoPrefix   => "scala.reflect.NoPrefix"
@@ -79,7 +78,7 @@ abstract class LiftCode extends Transform with Reifiers {
           gen.mkAttributedRef(definitions.getModule(name))
         else {
           val name = className(c)
-          if (name.length() == 0) throw new Error("don't know how to inject " + value)
+          if (name.length() == 0) abort("don't know how to inject " + value)
           val injectedArgs = new ListBuffer[Tree]
           for (i <- 0 until c.productArity)
             injectedArgs += inject(c.productElement(i))
@@ -103,7 +102,7 @@ abstract class LiftCode extends Transform with Reifiers {
         case null =>
           gen.mkAttributedRef(definitions.getModule("scala.reflect.NoType"))
         case _ =>
-          throw new Error("don't know how to inject " + value)
+          abort("don't know how to inject " + value)
       }
     }
   } // Injector
@@ -121,7 +120,7 @@ abstract class LiftCode extends Transform with Reifiers {
 
 // case EmptyTree =>
 // case LiftPoint(tree) =>
-// case PackageDef(name, stats) =>
+// case PackageDef(pid, stats) =>
 // case ClassDef(mods, name, tparams, impl) =>
 // case ValDef(mods, name, tpt, rhs) =>
 // case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
@@ -148,7 +147,6 @@ abstract class LiftCode extends Transform with Reifiers {
 // case TypeTree() =>
 // /* Pattern matching */
 // case CaseDef(pat, guard, body) =>
-// case Sequence(trees) =>
 // case Alternative(trees) =>
 // case Star(elem) =>
 // case Bind(name, body) =>

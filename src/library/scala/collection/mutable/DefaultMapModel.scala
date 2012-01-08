@@ -1,24 +1,22 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |                                         **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://www.scala-lang.org/           **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
-import Predef._
-
-/** This class is used internally. It implements the mutable <code>Map</code>
- *  class in terms of three functions: <code>findEntry</code>,
- *  <code>addEntry</code>, and <code>entries</code>.
+/** This class is used internally. It implements the mutable `Map`
+ *  class in terms of three functions: `findEntry`, `addEntry`, and `entries`.
  *
  *  @author  Matthias Zenger
  *  @version 1.0, 08/07/2003
+ *  @since   1
  */
 trait DefaultMapModel[A, B] extends Map[A, B] {
 
@@ -31,15 +29,17 @@ trait DefaultMapModel[A, B] extends Map[A, B] {
   def get(key: A): Option[B] = {
     val e = findEntry(key)
     if (e == null) None
-    else Some(e.value);
+    else Some(e.value)
   }
 
-  def update(key: A, value: B) {
+  override def put(key: A, value: B): Option[B] = {
     val e = findEntry(key)
-    if (e == null) addEntry(new Entry(key, value))
-    else e.value = value
+    if (e == null) { addEntry(new Entry(key, value)); None }
+    else { val v = e.value; e.value = value; Some(v) }
   }
 
-  def elements = entries map {e => (e.key, e.value)}
-}
+  def += (kv: (A, B)): this.type = { put(kv._1, kv._2); this }
 
+  def iterator = entries map {e => (e.key, e.value)}
+
+}

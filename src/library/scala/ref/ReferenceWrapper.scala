@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 package scala.ref
 
@@ -15,13 +14,12 @@ package scala.ref
  */
 trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
   val underlying: java.lang.ref.Reference[_ <: T]
-  @deprecated def isValid = underlying.get != null
   override def get = {
-    val ret = underlying.get.asInstanceOf[T]
+    val ret = underlying.get
     if (ret eq null) None else Some(ret)
   }
   def apply() = {
-    val ret = underlying.get.asInstanceOf[T]
+    val ret = underlying.get
     if (ret eq null) throw new NoSuchElementException
     ret
   }
@@ -30,4 +28,11 @@ trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
   def isEnqueued = underlying.isEnqueued
 
   def self = underlying
+}
+
+/**
+ *  @author Philipp Haller
+ */
+private trait ReferenceWithWrapper[T <: AnyRef] {
+  val wrapper: ReferenceWrapper[T]
 }

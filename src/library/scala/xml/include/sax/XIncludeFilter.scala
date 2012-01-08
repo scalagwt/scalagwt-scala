@@ -1,34 +1,23 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-package scala.xml.include.sax
+package scala.xml
+package include.sax
 
-import org.xml.sax.Attributes
-import org.xml.sax.SAXException
-import org.xml.sax.XMLReader
-import org.xml.sax.EntityResolver
-import org.xml.sax.Locator
-import org.xml.sax.helpers.XMLReaderFactory
-import org.xml.sax.helpers.XMLFilterImpl
-import org.xml.sax.helpers.NamespaceSupport
-import org.xml.sax.helpers.AttributesImpl
+import scala.xml.include._
 
-import java.net.URL
-import java.net.URLConnection
-import java.net.MalformedURLException
-import java.io.UnsupportedEncodingException
-import java.io.IOException
-import java.io.InputStream
-import java.io.BufferedInputStream
-import java.io.InputStreamReader
+import org.xml.sax.{ Attributes, XMLReader, Locator }
+import org.xml.sax.helpers.{ XMLReaderFactory, XMLFilterImpl, NamespaceSupport, AttributesImpl }
+
+import java.io.{ InputStream, BufferedInputStream, InputStreamReader, IOException, UnsupportedEncodingException }
 import java.util.Stack
+import java.net.{ URL, MalformedURLException }
 
 /**
  * <p>
@@ -362,61 +351,49 @@ class XIncludeFilter extends XMLFilterImpl {
                            be downloaded from the specified URL.
     */
   private def includeXMLDocument(url: String) {
-    var source: URL = null
-    try {
-      val base = bases.peek().asInstanceOf[URL]
-      source = new URL(base, url)
-    }
-    catch {
-      case e:MalformedURLException =>
-        val ex = new UnavailableResourceException("Unresolvable URL " + url
-                                                  + getLocation());
-        ex.setRootCause(e)
-        throw new SAXException("Unresolvable URL " + url + getLocation(), ex)
-    }
+    val source =
+      try new URL(bases.peek(), url)
+      catch {
+        case e: MalformedURLException =>
+          val ex = new UnavailableResourceException("Unresolvable URL " + url + getLocation())
+          ex setRootCause e
+          throw new SAXException("Unresolvable URL " + url + getLocation(), ex)
+      }
 
     try {
-      // make this more robust
-      var parser: XMLReader = null
-      try {
-        parser = XMLReaderFactory.createXMLReader()
-      } catch {
-        case e:SAXException =>
-          try {
-            parser = XMLReaderFactory.createXMLReader(
-              "org.apache.xerces.parsers.SAXParser"
-            );
-          } catch {
-            case e2: SAXException =>
-              System.err.println("Could not find an XML parser")
-          }
-      }
-      if(parser != null) {
-        parser.setContentHandler(this)
-        val resolver = this.getEntityResolver()
-        if (resolver != null) parser.setEntityResolver(resolver);
-        // save old level and base
-        val previousLevel = level
-        this.level = 0
-        if (bases.contains(source)) {
-          val e = new CircularIncludeException(
-            "Circular XInclude Reference to " + source + getLocation()
-          );
-          throw new SAXException("Circular XInclude Reference", e)
+      val parser: XMLReader =
+        try XMLReaderFactory.createXMLReader()
+        catch {
+          case e: SAXException  =>
+            try XMLReaderFactory.createXMLReader(XercesClassName)
+            catch { case _: SAXException => return System.err.println("Could not find an XML parser") }
         }
-        bases.push(source)
-        atRoot = true
-        parser.parse(source.toExternalForm())
-        // restore old level and base
-        this.level = previousLevel
-        bases.pop()
-      }
+
+      parser setContentHandler this
+      val resolver = this.getEntityResolver()
+      if (resolver != null)
+        parser setEntityResolver resolver
+
+      // save old level and base
+      val previousLevel = level
+      this.level = 0
+      if (bases contains source)
+        throw new SAXException(
+          "Circular XInclude Reference",
+          new CircularIncludeException("Circular XInclude Reference to " + source + getLocation())
+        )
+
+      bases push source
+      atRoot = true
+      parser parse source.toExternalForm()
+
+      // restore old level and base
+      this.level = previousLevel
+      bases.pop()
     }
     catch {
-      case e:IOException =>
-        throw new SAXException("Document not found: "
-                               + source.toExternalForm() + getLocation(), e)
+      case e: IOException =>
+        throw new SAXException("Document not found: " + source.toExternalForm() + getLocation(), e)
     }
-
   }
 }

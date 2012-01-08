@@ -1,10 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.symtab.classfile
+package scala.tools.nsc
+package symtab
+package classfile
 
 object ClassfileConstants {
 
@@ -75,7 +76,7 @@ object ClassfileConstants {
   final val CONSTANT_INTFMETHODREF = 11
   final val CONSTANT_NAMEANDTYPE   = 12
 
-  // tags desribing the type of a literal in attribute values
+  // tags describing the type of a literal in attribute values
   final val BYTE_TAG   = 'B'
   final val CHAR_TAG   = 'C'
   final val DOUBLE_TAG = 'D'
@@ -89,7 +90,11 @@ object ClassfileConstants {
   final val CLASS_TAG  = 'c'
   final val ARRAY_TAG  = '['
   final val VOID_TAG   = 'V'
+  final val TVAR_TAG   = 'T'
   final val ANNOTATION_TAG = '@'
+  final val SCALA_NOTHING = "scala.runtime.Nothing$"
+  final val SCALA_NULL = "scala.runtime.Null$"
+
 
   // tags describing the type of newarray
   final val T_BOOLEAN = 4

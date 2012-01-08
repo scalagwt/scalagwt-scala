@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 import symtab._
 import Flags._
@@ -13,7 +13,6 @@ import scala.collection.mutable.{HashMap, ListBuffer}
 abstract class Flatten extends InfoTransform {
   import global._
   import definitions._
-  import posAssigner.atPos
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "flatten"
@@ -39,14 +38,14 @@ abstract class Flatten extends InfoTransform {
         typeRef(sym.toplevelClass.owner.thisType, sym, args)
       case ClassInfoType(parents, decls, clazz) =>
         var parents1 = parents
-        val decls1 = newScope
+        val decls1 = new Scope
         if (clazz.isPackageClass) {
           atPhase(phase.next)(decls.toList foreach (sym => decls1 enter sym))
         } else {
           val oldowner = clazz.owner
           atPhase(phase.next)(oldowner.info)
-          parents1 = List.mapConserve(parents)(this)
-          for (val sym <- decls.toList) {
+          parents1 = parents mapConserve (this)
+          for (sym <- decls.toList) {
             if (sym.isTerm && !sym.isStaticModule) {
               decls1 enter sym
               if (sym.isModule) sym.moduleClass setFlag LIFTED
@@ -57,6 +56,9 @@ abstract class Flatten extends InfoTransform {
           }
         }
         ClassInfoType(parents1, decls1, clazz)
+      case MethodType(params, restp) =>
+        val restp1 = apply(restp)
+        if (restp1 eq restp) tp else copyMethodType(tp, params, restp1)
       case PolyType(tparams, restp) =>
         val restp1 = apply(restp);
         if (restp1 eq restp) tp else PolyType(tparams, restp1)
@@ -78,6 +80,8 @@ abstract class Flatten extends InfoTransform {
       tree match {
         case PackageDef(_, _) =>
           liftedDefs(tree.symbol.moduleClass) = new ListBuffer
+        case Template(_, _, _) if (tree.symbol.owner.hasFlag(PACKAGE)) =>
+          liftedDefs(tree.symbol.owner) = new ListBuffer
         case _ =>
       }
       postTransform(super.transform(tree))

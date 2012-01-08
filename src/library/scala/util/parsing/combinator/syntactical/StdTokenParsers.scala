@@ -1,17 +1,19 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id: StdTokenParsers.scala 12242 2007-07-09 09:43:09Z michelou $
 
 
-package scala.util.parsing.combinator.syntactical
+package scala.util.parsing
+package combinator
+package syntactical
 
-import scala.util.parsing.syntax._
+import token._
+import collection.mutable.HashMap
 
 /** This component provides primitive parsers for the standard tokens defined in `StdTokens'.
 *
@@ -21,12 +23,16 @@ trait StdTokenParsers extends TokenParsers {
   type Tokens <: StdTokens
   import lexical.{Keyword, NumericLit, StringLit, Identifier}
 
+  protected val keywordCache : HashMap[String, Parser[String]] = HashMap.empty
+
   /** A parser which matches a single keyword token.
    *
    * @param chars    The character string making up the matched keyword.
    * @return a `Parser' that matches the given string
    */
-  implicit def keyword(chars: String): Parser[String] = accept(Keyword(chars)) ^^ (_.chars)
+//  implicit def keyword(chars: String): Parser[String] = accept(Keyword(chars)) ^^ (_.chars)
+    implicit def keyword(chars: String): Parser[String] =
+      keywordCache.getOrElseUpdate(chars, accept(Keyword(chars)) ^^ (_.chars))
 
   /** A parser which matches a numeric literal */
   def numericLit: Parser[String] =

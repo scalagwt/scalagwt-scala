@@ -1,12 +1,12 @@
 /* NSC -- new Scala compiler
- * Copyright 2007-2008 LAMP/EPFL
+ * Copyright 2007-2010 LAMP/EPFL
  * @author Lex Spoon
  */
-// $Id$
 
-package scala.tools.nsc.plugins
+package scala.tools.nsc
+package plugins
 
-import java.io.File
+import io.{ File, Path }
 import java.net.URLClassLoader
 import java.util.jar.JarFile
 import java.util.zip.ZipException
@@ -63,90 +63,90 @@ abstract class Plugin {
  *  @version 1.0, 2007-5-21
  */
 object Plugin {
+
+  private val PluginXML = "scalac-plugin.xml"
+
   /** Create a class loader with the specified file plus
    *  the loader that loaded the Scala compiler.
    */
-  private def loaderFor(jarfiles: Seq[File]): ClassLoader = {
+  private def loaderFor(jarfiles: Seq[Path]): ClassLoader = {
     val compilerLoader = classOf[Plugin].getClassLoader
-    val jarurls = jarfiles.map(_.toURL).toArray
-    new URLClassLoader(jarurls, compilerLoader)
+    val jarurls = jarfiles map (_.toURL)
+
+    new URLClassLoader(jarurls.toArray, compilerLoader)
   }
 
   /** Try to load a plugin description from the specified
-   *  file, returning None if it does not work. */
-  private def loadDescription(jarfile: File): Option[PluginDescription] = {
-    if (!jarfile.exists) return None
+   *  file, returning <code>None</code> if it does not work.
+   */
+  private def loadDescription(jarfile: Path): Option[PluginDescription] =
+    // XXX Return to this once we have some ARM support
+    if (!jarfile.exists) None
+    else try {
+      val jar = new JarFile(jarfile.jfile)
 
-    try {
-      val jar = new JarFile(jarfile)
       try {
-	val ent = jar.getEntry("scalac-plugin.xml")
-	if(ent == null) return None
+        jar getEntry PluginXML match {
+          case null  => None
+          case entry =>
+            val in = jar getInputStream entry
+            val packXML = XML load in
+            in.close()
 
-	val inBytes = jar.getInputStream(ent)
-	val packXML = XML.load(inBytes)
-	inBytes.close()
-
-	PluginDescription.fromXML(packXML)
-      } finally {
-	jar.close()
+            PluginDescription fromXML packXML
+        }
       }
-    } catch {
-      case _:ZipException => None
+      finally jar.close()
     }
-  }
+    catch {
+      case _: ZipException => None
+    }
 
   type AnyClass = Class[_]
 
-  /** Loads a plugin class from the named jar file.  Returns None
-   *  if the jar file has no plugin in it or if the plugin
-   *  is badly formed.
-   */
-  def loadFrom(jarfile: File, loader: ClassLoader): Option[AnyClass] = {
-    val pluginInfo = loadDescription(jarfile).get
+  /** Loads a plugin class from the named jar file.
 
-    try {
-      Some(loader.loadClass(pluginInfo.classname))
-    } catch {
-      case _:ClassNotFoundException =>
-	println("Warning: class not found for plugin in " + jarfile +
-                " (" + pluginInfo.classname + ")")
-      None
+   *  @return <code>None</code> if the jar file has no plugin in it or
+   *                            if the plugin is badly formed.
+   */
+  def loadFrom(jarfile: Path, loader: ClassLoader): Option[AnyClass] =
+    loadDescription(jarfile) match {
+      case None => None
+      case Some(pdesc) =>
+        try Some(loader loadClass pdesc.classname) catch {
+        case _: Exception =>
+          println("Warning: class not found for plugin in %s (%s)".format(jarfile, pdesc.classname))
+          None
+      }
     }
-  }
 
   /** Load all plugins found in the argument list, both in the
    *  jar files explicitly listed, and in the jar files in the
    *  directories specified. Skips all plugins in <code>ignoring</code>.
    *  A single classloader is created and used to load all of them.
    */
-  def loadAllFrom(jars: List[File],
-		  dirs: List[File],
-		  ignoring: List[String]): List[AnyClass] =
+  def loadAllFrom(
+    jars: List[Path],
+    dirs: List[Path],
+    ignoring: List[String]): List[AnyClass] =
   {
-    val alljars = new ListBuffer[File]
-
-    alljars ++= jars
-
-    for {
+    val alljars = (jars ::: (for {
       dir <- dirs if dir.isDirectory
-      entries = dir.listFiles
-      if entries ne null
-      entry <- entries.toList.sort((f1, f2) => f1.getName <= f2.getName)
-      if entry.toString.toLowerCase endsWith ".jar"
+      entry <- dir.toDirectory.files.toList sortBy (_.name)
+      if entry.extension == "jar"
       pdesc <- loadDescription(entry)
       if !(ignoring contains pdesc.name)
-    } alljars += entry
+    } yield entry)).distinct
 
-    val loader = loaderFor(alljars.toList)
-    alljars.toList.map(f => loadFrom(f,loader)).flatMap(x => x)
+    val loader = loaderFor(alljars)
+    alljars map (loadFrom(_, loader)) flatten
   }
 
   /** Instantiate a plugin class, given the class and
    *  the compiler it is to be used in.
    */
   def instantiate(clazz: AnyClass, global: Global): Plugin = {
-    val constructor = clazz.getConstructor(Array(classOf[Global]))
-    constructor.newInstance(Array(global)).asInstanceOf[Plugin]
+    val constructor = clazz getConstructor classOf[Global]
+    (constructor newInstance global).asInstanceOf[Plugin]
   }
 }

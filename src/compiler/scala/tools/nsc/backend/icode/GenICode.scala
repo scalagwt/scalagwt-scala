@@ -1,16 +1,18 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode
+package scala.tools.nsc
+package backend
+package icode
 
-import scala.collection.mutable.{Map, HashMap, ListBuffer, Buffer, HashSet}
+import scala.collection.{ mutable, immutable }
+import scala.collection.mutable.{ HashMap, ListBuffer, Buffer, HashSet }
 import scala.tools.nsc.symtab._
-import scala.tools.nsc.util.Position
-
+import scala.annotation.switch
+import PartialFunction._
 
 /** This class ...
  *
@@ -23,15 +25,24 @@ abstract class GenICode extends SubComponent  {
   import global._
   import icodes._
   import icodes.opcodes._
+  import definitions.{
+    ArrayClass, ObjectClass, ThrowableClass, StringClass, NothingClass, NullClass,
+    Object_equals, Object_isInstanceOf, Object_asInstanceOf, ScalaRunTimeModule,
+    BoxedNumberClass, BoxedCharacterClass,
+    getMember
+  }
+  import scalaPrimitives.{
+    isArrayOp, isComparisonOp, isLogicalOp,
+    isUniversalEqualityOp, isReferenceEqualityOp
+  }
+  import platform.isMaybeBoxed
 
   val phaseName = "icode"
 
   override def newPhase(prev: Phase) = new ICodePhase(prev)
-  
-  
-  /** Is this symbol static in the Java sense? */
-  def isStaticSymbol(s: Symbol): Boolean =
-    s.hasFlag(Flags.STATIC) || s.hasFlag(Flags.STATICMEMBER) || s.owner.isImplClass
+
+  private def debugLog(msg: => String): Unit =
+    if (settings.debug.value) log(msg)
 
   class ICodePhase(prev: Phase) extends StdPhase(prev) {
 
@@ -39,21 +50,15 @@ abstract class GenICode extends SubComponent  {
 
     var unit: CompilationUnit = _
 
-    // We assume definitions are alread initialized
-    val STRING = REFERENCE(definitions.StringClass)
+    // We assume definitions are already initialized
+    val STRING = REFERENCE(StringClass)
 
     // this depends on the backend! should be changed.
-    val ANY_REF_CLASS = REFERENCE(definitions.ObjectClass)
+    val ANY_REF_CLASS = REFERENCE(ObjectClass)
 
-    val SCALA_ALL    = REFERENCE(definitions.AllClass)
-    val SCALA_ALLREF = REFERENCE(definitions.AllRefClass)
-    val THROWABLE    = REFERENCE(definitions.ThrowableClass)
-
-    val BoxesRunTime_equals =
-      if (!forMSIL)
-        definitions.getMember(definitions.BoxesRunTimeClass, nme.equals_)
-      else
-        definitions.getMember(definitions.getClass("scala.runtime.Comparator").linkedModuleOfClass, nme.equals_)
+    val SCALA_ALL    = REFERENCE(NothingClass)
+    val SCALA_ALLREF = REFERENCE(NullClass)
+    val THROWABLE    = REFERENCE(ThrowableClass)
 
     override def run {
       scalaPrimitives.init
@@ -64,7 +69,7 @@ abstract class GenICode extends SubComponent  {
     override def apply(unit: CompilationUnit): Unit = {
       this.unit = unit
       unit.icode.clear
-      log("Generating icode for " + unit)
+      informProgress("Generating icode for " + unit)
       gen(unit.body)
       this.unit = null
     }
@@ -82,17 +87,20 @@ abstract class GenICode extends SubComponent  {
     def gen(tree: Tree, ctx: Context): Context = tree match {
       case EmptyTree => ctx
 
-      case PackageDef(name, stats) =>
-        gen(stats, ctx setPackage name)
+      case PackageDef(pid, stats) =>
+        gen(stats, ctx setPackage pid.name)
 
       case ClassDef(mods, name, _, impl) =>
-        log("Generating class: " + tree.symbol.fullNameString)
+        log("Generating class: " + tree.symbol.fullName)
+        val outerClass = ctx.clazz
         ctx setClass (new IClass(tree.symbol) setCompilationUnit unit)
         addClassFields(ctx, tree.symbol);
         classes += (tree.symbol -> ctx.clazz)
         unit.icode += ctx.clazz
-          gen(impl, ctx)
-        ctx setClass null
+        gen(impl, ctx)
+        ctx.clazz.methods = ctx.clazz.methods.reverse // preserve textual order
+        ctx.clazz.fields  = ctx.clazz.fields.reverse  // preserve textual order
+        ctx setClass outerClass
 
       // !! modules should be eliminated by refcheck... or not?
       case ModuleDef(mods, name, impl) =>
@@ -112,7 +120,7 @@ abstract class GenICode extends SubComponent  {
 
         var ctx1 = ctx.enterMethod(m, tree.asInstanceOf[DefDef])
         addMethodParams(ctx1, vparamss)
-        m.native = m.symbol.hasAttribute(definitions.NativeAttr)
+        m.native = m.symbol.hasAnnotation(definitions.NativeAttr)
 
         if (!m.isDeferred && !m.native) {
           ctx1 = genLoad(rhs, ctx1, m.returnType);
@@ -143,14 +151,8 @@ abstract class GenICode extends SubComponent  {
         abort("Illegal tree in gen: " + tree)
     }
 
-    private def genStat(trees: List[Tree], ctx: Context): Context = {
-      var currentCtx = ctx
-
-      for (t <- trees)
-        currentCtx = genStat(t, currentCtx)
-
-      currentCtx
-    }
+    private def genStat(trees: List[Tree], ctx: Context): Context =
+      trees.foldLeft(ctx)((currentCtx, t) => genStat(t, currentCtx))
 
     /**
      * Generate code for the given tree. The trees should contain statements
@@ -162,30 +164,296 @@ abstract class GenICode extends SubComponent  {
      * @return a new context. This is necessary for control flow instructions
      *         which may change the current basic block.
      */
-    private def genStat(tree: Tree, ctx: Context): Context = {
+    private def genStat(tree: Tree, ctx: Context): Context = tree match {
+      case Assign(lhs @ Select(_, _), rhs) =>
+        val isStatic = lhs.symbol.isStaticMember
+        var ctx1 = if (isStatic) ctx else genLoadQualifier(lhs, ctx)
 
-      tree match {
-        case Assign(lhs @ Select(_, _), rhs) =>
-          if (isStaticSymbol(lhs.symbol)) {
-            val ctx1 = genLoad(rhs, ctx, toTypeKind(lhs.symbol.info))
-            ctx1.bb.emit(STORE_FIELD(lhs.symbol, true), tree.pos)
-            ctx1
-          } else {
-            var ctx1 = genLoadQualifier(lhs, ctx)
-            ctx1 = genLoad(rhs, ctx1, toTypeKind(lhs.symbol.info))
-            ctx1.bb.emit(STORE_FIELD(lhs.symbol, false), tree.pos)
-            ctx1
+        ctx1 = genLoad(rhs, ctx1, toTypeKind(lhs.symbol.info))
+        ctx1.bb.emit(STORE_FIELD(lhs.symbol, isStatic), tree.pos)
+        ctx1
+
+      case Assign(lhs, rhs) =>
+        val ctx1 = genLoad(rhs, ctx, toTypeKind(lhs.symbol.info))
+        val Some(l) = ctx.method.lookupLocal(lhs.symbol)
+        ctx1.bb.emit(STORE_LOCAL(l), tree.pos)
+        ctx1
+
+      case _ =>
+        genLoad(tree, ctx, UNIT)
+    }
+    /**
+     * Generate code for primitive arithmetic operations.
+     * Returns (Context, Generated Type)
+     */
+    private def genArithmeticOp(tree: Tree, ctx: Context, code: Int): (Context, TypeKind) = {
+      val Apply(fun @ Select(larg, _), args) = tree
+      var ctx1 = ctx
+      var resKind = toTypeKind(larg.tpe)
+
+      if (settings.debug.value) {
+        assert(args.length <= 1,
+               "Too many arguments for primitive function: " + fun.symbol)
+        assert(resKind.isNumericType | resKind == BOOL,
+               resKind.toString() + " is not a numeric or boolean type " +
+               "[operation: " + fun.symbol + "]")
+      }
+
+      args match {
+        // unary operation
+        case Nil =>
+          ctx1 = genLoad(larg, ctx1, resKind)
+          code match {
+            case scalaPrimitives.POS =>
+              () // nothing
+            case scalaPrimitives.NEG =>
+              ctx1.bb.emit(CALL_PRIMITIVE(Negation(resKind)), larg.pos)
+            case scalaPrimitives.NOT =>
+              ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(NOT, resKind)), larg.pos)
+            case _ =>
+              abort("Unknown unary operation: " + fun.symbol.fullName +
+                    " code: " + code)
           }
 
-        case Assign(lhs, rhs) =>
-          val ctx1 = genLoad(rhs, ctx, toTypeKind(lhs.symbol.info))
-          val Some(l) = ctx.method.lookupLocal(lhs.symbol)
-          ctx1.bb.emit(STORE_LOCAL(l), tree.pos)
-          ctx1
+        // binary operation
+        case rarg :: Nil =>
+          resKind = getMaxType(larg.tpe :: rarg.tpe :: Nil);
+          if (scalaPrimitives.isShiftOp(code) || scalaPrimitives.isBitwiseOp(code))
+            assert(resKind.isIntType | resKind == BOOL,
+                 resKind.toString() + " incompatible with arithmetic modulo operation: " + ctx1);
+
+          ctx1 = genLoad(larg, ctx1, resKind)
+          ctx1 = genLoad(rarg,
+                         ctx1, // check .NET size of shift arguments!
+                         if (scalaPrimitives.isShiftOp(code)) INT else resKind)
+
+          val primitiveOp = code match {
+            case scalaPrimitives.ADD    => Arithmetic(ADD, resKind)
+            case scalaPrimitives.SUB    => Arithmetic(SUB, resKind)
+            case scalaPrimitives.MUL    => Arithmetic(MUL, resKind)
+            case scalaPrimitives.DIV    => Arithmetic(DIV, resKind)
+            case scalaPrimitives.MOD    => Arithmetic(REM, resKind)
+            case scalaPrimitives.OR     => Logical(OR, resKind)
+            case scalaPrimitives.XOR    => Logical(XOR, resKind)
+            case scalaPrimitives.AND    => Logical(AND, resKind)
+            case scalaPrimitives.LSL    => Shift(LSL, resKind)
+            case scalaPrimitives.LSR    => Shift(LSR, resKind)
+            case scalaPrimitives.ASR    => Shift(ASR, resKind)
+            case _                      => abort("Unknown primitive: " + fun.symbol + "[" + code + "]")
+          }
+          ctx1.bb.emit(CALL_PRIMITIVE(primitiveOp), tree.pos)
 
         case _ =>
-          genLoad(tree, ctx, UNIT)
+          abort("Too many arguments for primitive function: " + tree)
       }
+      (ctx1, resKind)
+    }
+
+    /** Generate primitive array operations.
+     *
+     *  @param tree ...
+     *  @param ctx  ...
+     *  @param code ...
+     *  @return     ...
+     */
+    private def genArrayOp(tree: Tree, ctx: Context, code: Int, expectedType: TypeKind): (Context, TypeKind) = {
+      import scalaPrimitives._
+      val Apply(Select(arrayObj, _), args) = tree
+      val k = toTypeKind(arrayObj.tpe)
+      val ARRAY(elem) = k
+      var ctx1 = genLoad(arrayObj, ctx, k)
+      val elementType = typeOfArrayOp.getOrElse(code, abort("Unknown operation on arrays: " + tree + " code: " + code))
+
+      var generatedType = expectedType
+
+      if (scalaPrimitives.isArrayGet(code)) {
+        // load argument on stack
+        if (settings.debug.value)
+          assert(args.length == 1,
+                 "Too many arguments for array get operation: " + tree);
+        ctx1 = genLoad(args.head, ctx1, INT)
+        generatedType = elem
+        ctx1.bb.emit(LOAD_ARRAY_ITEM(elementType), tree.pos)
+      }
+      else if (scalaPrimitives.isArraySet(code)) {
+        if (settings.debug.value)
+          assert(args.length == 2,
+                 "Too many arguments for array set operation: " + tree);
+        ctx1 = genLoad(args.head, ctx1, INT)
+        ctx1 = genLoad(args.tail.head, ctx1, toTypeKind(args.tail.head.tpe))
+        // the following line should really be here, but because of bugs in erasure
+        // we pretend we generate whatever type is expected from us.
+        //generatedType = UNIT
+
+        ctx1.bb.emit(STORE_ARRAY_ITEM(elementType), tree.pos)
+      }
+      else {
+        generatedType = INT
+        ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(elementType)), tree.pos)
+      }
+
+      (ctx1, generatedType)
+    }
+    private def genSynchronized(tree: Apply, ctx: Context, expectedType: TypeKind): (Context, TypeKind) = {
+      val Apply(fun, args) = tree
+      val monitor = ctx.makeLocal(tree.pos, ObjectClass.tpe, "monitor")
+      var monitorResult: Local = null
+
+      // if the synchronized block returns a result, store it in a local variable. just leaving
+      // it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks)
+      val argTpe = args.head.tpe
+      val hasResult = expectedType != UNIT
+      if (hasResult)
+        monitorResult = ctx.makeLocal(tree.pos, argTpe, "monitorResult")
+
+      var ctx1 = genLoadQualifier(fun, ctx)
+      ctx1.bb.emit(Seq(
+        DUP(ANY_REF_CLASS),
+        STORE_LOCAL(monitor),
+        MONITOR_ENTER() setPos tree.pos
+      ))
+      ctx1.enterSynchronized(monitor)
+      debugLog("synchronized block start")
+
+      ctx1 = ctx1.Try(
+        bodyCtx => {
+          val ctx2 = genLoad(args.head, bodyCtx, expectedType /* toTypeKind(tree.tpe.resultType) */)
+          if (hasResult)
+            ctx2.bb.emit(STORE_LOCAL(monitorResult))
+          ctx2.bb.emit(Seq(
+            LOAD_LOCAL(monitor),
+            MONITOR_EXIT() setPos tree.pos
+          ))
+          ctx2
+        }, List(
+          // tree.tpe / fun.tpe is object, which is no longer true after this transformation
+          (ThrowableClass, expectedType, exhCtx => {
+            exhCtx.bb.emit(Seq(
+              LOAD_LOCAL(monitor),
+              MONITOR_EXIT() setPos tree.pos,
+              THROW()
+            ))
+            exhCtx.bb.enterIgnoreMode
+            exhCtx
+          })), EmptyTree, tree)
+
+      debugLog("synchronized block end with block %s closed=%s".format(ctx1.bb, ctx1.bb.closed))
+      ctx1.exitSynchronized(monitor)
+      if (hasResult)
+        ctx1.bb.emit(LOAD_LOCAL(monitorResult))
+      (ctx1, expectedType)
+    }
+
+    private def genLoadIf(tree: If, ctx: Context, expectedType: TypeKind): (Context, TypeKind) = {
+      val If(cond, thenp, elsep) = tree
+
+      var thenCtx = ctx.newBlock
+      var elseCtx = ctx.newBlock
+      val contCtx = ctx.newBlock
+
+      genCond(cond, ctx, thenCtx, elseCtx)
+
+      val ifKind = toTypeKind(tree.tpe)
+      val thenKind = toTypeKind(thenp.tpe)
+      val elseKind = if (elsep == EmptyTree) UNIT else toTypeKind(elsep.tpe)
+
+      // we need to drop unneeded results, if one branch gives
+      // unit and the other gives something on the stack, because
+      // the type of 'if' is scala.Any, and its erasure would be Object.
+      // But unboxed units are not Objects...
+      def hasUnitBranch = thenKind == UNIT || elseKind == UNIT
+      val resKind = if (hasUnitBranch) UNIT else ifKind
+
+      if (hasUnitBranch)
+        debugLog("Will drop result from an if branch")
+
+      thenCtx = genLoad(thenp, thenCtx, resKind)
+      elseCtx = genLoad(elsep, elseCtx, resKind)
+
+      assert(!settings.debug.value || !(hasUnitBranch && expectedType != UNIT),
+        "I produce UNIT in a context where " + expectedType + " is expected!")
+
+      thenCtx.bb.emitOnly(JUMP(contCtx.bb))
+      elseCtx.bb.emitOnly(
+        if (elsep == EmptyTree) JUMP(contCtx.bb)
+        else JUMP(contCtx.bb) setPos tree.pos
+      )
+
+      (contCtx, resKind)
+    }
+    private def genLoadTry(tree: Try, ctx: Context, setGeneratedType: TypeKind => Unit): Context = {
+      val Try(block, catches, finalizer) = tree
+      val kind = toTypeKind(tree.tpe)
+
+      val caseHandlers =
+        for (CaseDef(pat, _, body) <- catches.reverse) yield {
+          def genWildcardHandler(sym: Symbol): (Symbol, TypeKind, Context => Context) =
+            (sym, kind, ctx => {
+              ctx.bb.emit(DROP(REFERENCE(sym)))
+              genLoad(body, ctx, kind)
+            })
+
+          pat match {
+            case Typed(Ident(nme.WILDCARD), tpt)  => genWildcardHandler(tpt.tpe.typeSymbol)
+            case Ident(nme.WILDCARD)              => genWildcardHandler(ThrowableClass)
+            case Bind(name, _)                    =>
+              val exception = ctx.method addLocal new Local(pat.symbol, toTypeKind(pat.symbol.tpe), false)
+
+              (pat.symbol.tpe.typeSymbol, kind, {
+                ctx: Context =>
+                  ctx.bb.emit(STORE_LOCAL(exception), pat.pos);
+                  genLoad(body, ctx, kind);
+              })
+          }
+        }
+
+      ctx.Try(
+        bodyCtx => {
+          setGeneratedType(kind)
+          genLoad(block, bodyCtx, kind)
+        },
+        caseHandlers,
+        finalizer,
+        tree)
+    }
+
+    private def genPrimitiveOp(tree: Apply, ctx: Context, expectedType: TypeKind): (Context, TypeKind) = {
+      val sym = tree.symbol
+      val Apply(fun @ Select(receiver, _), args) = tree
+      val code = scalaPrimitives.getPrimitive(sym, receiver.tpe)
+
+      if (scalaPrimitives.isArithmeticOp(code))
+        genArithmeticOp(tree, ctx, code)
+      else if (code == scalaPrimitives.CONCAT)
+        (genStringConcat(tree, ctx), STRING)
+      else if (code == scalaPrimitives.HASH)
+        (genScalaHash(receiver, ctx), INT)
+      else if (isArrayOp(code))
+        genArrayOp(tree, ctx, code, expectedType)
+      else if (isLogicalOp(code) || isComparisonOp(code)) {
+        val trueCtx = ctx.newBlock
+        val falseCtx = ctx.newBlock
+        val afterCtx = ctx.newBlock
+        genCond(tree, ctx, trueCtx, falseCtx)
+        trueCtx.bb.emitOnly(
+          CONSTANT(Constant(true)) setPos tree.pos,
+          JUMP(afterCtx.bb)
+        )
+        falseCtx.bb.emitOnly(
+          CONSTANT(Constant(false)) setPos tree.pos,
+          JUMP(afterCtx.bb)
+        )
+        (afterCtx, BOOL)
+      }
+      else if (code == scalaPrimitives.SYNCHRONIZED)
+        genSynchronized(tree, ctx, expectedType)
+      else if (scalaPrimitives.isCoercion(code)) {
+        val ctx1 = genLoad(receiver, ctx, toTypeKind(receiver.tpe))
+        genCoercion(tree, ctx1, code)
+        (ctx1, scalaPrimitives.generatedKind(code))
+      }
+      else abort("Primitive operation not handled yet: " + sym.fullName + "(" +
+                  fun.symbol.simpleName + ") " + " at: " + (tree.pos))
     }
 
     /**
@@ -201,188 +469,8 @@ abstract class GenICode extends SubComponent  {
     private def genLoad(tree: Tree, ctx: Context, expectedType: TypeKind): Context = {
       var generatedType = expectedType
       if (settings.debug.value)
-        log("at line: " + (tree.pos).line.map(_.toString).getOrElse(tree.pos.toString))
+        log("at line: " + (if (tree.pos.isDefined) tree.pos.line else tree.pos))
 
-      /**
-       * Generate code for primitive arithmetic operations.
-       */
-      def genArithmeticOp(tree: Tree, ctx: Context, code: Int): Context = {
-        val Apply(fun @ Select(larg, _), args) = tree
-        var ctx1 = ctx
-        var resKind = toTypeKind(larg.tpe)
-
-        if (settings.debug.value) {
-          assert(args.length <= 1,
-                 "Too many arguments for primitive function: " + fun.symbol)
-          assert(resKind.isNumericType | resKind == BOOL,
-                 resKind.toString() + " is not a numeric or boolean type " +
-                 "[operation: " + fun.symbol + "]")
-        }
-
-        args match {
-          // unary operation
-          case Nil =>
-            ctx1 = genLoad(larg, ctx1, resKind)
-            code match {
-              case scalaPrimitives.POS =>
-                () // nothing
-              case scalaPrimitives.NEG =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Negation(resKind)), larg.pos)
-              case scalaPrimitives.NOT =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(NOT, resKind)), larg.pos)
-              case _ =>
-                abort("Unknown unary operation: " + fun.symbol.fullNameString +
-                      " code: " + code)
-            }
-            generatedType = resKind
-
-          // binary operation
-          case rarg :: Nil =>
-            resKind = getMaxType(larg.tpe :: rarg.tpe :: Nil);
-            if (scalaPrimitives.isShiftOp(code) || scalaPrimitives.isBitwiseOp(code))
-              assert(resKind.isIntType | resKind == BOOL,
-                   resKind.toString() + " incompatible with arithmetic modulo operation: " + ctx1);
-
-            ctx1 = genLoad(larg, ctx1, resKind);
-            ctx1 = genLoad(rarg,
-                           ctx1,  // check .NET size of shift arguments!
-                           if (scalaPrimitives.isShiftOp(code)) INT else resKind)
-
-            generatedType = resKind
-            code match {
-              case scalaPrimitives.ADD =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(ADD, resKind)), tree.pos)
-              case scalaPrimitives.SUB =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(SUB, resKind)), tree.pos)
-              case scalaPrimitives.MUL =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(MUL, resKind)), tree.pos)
-              case scalaPrimitives.DIV =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(DIV, resKind)), tree.pos)
-              case scalaPrimitives.MOD =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Arithmetic(REM, resKind)), tree.pos)
-              case scalaPrimitives.OR  =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Logical(OR, resKind)), tree.pos)
-              case scalaPrimitives.XOR =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Logical(XOR, resKind)), tree.pos)
-              case scalaPrimitives.AND =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Logical(AND, resKind)), tree.pos)
-              case scalaPrimitives.LSL =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Shift(LSL, resKind)), tree.pos)
-                generatedType = resKind
-              case scalaPrimitives.LSR =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Shift(LSR, resKind)), tree.pos)
-                generatedType = resKind
-              case scalaPrimitives.ASR =>
-                ctx1.bb.emit(CALL_PRIMITIVE(Shift(ASR, resKind)), tree.pos)
-                generatedType = resKind
-              case _ =>
-                abort("Unknown primitive: " + fun.symbol + "[" + code + "]")
-            }
-
-          case _ =>
-            abort("Too many arguments for primitive function: " + tree)
-        }
-        ctx1
-      }
-
-      /** Generate primitive array operations.
-       *
-       *  @param tree ...
-       *  @param ctx  ...
-       *  @param code ...
-       *  @return     ...
-       */
-      def genArrayOp(tree: Tree, ctx: Context, code: Int): Context = {
-        import scalaPrimitives._
-        val Apply(Select(arrayObj, _), args) = tree
-        val k = toTypeKind(arrayObj.tpe)
-        val ARRAY(elem) = k
-        var ctx1 = genLoad(arrayObj, ctx, k)
-
-        if (scalaPrimitives.isArrayGet(code)) {
-          // load argument on stack
-          if (settings.debug.value)
-            assert(args.length == 1,
-                   "Too many arguments for array get operation: " + tree);
-          ctx1 = genLoad(args.head, ctx1, INT)
-          generatedType = elem
-        } else if (scalaPrimitives.isArraySet(code)) {
-          if (settings.debug.value)
-            assert(args.length == 2,
-                   "Too many arguments for array set operation: " + tree);
-          ctx1 = genLoad(args.head, ctx1, INT)
-          ctx1 = genLoad(args.tail.head, ctx1, toTypeKind(args.tail.head.tpe))
-          // the following line should really be here, but because of bugs in erasure
-          // we pretend we generate whatever type is expected from us.
-          //generatedType = UNIT
-        } else
-          generatedType = INT
-
-        code match {
-          case ZARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(BOOL)), tree.pos)
-          case BARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(BYTE)), tree.pos)
-          case SARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(SHORT)), tree.pos)
-          case CARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(CHAR)), tree.pos)
-          case IARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(INT)), tree.pos)
-          case LARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(LONG)), tree.pos)
-          case FARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(FLOAT)), tree.pos)
-          case DARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(DOUBLE)), tree.pos)
-          case OARRAY_LENGTH =>
-            ctx1.bb.emit(CALL_PRIMITIVE(ArrayLength(ANY_REF_CLASS)), tree.pos)
-
-          case ZARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(BOOL), tree.pos)
-          case BARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(BYTE), tree.pos)
-          case SARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(SHORT), tree.pos)
-          case CARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(CHAR), tree.pos)
-          case IARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(INT), tree.pos)
-          case LARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(LONG), tree.pos)
-          case FARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(FLOAT), tree.pos)
-          case DARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(DOUBLE), tree.pos)
-          case OARRAY_GET =>
-            ctx1.bb.emit(LOAD_ARRAY_ITEM(ANY_REF_CLASS), tree.pos)
-
-          case ZARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(BOOL), tree.pos)
-          case BARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(BYTE), tree.pos)
-          case SARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(SHORT), tree.pos)
-          case CARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(CHAR), tree.pos)
-          case IARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(INT), tree.pos)
-          case LARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(LONG), tree.pos)
-          case FARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(FLOAT), tree.pos)
-          case DARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(DOUBLE), tree.pos)
-          case OARRAY_SET =>
-            ctx1.bb.emit(STORE_ARRAY_ITEM(ANY_REF_CLASS), tree.pos)
-
-          case _ =>
-            abort("Unknown operation on arrays: " + tree + " code: " + code)
-        }
-        ctx1
-      }
-
-      // genLoad
       val resCtx: Context = tree match {
         case LabelDef(name, params, rhs) =>
           val ctx1 = ctx.newBlock
@@ -405,11 +493,13 @@ abstract class GenICode extends SubComponent  {
           ctx.bb.close
           genLoad(rhs, ctx1, expectedType /*toTypeKind(tree.symbol.info.resultType)*/)
 
+        case ValDef(_, nme.THIS, _, _) =>
+          if (settings.debug.value) log("skipping trivial assign to _$this: " + tree)
+          ctx
+
         case ValDef(_, _, _, rhs) =>
           val sym = tree.symbol
           val local = ctx.method.addLocal(new Local(sym, toTypeKind(sym.info), false))
-          ctx.scope.add(local)
-          ctx.bb.emit(SCOPE_ENTER(local))
 
           if (rhs == EmptyTree) {
             if (settings.debug.value)
@@ -422,49 +512,15 @@ abstract class GenICode extends SubComponent  {
             ctx1 = genLoad(rhs, ctx, local.kind);
 
           ctx1.bb.emit(STORE_LOCAL(local), tree.pos)
+          ctx1.scope.add(local)
+          ctx1.bb.emit(SCOPE_ENTER(local))
           generatedType = UNIT
           ctx1
 
-        case If(cond, thenp, elsep) =>
-          var thenCtx = ctx.newBlock
-          var elseCtx = ctx.newBlock
-          val contCtx = ctx.newBlock
-            genCond(cond, ctx, thenCtx, elseCtx)
-          val ifKind = toTypeKind(tree.tpe)
-
-          val thenKind = toTypeKind(thenp.tpe)
-          val elseKind = if (elsep == EmptyTree) UNIT else toTypeKind(elsep.tpe)
-
-          generatedType = ifKind
-
-          // we need to drop unneeded results, if one branch gives
-          // unit and the other gives something on the stack, because
-          // the type of 'if' is scala.Any, and its erasure would be Object.
-          // But unboxed units are not Objects...
-          if (thenKind == UNIT || elseKind == UNIT) {
-            if (settings.debug.value)
-              log("Will drop result from an if branch");
-            thenCtx = genLoad(thenp, thenCtx, UNIT)
-            elseCtx = genLoad(elsep, elseCtx, UNIT)
-            if (settings.debug.value)
-              assert(expectedType == UNIT,
-                     "I produce UNIT in a context where " +
-                     expectedType + " is expected!")
-            generatedType = UNIT
-          } else {
-            thenCtx = genLoad(thenp, thenCtx, ifKind)
-            elseCtx = genLoad(elsep, elseCtx, ifKind)
-          }
-
-          thenCtx.bb.emit(JUMP(contCtx.bb))
-          thenCtx.bb.close
-          if (elsep == EmptyTree)
-            elseCtx.bb.emit(JUMP(contCtx.bb), tree.pos)
-          else
-            elseCtx.bb.emit(JUMP(contCtx.bb))
-          elseCtx.bb.close
-
-          contCtx
+        case t @ If(cond, thenp, elsep) =>
+          val (newCtx, resKind) = genLoadIf(t, ctx, expectedType)
+          generatedType = resKind
+          newCtx
 
         case Return(expr) =>
           val returnedKind = toTypeKind(expr.tpe)
@@ -493,82 +549,13 @@ abstract class GenICode extends SubComponent  {
           ctx1.cleanups = oldcleanups
 
           if (saved) ctx1.bb.emit(LOAD_LOCAL(tmp))
-          ctx1.bb.emit(RETURN(returnedKind), tree.pos)
+          adapt(returnedKind, ctx1.method.returnType, ctx1, tree.pos)
+          ctx1.bb.emit(RETURN(ctx.method.returnType), tree.pos)
           ctx1.bb.enterIgnoreMode
           generatedType = expectedType
           ctx1
 
-        case Try(block, catches, finalizer) =>
-          val kind = toTypeKind(tree.tpe)
-          var tmp: Local = null
-          val guardResult = kind != UNIT && mayCleanStack(finalizer)
-          if (guardResult) {
-            tmp = ctx.makeLocal(tree.pos, tree.tpe, "tmp")
-          }
-
-          var handlers = for (CaseDef(pat, _, body) <- catches.reverse)
-            yield pat match {
-              case Typed(Ident(nme.WILDCARD), tpt) => (tpt.tpe.typeSymbol, kind, {
-                ctx: Context =>
-                  ctx.bb.emit(DROP(REFERENCE(tpt.tpe.typeSymbol)));
-                  val ctx1 = genLoad(body, ctx, kind);
-                  if (guardResult) {
-                    ctx1.bb.emit(STORE_LOCAL(tmp))
-                    val ctx2 = genLoad(finalizer, ctx1, UNIT)
-                    ctx2.bb.emit(LOAD_LOCAL(tmp))
-                    ctx2
-                  } else
-                    genLoad(finalizer, ctx1, UNIT);
-                })
-
-              case Ident(nme.WILDCARD) => (definitions.ThrowableClass, kind, {
-                ctx: Context =>
-                  ctx.bb.emit(DROP(REFERENCE(definitions.ThrowableClass)))
-                  val ctx1 = genLoad(body, ctx, kind)
-                  if (guardResult) {
-                    ctx1.bb.emit(STORE_LOCAL(tmp))
-                    val ctx2 = genLoad(finalizer, ctx1, UNIT)
-                    ctx2.bb.emit(LOAD_LOCAL(tmp))
-                    ctx2
-                  } else
-                    genLoad(finalizer, ctx1, UNIT)
-                })
-
-              case Bind(name, _) =>
-                val exception = ctx.method.addLocal(new Local(pat.symbol, toTypeKind(pat.symbol.tpe), false))
-
-                (pat.symbol.tpe.typeSymbol, kind, {
-                  ctx: Context =>
-                    ctx.bb.emit(STORE_LOCAL(exception), pat.pos);
-                    val ctx1 = genLoad(body, ctx, kind);
-                    if (guardResult) {
-                      ctx1.bb.emit(STORE_LOCAL(tmp))
-                      val ctx2 = genLoad(finalizer, ctx1, UNIT)
-                      ctx2.bb.emit(LOAD_LOCAL(tmp))
-                      ctx2
-                    } else
-                      genLoad(finalizer, ctx1, UNIT);
-                })
-            }
-
-          val duppedFinalizer = (new DuplicateLabels(ctx.labels.keySet))(ctx, finalizer)
-          if (settings.debug.value)
-            log("Duplicated finalizer: " + duppedFinalizer)
-          ctx.Try(
-            bodyCtx => {
-              generatedType = kind; //toTypeKind(block.tpe);
-              val ctx1 = genLoad(block, bodyCtx, generatedType);
-              if (guardResult) {
-                val tmp = ctx1.makeLocal(tree.pos, tree.tpe, "tmp")
-                ctx1.bb.emit(STORE_LOCAL(tmp))
-                val ctx2 = genLoad(duppedFinalizer, ctx1, UNIT)
-                ctx2.bb.emit(LOAD_LOCAL(tmp))
-                ctx2
-              } else
-                genLoad(duppedFinalizer, ctx1, UNIT)
-            },
-            handlers,
-            finalizer)
+        case t @ Try(_, _, _) => genLoadTry(t, ctx, (x: TypeKind) => generatedType = x)
 
         case Throw(expr) =>
           val ctx1 = genLoad(expr, ctx, THROWABLE)
@@ -582,35 +569,32 @@ abstract class GenICode extends SubComponent  {
 
         case Apply(TypeApply(fun, targs), _) =>
           val sym = fun.symbol
-          var ctx1 = ctx
-          var cast = false
-
-          if (sym == definitions.Object_isInstanceOf)
-            cast = false
-          else if (sym == definitions.Object_asInstanceOf)
-            cast = true
-          else
-            abort("Unexpected type application " + fun + "[sym: " + sym.fullNameString + "]" + " in: " + tree)
+          val cast = sym match {
+            case Object_isInstanceOf  => false
+            case Object_asInstanceOf  => true
+            case _                    => abort("Unexpected type application " + fun + "[sym: " + sym.fullName + "]" + " in: " + tree)
+          }
 
           val Select(obj, _) = fun
           val l = toTypeKind(obj.tpe)
           val r = toTypeKind(targs.head.tpe)
-
-          ctx1 = genLoadQualifier(fun, ctx)
+          val ctx1 = genLoadQualifier(fun, ctx)
 
           if (l.isValueType && r.isValueType)
             genConversion(l, r, ctx1, cast)
           else if (l.isValueType) {
             ctx1.bb.emit(DROP(l), fun.pos)
             if (cast) {
-              ctx1.bb.emit(NEW(REFERENCE(definitions.getClass("ClassCastException"))))
-              ctx1.bb.emit(DUP(ANY_REF_CLASS))
-              ctx1.bb.emit(THROW())
+              ctx1.bb.emit(Seq(
+                NEW(REFERENCE(definitions.getClass("ClassCastException"))),
+                DUP(ANY_REF_CLASS),
+                THROW()
+              ))
             } else
               ctx1.bb.emit(CONSTANT(Constant(false)))
           }
           else if (r.isValueType && cast) {
-            assert(false) /* Erasure should have added an unboxing operation to prevent that. */
+            assert(false, tree) /* Erasure should have added an unboxing operation to prevent that. */
           }
           else if (r.isValueType)
             ctx.bb.emit(IS_INSTANCE(REFERENCE(definitions.boxedClass(r.toType.typeSymbol))))
@@ -651,16 +635,14 @@ abstract class GenICode extends SubComponent  {
             assert(ctor.isClassConstructor,
                    "'new' call to non-constructor: " + ctor.name)
 
-          generatedType = toTypeKind(fun.tpe.resultType)
+          generatedType = toTypeKind(tpt.tpe)
           if (settings.debug.value)
             assert(generatedType.isReferenceType || generatedType.isArrayType,
                  "Non reference type cannot be instantiated: " + generatedType)
 
-          var ctx1 = ctx
-
           generatedType match {
             case arr @ ARRAY(elem) =>
-              ctx1 = genLoadArguments(args, ctor.info.paramTypes, ctx)
+              val ctx1 = genLoadArguments(args, ctor.info.paramTypes, ctx)
               val dims = arr.dimensions
               var elemKind = arr.elementKind
               if (args.length > dims)
@@ -669,28 +651,29 @@ abstract class GenICode extends SubComponent  {
               if (args.length != dims)
                 for (i <- args.length until dims) elemKind = ARRAY(elemKind)
               ctx1.bb.emit(CREATE_ARRAY(elemKind, args.length), tree.pos)
+              ctx1
 
             case rt @ REFERENCE(cls) =>
               if (settings.debug.value)
                 assert(ctor.owner == cls,
-                       "Symbol " + ctor.owner.fullNameString + " is different than " + tpt)
+                       "Symbol " + ctor.owner.fullName + " is different than " + tpt)
               val nw = NEW(rt)
-              ctx1.bb.emit(nw, tree.pos)
-              ctx1.bb.emit(DUP(generatedType))
-              ctx1 = genLoadArguments(args, ctor.info.paramTypes, ctx)
+              ctx.bb.emit(nw, tree.pos)
+              ctx.bb.emit(DUP(generatedType))
+              val ctx1 = genLoadArguments(args, ctor.info.paramTypes, ctx)
 
               val init = CALL_METHOD(ctor, Static(true))
               nw.init = init
               ctx1.bb.emit(init, tree.pos)
+              ctx1
 
             case _ =>
               abort("Cannot instantiate " + tpt + "of kind: " + generatedType)
           }
-          ctx1
 
         case Apply(fun @ _, List(expr)) if (definitions.isBox(fun.symbol)) =>
           if (settings.debug.value)
-            log("BOX : " + fun.symbol.fullNameString);
+            log("BOX : " + fun.symbol.fullName);
           val ctx1 = genLoad(expr, ctx, toTypeKind(expr.tpe))
           val nativeKind = toTypeKind(expr.tpe)
           if (settings.Xdce.value) {
@@ -707,14 +690,14 @@ abstract class GenICode extends SubComponent  {
 
         case Apply(fun @ _, List(expr)) if (definitions.isUnbox(fun.symbol)) =>
           if (settings.debug.value)
-            log("UNBOX : " + fun.symbol.fullNameString)
+            log("UNBOX : " + fun.symbol.fullName)
           val ctx1 = genLoad(expr, ctx, toTypeKind(expr.tpe))
           val boxType = toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
           ctx1.bb.emit(UNBOX(boxType), expr.pos)
           ctx1
 
-        case Apply(fun, args) =>
+        case app @ Apply(fun, args) =>
           val sym = fun.symbol
 
           if (sym.isLabel) {  // jump to a label
@@ -735,84 +718,17 @@ abstract class GenICode extends SubComponent  {
                 }
             }
             val ctx1 = genLoadLabelArguments(args, label, ctx)
-            if (label.anchored)
-              ctx1.bb.emit(JUMP(label.block), tree.pos)
-            else
-              ctx1.bb.emit(PJUMP(label), tree.pos)
-
-            ctx1.bb.close
+            ctx1.bb.emitOnly(if (label.anchored) JUMP(label.block) else PJUMP(label))
             ctx1.newBlock
           } else if (isPrimitive(sym)) { // primitive method call
-            val Select(receiver, _) = fun
-
-            val code = scalaPrimitives.getPrimitive(sym, receiver.tpe)
-            var ctx1 = ctx
-
-            if (scalaPrimitives.isArithmeticOp(code)) {
-              ctx1 = genArithmeticOp(tree, ctx1, code)
-            } else if (code == scalaPrimitives.CONCAT) {
-              ctx1 = genStringConcat(tree, ctx1)
-              generatedType = STRING
-            } else if (scalaPrimitives.isArrayOp(code)) {
-              ctx1 = genArrayOp(tree, ctx1, code)
-            } else if (scalaPrimitives.isLogicalOp(code) ||
-                       scalaPrimitives.isComparisonOp(code)) {
-
-              val trueCtx = ctx1.newBlock
-              val falseCtx = ctx1.newBlock
-              val afterCtx = ctx1.newBlock
-              genCond(tree, ctx1, trueCtx, falseCtx)
-              trueCtx.bb.emit(CONSTANT(Constant(true)), tree.pos)
-              trueCtx.bb.emit(JUMP(afterCtx.bb))
-              trueCtx.bb.close
-              falseCtx.bb.emit(CONSTANT(Constant(false)), tree.pos)
-              falseCtx.bb.emit(JUMP(afterCtx.bb))
-              falseCtx.bb.close
-              generatedType = BOOL
-              ctx1 = afterCtx
-            } else if (code == scalaPrimitives.SYNCHRONIZED) {
-              val monitor = ctx.makeLocal(tree.pos, definitions.ObjectClass.tpe, "monitor")
-              ctx1 = genLoadQualifier(fun, ctx1)
-              ctx1.bb.emit(DUP(ANY_REF_CLASS))
-              ctx1.bb.emit(STORE_LOCAL(monitor))
-              ctx1.bb.emit(MONITOR_ENTER(), tree.pos)
-              ctx1.enterSynchronized(monitor)
-
-              if (settings.debug.value)
-                log("synchronized block start");
-
-              ctx1 = ctx1.Try(
-                bodyCtx => {
-                  val ctx1 = genLoad(args.head, bodyCtx, expectedType /* toTypeKind(tree.tpe.resultType) */)
-                  ctx1.bb.emit(LOAD_LOCAL(monitor))
-                  ctx1.bb.emit(MONITOR_EXIT(), tree.pos)
-                  ctx1
-                }, List(
-                  // tree.tpe / fun.tpe is object, which is no longer true after this transformation
-                  (NoSymbol, expectedType, exhCtx => {
-                  exhCtx.bb.emit(LOAD_LOCAL(monitor))
-                  exhCtx.bb.emit(MONITOR_EXIT(), tree.pos)
-                  exhCtx.bb.emit(THROW())
-                  exhCtx.bb.enterIgnoreMode
-                  exhCtx
-                })), EmptyTree);
-              if (settings.debug.value)
-                log("synchronized block end with block " + ctx1.bb +
-                    " closed=" + ctx1.bb.isClosed);
-              ctx1.exitSynchronized(monitor)
-            } else if (scalaPrimitives.isCoercion(code)) {
-              ctx1 = genLoad(receiver, ctx1, toTypeKind(receiver.tpe))
-              genCoercion(tree, ctx1, code)
-              generatedType = scalaPrimitives.generatedKind(code)
-            } else
-              abort("Primitive operation not handled yet: " + sym.fullNameString + "(" +
-                    fun.symbol.simpleName + ") " + " at: " + (tree.pos));
-            ctx1
+            val (newCtx, resKind) = genPrimitiveOp(app, ctx, expectedType)
+            generatedType = resKind
+            newCtx
           } else {  // normal method call
             if (settings.debug.value)
-              log("Gen CALL_METHOD with sym: " + sym + " isStaticSymbol: " + isStaticSymbol(sym));
+              log("Gen CALL_METHOD with sym: " + sym + " isStaticSymbol: " + sym.isStaticMember);
             var invokeStyle =
-              if (isStaticSymbol(sym))
+              if (sym.isStaticMember)
                 Static(false)
               else if (sym.hasFlag(Flags.PRIVATE) || sym.isClassConstructor)
                 Static(true)
@@ -824,16 +740,25 @@ abstract class GenICode extends SubComponent  {
               else ctx
 
             ctx1 = genLoadArguments(args, sym.info.paramTypes, ctx1)
+            val cm = CALL_METHOD(sym, invokeStyle)
 
-            val hostClass = fun match {
-              case Select(qualifier, _)
-              if (qualifier.tpe.typeSymbol != definitions.ArrayClass) =>
-                qualifier.tpe.typeSymbol
-              case _ => sym.owner
+            /** In a couple cases, squirrel away a little extra information in the
+             *  CALL_METHOD for use by GenJVM.
+             */
+            fun match {
+              case Select(qual, _) =>
+                val qualSym = qual.tpe.typeSymbol
+                if (qualSym == ArrayClass) cm setTargetTypeKind toTypeKind(qual.tpe)
+                else cm setHostClass qualSym
+
+                if (settings.debug.value) log(
+                  if (qualSym == ArrayClass) "Stored target type kind " + toTypeKind(qual.tpe) + " for " + sym.fullName
+                  else "Set more precise host class for " + sym.fullName + " host: " + qualSym
+                )
+              case _ =>
             }
-            if (settings.debug.value && hostClass != sym.owner)
-              log("Set more precise host class for " + sym.fullNameString + " host: " + hostClass);
-            ctx1.bb.emit(CALL_METHOD(sym, invokeStyle) setHostClass hostClass, tree.pos)
+            ctx1.bb.emit(cm, tree.pos)
+
             if (sym == ctx1.method.symbol) {
               ctx1.method.recursive = true
             }
@@ -843,6 +768,13 @@ abstract class GenICode extends SubComponent  {
             ctx1
           }
 
+        case ApplyDynamic(qual, args) =>
+          ctx.clazz.bootstrapClass = Some("scala.runtime.DynamicDispatch")
+          val ctx1 = genLoad(qual, ctx, ANY_REF_CLASS)
+          genLoadArguments(args, tree.symbol.info.paramTypes, ctx1)
+          ctx1.bb.emit(CALL_METHOD(tree.symbol, InvokeDynamic), tree.pos)
+          ctx1
+
         case This(qual) =>
           assert(tree.symbol == ctx.clazz.symbol || tree.symbol.isModuleClass,
                  "Trying to access the this of another class: " +
@@ -851,14 +783,13 @@ abstract class GenICode extends SubComponent  {
             if (settings.debug.value)
               log("LOAD_MODULE from 'This': " + tree.symbol);
             assert(!tree.symbol.isPackageClass, "Cannot use package as value: " + tree)
-            ctx.bb.emit(LOAD_MODULE(tree.symbol), tree.pos)
+            genLoadModule(ctx, tree.symbol, tree.pos)
             generatedType = REFERENCE(tree.symbol)
           } else {
             ctx.bb.emit(THIS(ctx.clazz.symbol), tree.pos)
-            if (tree.symbol == definitions.ArrayClass)
-              generatedType = REFERENCE(definitions.BoxedAnyArrayClass)
-            else
-              generatedType = REFERENCE(ctx.clazz.symbol)
+            generatedType = REFERENCE(
+              if (tree.symbol == ArrayClass) ObjectClass else ctx.clazz.symbol
+            )
           }
           ctx
 
@@ -871,7 +802,7 @@ abstract class GenICode extends SubComponent  {
             log("LOAD_MODULE from Select(<emptypackage>): " + tree.symbol);
           }
           assert(!tree.symbol.isPackageClass, "Cannot use package as value: " + tree)
-          ctx.bb.emit(LOAD_MODULE(tree.symbol), tree.pos)
+          genLoadModule(ctx, tree.symbol, tree.pos)
           ctx
 
         case Select(qualifier, selector) =>
@@ -880,11 +811,11 @@ abstract class GenICode extends SubComponent  {
 
           if (sym.isModule) {
             if (settings.debug.value)
-              log("LOAD_MODULE from Select(qualifier, selector): " + sym);
+              log("LOAD_MODULE from Select(qualifier, selector): " + sym)
             assert(!tree.symbol.isPackageClass, "Cannot use package as value: " + tree)
-            ctx.bb.emit(LOAD_MODULE(sym), tree.pos);
+            genLoadModule(ctx, sym, tree.pos)
             ctx
-          } else if (isStaticSymbol(sym)) {
+          } else if (sym.isStaticMember) {
             ctx.bb.emit(LOAD_FIELD(sym, true), tree.pos)
             ctx
           } else {
@@ -894,22 +825,22 @@ abstract class GenICode extends SubComponent  {
           }
 
         case Ident(name) =>
-          if (!tree.symbol.isPackage) {
-            if (tree.symbol.isModule) {
+          val sym = tree.symbol
+          if (!sym.isPackage) {
+            if (sym.isModule) {
               if (settings.debug.value)
-                log("LOAD_MODULE from Ident(name): " + tree.symbol);
-              assert(!tree.symbol.isPackageClass, "Cannot use package as value: " + tree)
-              ctx.bb.emit(LOAD_MODULE(tree.symbol), tree.pos)
-              generatedType = toTypeKind(tree.symbol.info)
+                log("LOAD_MODULE from Ident(name): " + sym)
+              assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
+              genLoadModule(ctx, sym, tree.pos)
+              generatedType = toTypeKind(sym.info)
             } else {
               try {
-                val Some(l) = ctx.method.lookupLocal(tree.symbol)
+                val Some(l) = ctx.method.lookupLocal(sym)
                 ctx.bb.emit(LOAD_LOCAL(l), tree.pos)
                 generatedType = l.kind
               } catch {
                 case ex: MatchError =>
-                  throw new Error("symbol " + tree.symbol +
-                                  " does not exist in " + ctx.method)
+                  abort("symbol " + sym + " does not exist in " + ctx.method)
               }
             }
           }
@@ -928,7 +859,7 @@ abstract class GenICode extends SubComponent  {
               generatedType = SCALA_ALLREF
             case _ =>
               ctx.bb.emit(CONSTANT(value), tree.pos);
-              generatedType = toTypeKind(value.tpe)
+              generatedType = toTypeKind(tree.tpe)
           }
           ctx
 
@@ -938,6 +869,9 @@ abstract class GenICode extends SubComponent  {
           ctx1 = genLoad(expr, ctx1, expectedType)
           ctx1.exitScope
           ctx1
+
+        case Typed(Super(_, _), _) =>
+          genLoad(This(ctx.clazz.symbol), ctx, expectedType)
 
         case Typed(expr, _) =>
           genLoad(expr, ctx, expectedType)
@@ -976,31 +910,26 @@ abstract class GenICode extends SubComponent  {
           var tags: List[Int] = Nil
           var default: BasicBlock = afterCtx.bb
 
-          for (caze <- cases) caze match {
-            case CaseDef(Literal(value), EmptyTree, body) =>
-              tags = value.intValue :: tags
-              val tmpCtx = ctx1.newBlock
-              targets = tmpCtx.bb :: targets
+          for (caze @ CaseDef(pat, guard, body) <- cases) {
+            assert(guard == EmptyTree)
+            val tmpCtx = ctx1.newBlock
+            pat match {
+              case Literal(value) =>
+                tags = value.intValue :: tags
+                targets = tmpCtx.bb :: targets
+              case Ident(nme.WILDCARD) =>
+                default = tmpCtx.bb
+              case _ =>
+                abort("Invalid case statement in switch-like pattern match: " +
+                      tree + " at: " + (tree.pos))
+            }
 
-              caseCtx = genLoad(body, tmpCtx , generatedType)
-              caseCtx.bb.emit(JUMP(afterCtx.bb), caze.pos)
-              caseCtx.bb.close
-
-            case CaseDef(Ident(nme.WILDCARD), EmptyTree, body) =>
-              val tmpCtx = ctx1.newBlock
-              default = tmpCtx.bb
-
-              caseCtx = genLoad(body, tmpCtx , generatedType)
-              caseCtx.bb.emit(JUMP(afterCtx.bb), caze.pos)
-              caseCtx.bb.close
-
-            case _ =>
-              abort("Invalid case statement in switch-like pattern match: " +
-                    tree + " at: " + (tree.pos))
+            caseCtx = genLoad(body, tmpCtx, generatedType)
+            caseCtx.bb.emitOnly(JUMP(afterCtx.bb) setPos caze.pos)
           }
-          ctx1.bb.emit(SWITCH(tags.reverse map (x => List(x)),
-                             (default :: targets).reverse), tree.pos)
-          ctx1.bb.close
+          ctx1.bb.emitOnly(
+            SWITCH(tags.reverse map (x => List(x)), (default :: targets).reverse) setPos tree.pos
+          )
           afterCtx
 
         case EmptyTree =>
@@ -1009,36 +938,32 @@ abstract class GenICode extends SubComponent  {
           ctx
 
         case _ =>
-          abort("Unexpected tree in genLoad: " + tree + " at: " +
-                (tree.pos))
+          abort("Unexpected tree in genLoad: " + tree + " at: " + tree.pos)
       }
 
       // emit conversion
       if (generatedType != expectedType)
-        adapt(generatedType, expectedType, resCtx, tree);
+        adapt(generatedType, expectedType, resCtx, tree.pos)
 
       resCtx
     }
 
-    private def adapt(from: TypeKind, to: TypeKind, ctx: Context, tree: Tree): Unit = {
+    private def adapt(from: TypeKind, to: TypeKind, ctx: Context, pos: Position): Unit = {
       if (!(from <:< to) && !(from == SCALA_ALLREF && to == SCALA_ALL)) {
         to match {
           case UNIT =>
-            ctx.bb.emit(DROP(from), tree.pos)
+            ctx.bb.emit(DROP(from), pos)
             if (settings.debug.value)
               log("Dropped an " + from);
 
           case _ =>
           if (settings.debug.value)
-            assert(from != UNIT, "Can't convert from UNIT to " + to +
-                   tree + " at: " + (tree.pos));
+            assert(from != UNIT, "Can't convert from UNIT to " + to + " at: " + pos)
             assert(!from.isReferenceType && !to.isReferenceType, "type error: can't convert from " + from + " to " + to +" in unit "+this.unit)
-            ctx.bb.emit(CALL_PRIMITIVE(Conversion(from, to)), tree.pos);
+            ctx.bb.emit(CALL_PRIMITIVE(Conversion(from, to)), pos);
         }
       } else if (from == SCALA_ALL) {
-        ctx.bb.emit(DROP(from))
-        ctx.bb.emit(getZeroOf(ctx.method.returnType))
-        ctx.bb.emit(RETURN(ctx.method.returnType))
+        ctx.bb.emit(THROW())
         ctx.bb.enterIgnoreMode
       } else if (from == SCALA_ALLREF) {
         ctx.bb.emit(DROP(from))
@@ -1053,7 +978,7 @@ abstract class GenICode extends SubComponent  {
     private def genLoadQualifier(tree: Tree, ctx: Context): Context =
       tree match {
         case Select(qualifier, _) =>
-          genLoad(qualifier, ctx, ANY_REF_CLASS) // !!
+          genLoad(qualifier, ctx, toTypeKind(qualifier.tpe))
         case _ =>
           abort("Unknown qualifier " + tree)
       }
@@ -1083,9 +1008,9 @@ abstract class GenICode extends SubComponent  {
             val Some(l) = ctx.method.lookupLocal(param.head)
             ctx1 = genLoad(arg.head, ctx1, l.kind)
             if (param.head.name == nme.THIS)
-              STORE_THIS(toTypeKind(ctx1.clazz.symbol.tpe)).setPos(arg.head.pos) +: stores
+              STORE_THIS(toTypeKind(ctx1.clazz.symbol.tpe)).setPos(arg.head.pos) +=: stores
             else {
-              STORE_LOCAL(l).setPos(arg.head.pos) +: stores
+              STORE_LOCAL(l).setPos(arg.head.pos) +=: stores
             }
         }
         arg = arg.tail
@@ -1107,6 +1032,13 @@ abstract class GenICode extends SubComponent  {
         tpe = tpe.tail
       }
       ctx1
+    }
+
+    private def genLoadModule(ctx: Context, sym: Symbol, pos: Position) {
+      if (definitions.primitiveCompanions(sym))
+        ctx.bb.emit(LOAD_MODULE(definitions.getModule("scala.runtime." + sym.name)), pos)
+      else
+        ctx.bb.emit(LOAD_MODULE(sym), pos)
     }
 
     def genConversion(from: TypeKind, to: TypeKind, ctx: Context, cast: Boolean) = {
@@ -1161,7 +1093,7 @@ abstract class GenICode extends SubComponent  {
      */
     def genCoercion(tree: Tree, ctx: Context, code: Int) = {
       import scalaPrimitives._
-      code match {
+      (code: @switch) match {
         case B2B => ()
         case B2C => ctx.bb.emit(CALL_PRIMITIVE(Conversion(BYTE, CHAR)), tree.pos)
         case B2S => ctx.bb.emit(CALL_PRIMITIVE(Conversion(BYTE, SHORT)), tree.pos)
@@ -1247,6 +1179,19 @@ abstract class GenICode extends SubComponent  {
       ctx1
     }
 
+    /** Generate the scala ## method.
+     */
+    def genScalaHash(tree: Tree, ctx: Context): Context = {
+      val hashMethod = {
+        ctx.bb.emit(LOAD_MODULE(ScalaRunTimeModule))
+        getMember(ScalaRunTimeModule, "hash")
+      }
+
+      val ctx1 = genLoad(tree, ctx, ANY_REF_CLASS)
+      ctx1.bb.emit(CALL_METHOD(hashMethod, Static(false)))
+      ctx1
+    }
+
     /**
      * Returns a list of trees that each should be concatenated, from
      * left to right. It turns a chained call like "a".+("b").+("c") into
@@ -1263,6 +1208,12 @@ abstract class GenICode extends SubComponent  {
         List(tree)
     }
 
+    /** Some useful equality helpers.
+     */
+    def isNull(t: Tree) = cond(t) { case Literal(Constant(null)) => true }
+
+    /* If l or r is constant null, returns the other ; otherwise null */
+    def ifOneIsNull(l: Tree, r: Tree) = if (isNull(l)) r else if (isNull(r)) l else null
 
     /**
      * Traverse the tree and store label stubs in the context. This is
@@ -1304,24 +1255,6 @@ abstract class GenICode extends SubComponent  {
                         elseCtx: Context): Unit =
     {
       def genComparisonOp(l: Tree, r: Tree, code: Int) {
-        // special-case reference (in)equality test for null
-        if (code == scalaPrimitives.ID || code == scalaPrimitives.NI) {
-          val expr: Tree = (l, r) match {
-            case (Literal(Constant(null)), expr) => expr
-            case (expr, Literal(Constant(null))) => expr
-            case _ => null
-          }
-          if (expr ne null) {
-            val ctx1 = genLoad(expr, ctx, ANY_REF_CLASS)
-            if (code == scalaPrimitives.ID)
-              ctx1.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, EQ, ANY_REF_CLASS))
-            else
-              ctx1.bb.emit(CZJUMP(elseCtx.bb, thenCtx.bb, EQ, ANY_REF_CLASS))
-            ctx1.bb.close
-            return
-          }
-        }
-
         val op: TestOp = code match {
           case scalaPrimitives.LT => LT
           case scalaPrimitives.LE => LE
@@ -1333,70 +1266,74 @@ abstract class GenICode extends SubComponent  {
           case _ => abort("Unknown comparison primitive: " + code)
         }
 
-        val kind = getMaxType(l.tpe :: r.tpe :: Nil)
-        var ctx1 = genLoad(l, ctx, kind);
-        ctx1 = genLoad(r, ctx1, kind);
-        ctx1.bb.emit(CJUMP(thenCtx.bb, elseCtx.bb, op, kind), r.pos)
-        ctx1.bb.close
+        // special-case reference (in)equality test for null (null eq x, x eq null)
+        lazy val nonNullSide = ifOneIsNull(l, r)
+        if (isReferenceEqualityOp(code) && nonNullSide != null) {
+          val ctx1 = genLoad(nonNullSide, ctx, ANY_REF_CLASS)
+          ctx1.bb.emitOnly(
+            CZJUMP(thenCtx.bb, elseCtx.bb, op, ANY_REF_CLASS)
+          )
+        }
+        else {
+          val kind = getMaxType(l.tpe :: r.tpe :: Nil)
+          var ctx1 = genLoad(l, ctx, kind)
+          ctx1 = genLoad(r, ctx1, kind)
+
+          ctx1.bb.emitOnly(
+            CJUMP(thenCtx.bb, elseCtx.bb, op, kind) setPos r.pos
+          )
+        }
       }
 
       if (settings.debug.value)
         log("Entering genCond with tree: " + tree);
 
+      // the default emission
+      def default = {
+        val ctx1 = genLoad(tree, ctx, BOOL)
+        ctx1.bb.emitOnly(CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL) setPos tree.pos)
+      }
+
       tree match {
-        case Apply(fun, args)
-          if isPrimitive(fun.symbol) =>
-            val code = scalaPrimitives.getPrimitive(fun.symbol)
+        // The comparison symbol is in ScalaPrimitives's "primitives" map
+        case Apply(fun, args) if isPrimitive(fun.symbol) =>
+          import scalaPrimitives.{ ZNOT, ZAND, ZOR, EQ, getPrimitive }
 
-            if (code == scalaPrimitives.ZNOT) {
-              val Select(leftArg, _) = fun
-              genCond(leftArg, ctx, elseCtx, thenCtx)
-            }
-            else if ((code == scalaPrimitives.EQ || code == scalaPrimitives.NE)) {
-              val Select(leftArg, _) = fun;
-              if (toTypeKind(leftArg.tpe).isReferenceType) {
-                if (code == scalaPrimitives.EQ)
-                  genEqEqPrimitive(leftArg, args.head, ctx, thenCtx, elseCtx)
-                else
-                  genEqEqPrimitive(leftArg, args.head, ctx, elseCtx, thenCtx)
+          // lhs and rhs of test
+          lazy val Select(lhs, _) = fun
+          lazy val rhs = args.head
+
+          def genZandOrZor(and: Boolean) = {
+            val ctxInterm = ctx.newBlock
+
+            if (and) genCond(lhs, ctx, ctxInterm, elseCtx)
+            else genCond(lhs, ctx, thenCtx, ctxInterm)
+
+            genCond(rhs, ctxInterm, thenCtx, elseCtx)
+          }
+          def genRefEq(isEq: Boolean) = {
+            val f = genEqEqPrimitive(lhs, rhs, ctx) _
+            if (isEq) f(thenCtx, elseCtx)
+            else f(elseCtx, thenCtx)
+          }
+
+          getPrimitive(fun.symbol) match {
+            case ZNOT   => genCond(lhs, ctx, elseCtx, thenCtx)
+            case ZAND   => genZandOrZor(and = true)
+            case ZOR    => genZandOrZor(and = false)
+            case code   =>
+              // x == y where LHS is reference type
+              if (isUniversalEqualityOp(code) && toTypeKind(lhs.tpe).isReferenceType) {
+                if (code == EQ) genRefEq(isEq = true)
+                else genRefEq(isEq = false)
               }
+              else if (isComparisonOp(code))
+                genComparisonOp(lhs, rhs, code)
               else
-                genComparisonOp(leftArg, args.head, code);
-            }
-            else if (scalaPrimitives.isComparisonOp(code)) {
-              val Select(leftArg, _) = fun
-              genComparisonOp(leftArg, args.head, code)
-            }
-            else {
-              code match {
-                case scalaPrimitives.ZAND =>
-                  val Select(leftArg, _) = fun
+                default
+          }
 
-                  val ctxInterm = ctx.newBlock
-                  genCond(leftArg, ctx, ctxInterm, elseCtx)
-                  genCond(args.head, ctxInterm, thenCtx, elseCtx)
-
-                case scalaPrimitives.ZOR =>
-                  val Select(leftArg, _) = fun
-
-                  val ctxInterm = ctx.newBlock
-                  genCond(leftArg, ctx, thenCtx, ctxInterm)
-                  genCond(args.head, ctxInterm, thenCtx, elseCtx)
-
-                case _ =>
-                  // TODO (maybe): deal with the equals case here
-                  // Current semantics: rich equals (from runtime.Comparator) only when == is used
-                  // See genEqEqPrimitive for implementation
-                  var ctx1 = genLoad(tree, ctx, BOOL)
-                  ctx1.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL), tree.pos)
-                  ctx1.bb.close
-              }
-            }
-
-        case _ =>
-          var ctx1 = genLoad(tree, ctx, BOOL)
-          ctx1.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL), tree.pos)
-          ctx1.bb.close
+        case _ => default
       }
     }
 
@@ -1410,9 +1347,7 @@ abstract class GenICode extends SubComponent  {
      * @param thenCtx target context if the comparison yields true
      * @param elseCtx target context if the comparison yields false
      */
-    def genEqEqPrimitive(l: Tree, r: Tree, ctx: Context,
-                         thenCtx: Context, elseCtx: Context): Unit =
-    {
+    def genEqEqPrimitive(l: Tree, r: Tree, ctx: Context)(thenCtx: Context, elseCtx: Context): Unit = {
 
       def eqEqTempName: Name = "eqEqTemp$"
 
@@ -1420,10 +1355,15 @@ abstract class GenICode extends SubComponent  {
         case Some(local) => local
         case None =>
           val local = ctx.makeLocal(l.pos, definitions.AnyRefClass.typeConstructor, eqEqTempName.toString)
-          assert(l.pos.source.get == unit.source)
-          assert(r.pos.source.get == unit.source)
-          local.start = (l.pos).line.get
-          local.end   = (r.pos).line.get
+          //assert(!l.pos.source.isEmpty, "bad position, unit = "+unit+", tree = "+l+", pos = "+l.pos.source)
+          // Note - I commented these out because they were crashing the test case in ticket #2426
+          // (and I have also had to comment them out at various times while working on equality.)
+          // I don't know what purpose they are serving but it would be nice if they didn't have to
+          // crash the compiler.
+          // assert(l.pos.source == unit.source)
+          // assert(r.pos.source == unit.source)
+          local.start = (l.pos).line
+          local.end   = (r.pos).line
           local
       }
 
@@ -1433,83 +1373,74 @@ abstract class GenICode extends SubComponent  {
         * When it is statically known that both sides are equal and subtypes of Number of Character,
         * not using the rich equality is possible (their own equals method will do ok.)*/
       def mustUseAnyComparator: Boolean = {
-        def isBoxed(sym: Symbol): Boolean =
-          if (forCLDC) {
-            (sym isNonBottomSubClass definitions.ByteClass) ||
-            (sym isNonBottomSubClass definitions.ShortClass) ||
-            (sym isNonBottomSubClass definitions.CharClass) ||
-            (sym isNonBottomSubClass definitions.IntClass) ||
-            (sym isNonBottomSubClass definitions.LongClass)
-          }
-          else ((sym isNonBottomSubClass definitions.BoxedNumberClass) ||
-            (!forMSIL && (sym isNonBottomSubClass definitions.BoxedCharacterClass)))
-
-        val lsym = l.tpe.typeSymbol
-        val rsym = r.tpe.typeSymbol
-        (lsym == definitions.ObjectClass) ||
-        (rsym == definitions.ObjectClass) ||
-        (lsym != rsym) && (isBoxed(lsym) || isBoxed(rsym))
+        def areSameFinals = l.tpe.isFinalType && r.tpe.isFinalType && (l.tpe =:= r.tpe)
+        !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
 
       if (mustUseAnyComparator) {
+        // when -optimise is on we call the @inline-version of equals, found in ScalaRunTime
+        val equalsMethod =
+          if (!settings.XO.value) {
+            def default = platform.externalEquals
+            platform match {
+              case x: JavaPlatform =>
+                import x._
+                  if (l.tpe <:< BoxedNumberClass.tpe) {
+                    if (r.tpe <:< BoxedNumberClass.tpe) externalEqualsNumNum
+                    else if (r.tpe <:< BoxedCharacterClass.tpe) externalEqualsNumChar
+                    else externalEqualsNumObject
+                  }
+                  else default
+
+              case _ => default
+            }
+          }
+          else {
+            ctx.bb.emit(LOAD_MODULE(ScalaRunTimeModule))
+            getMember(ScalaRunTimeModule, nme.inlinedEquals)
+          }
 
         val ctx1 = genLoad(l, ctx, ANY_REF_CLASS)
         val ctx2 = genLoad(r, ctx1, ANY_REF_CLASS)
-        ctx2.bb.emit(CALL_METHOD(BoxesRunTime_equals, Static(false)))
+        ctx2.bb.emit(CALL_METHOD(equalsMethod, if (settings.XO.value) Dynamic else Static(false)))
         ctx2.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL))
         ctx2.bb.close
-
       }
       else {
-
-        (l, r) match {
+        if (isNull(l))
           // null == expr -> expr eq null
-          case (Literal(Constant(null)), expr) =>
-            val ctx1 = genLoad(expr, ctx, ANY_REF_CLASS)
-            ctx1.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, EQ, ANY_REF_CLASS))
-            ctx1.bb.close
+          genLoad(r, ctx, ANY_REF_CLASS).bb emitOnly CZJUMP(thenCtx.bb, elseCtx.bb, EQ, ANY_REF_CLASS)
+        else if (isNull(r)) {
+          // expr == null -> expr eq null
+          genLoad(l, ctx, ANY_REF_CLASS).bb emitOnly CZJUMP(thenCtx.bb, elseCtx.bb, EQ, ANY_REF_CLASS)
+        } else {
+          val eqEqTempLocal = getTempLocal
+          var ctx1 = genLoad(l, ctx, ANY_REF_CLASS)
 
-          // expr == null -> if(expr eq null) true else expr.equals(null)
-          case (expr, Literal(Constant(null))) =>
-            val eqEqTempLocal = getTempLocal
-            var ctx1 = genLoad(expr, ctx, ANY_REF_CLASS)
-            ctx1.bb.emit(DUP(ANY_REF_CLASS))
-            ctx1.bb.emit(STORE_LOCAL(eqEqTempLocal), l.pos)
-            val nonNullCtx = ctx1.newBlock
-            ctx1.bb.emit(CZJUMP(thenCtx.bb, nonNullCtx.bb, EQ, ANY_REF_CLASS))
-            ctx1.bb.close
-
-            nonNullCtx.bb.emit(LOAD_LOCAL(eqEqTempLocal), l.pos)
-            nonNullCtx.bb.emit(CONSTANT(Constant(null)), r.pos)
-            nonNullCtx.bb.emit(CALL_METHOD(definitions.Object_equals, Dynamic))
-            nonNullCtx.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL))
-            nonNullCtx.bb.close
+          // dicey refactor section
+          lazy val nonNullCtx = ctx1.newBlock
 
           // l == r -> if (l eq null) r eq null else l.equals(r)
-          case _ =>
-            val eqEqTempLocal = getTempLocal
-            var ctx1 = genLoad(l, ctx, ANY_REF_CLASS)
-            ctx1 = genLoad(r, ctx1, ANY_REF_CLASS)
-            val nullCtx = ctx1.newBlock
-            val nonNullCtx = ctx1.newBlock
-            ctx1.bb.emit(STORE_LOCAL(eqEqTempLocal), l.pos)
-            ctx1.bb.emit(DUP(ANY_REF_CLASS))
-            ctx1.bb.emit(CZJUMP(nullCtx.bb, nonNullCtx.bb, EQ, ANY_REF_CLASS))
-            ctx1.bb.close
+          ctx1 = genLoad(r, ctx1, ANY_REF_CLASS)
+          val nullCtx = ctx1.newBlock
 
-            nullCtx.bb.emit(DROP(ANY_REF_CLASS), l.pos) // type of AnyRef
-            nullCtx.bb.emit(LOAD_LOCAL(eqEqTempLocal))
-            nullCtx.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, EQ, ANY_REF_CLASS))
-            nullCtx.bb.close
-
-            nonNullCtx.bb.emit(LOAD_LOCAL(eqEqTempLocal), l.pos)
-            nonNullCtx.bb.emit(CALL_METHOD(definitions.Object_equals, Dynamic))
-            nonNullCtx.bb.emit(CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL))
-            nonNullCtx.bb.close
+          ctx1.bb.emitOnly(
+            STORE_LOCAL(eqEqTempLocal) setPos l.pos,
+            DUP(ANY_REF_CLASS),
+            CZJUMP(nullCtx.bb, nonNullCtx.bb, EQ, ANY_REF_CLASS)
+          )
+          nullCtx.bb.emitOnly(
+            DROP(ANY_REF_CLASS) setPos l.pos, // type of AnyRef
+            LOAD_LOCAL(eqEqTempLocal),
+            CZJUMP(thenCtx.bb, elseCtx.bb, EQ, ANY_REF_CLASS)
+          )
+          nonNullCtx.bb.emitOnly(
+            LOAD_LOCAL(eqEqTempLocal) setPos l.pos,
+            CALL_METHOD(Object_equals, Dynamic),
+            CZJUMP(thenCtx.bb, elseCtx.bb, NE, BOOL)
+          )
         }
-
       }
-
     }
 
     /**
@@ -1521,9 +1452,15 @@ abstract class GenICode extends SubComponent  {
         assert(ctx.clazz.symbol eq cls,
                "Classes are not the same: " + ctx.clazz.symbol + ", " + cls)
 
-      for (f <- cls.info.decls.elements)
-        if (!f.isMethod && f.isTerm)
-          ctx.clazz.addField(new IField(f));
+      /** Non-method term members are fields, except for module members. Module
+       *  members can only happen on .NET (no flatten) for inner traits. There,
+       *  a module symbol is generated (transformInfo in mixin) which is used
+       *  as owner for the members of the implementation class (so that the
+       *  backend emits them as static).
+       *  No code is needed for this module symbol.
+       */
+      for (f <- cls.info.decls ; if !f.isMethod && f.isTerm && !f.isModule)
+        ctx.clazz addField new IField(f)
     }
 
     /**
@@ -1573,19 +1510,19 @@ abstract class GenICode extends SubComponent  {
 
       def prune0(block: BasicBlock): Unit = {
         val optCont = block.lastInstruction match {
-          case JUMP(b) if (b != block) => Some(b);
+          case JUMP(b) if (b != block) => Some(b)
           case _ => None
         }
-        if (block.size == 1 && optCont != None) {
+        if (block.size == 1 && optCont.isDefined) {
           val Some(cont) = optCont;
           val pred = block.predecessors;
           log("Preds: " + pred + " of " + block + " (" + optCont + ")");
           pred foreach { p =>
+            changed = true
             p.lastInstruction match {
-              case CJUMP(succ, fail, cond, kind) =>
+              case CJUMP(succ, fail, cond, kind) if (succ == block || fail == block) =>
                 if (settings.debug.value)
                   log("Pruning empty if branch.");
-                changed = true
                 p.replaceInstruction(p.lastInstruction,
                                      if (block == succ)
                                        if (block == fail)
@@ -1597,10 +1534,9 @@ abstract class GenICode extends SubComponent  {
                                      else
                                        abort("Could not find block in preds: " + method + " " + block + " " + pred + " " + p))
 
-              case CZJUMP(succ, fail, cond, kind) =>
+              case CZJUMP(succ, fail, cond, kind) if (succ == block || fail == block) =>
                 if (settings.debug.value)
                   log("Pruning empty ifz branch.");
-                changed = true
                 p.replaceInstruction(p.lastInstruction,
                                      if (block == succ)
                                        if (block == fail)
@@ -1612,20 +1548,22 @@ abstract class GenICode extends SubComponent  {
                                      else
                                        abort("Could not find block in preds"))
 
-              case JUMP(b) =>
+              case JUMP(b) if (b == block) =>
                 if (settings.debug.value)
                   log("Pruning empty JMP branch.");
-                changed = true
                 val replaced = p.replaceInstruction(p.lastInstruction, JUMP(cont))
                 if (settings.debug.value)
                   assert(replaced, "Didn't find p.lastInstruction")
 
-              case SWITCH(tags, labels) =>
+              case SWITCH(tags, labels) if (labels contains block) =>
                 if (settings.debug.value)
                   log("Pruning empty SWITCH branch.");
-                changed = true
                 p.replaceInstruction(p.lastInstruction,
                                      SWITCH(tags, labels map (l => if (l == block) cont else l)))
+
+              // the last instr of the predecessor `p` is not a jump to the block `block`.
+              // this happens when `block` is part of an exception handler covering `b`.
+              case _ => ()
             }
           }
           if (changed) {
@@ -1644,7 +1582,7 @@ abstract class GenICode extends SubComponent  {
       do {
         changed = false
         n += 1
-        method.code traverse prune0
+        method.code.blocks foreach prune0
       } while (changed)
 
       if (settings.debug.value)
@@ -1678,7 +1616,7 @@ abstract class GenICode extends SubComponent  {
      *  to delay it any more: they will be used at some point.
      */
     class DuplicateLabels(boundLabels: collection.Set[Symbol]) extends Transformer {
-      val labels: Map[Symbol, Symbol] = new HashMap
+      val labels: mutable.Map[Symbol, Symbol] = new HashMap
       var method: Symbol = _
       var ctx: Context = _
 
@@ -1693,23 +1631,23 @@ abstract class GenICode extends SubComponent  {
           case t @ Apply(fun, args) if (t.symbol.isLabel && !boundLabels(t.symbol)) =>
             if (!labels.isDefinedAt(t.symbol)) {
               val oldLabel = t.symbol
-              val sym = method.newLabel(oldLabel.pos, unit.fresh.newName(oldLabel.name.toString))
+              val sym = method.newLabel(oldLabel.pos, unit.fresh.newName(oldLabel.pos, oldLabel.name.toString))
               sym.setInfo(oldLabel.tpe)
               labels(oldLabel) = sym
             }
-            val tree = copy.Apply(t, transform(fun), transformTrees(args))
-            tree.symbol = labels(t.symbol)
+            val tree = Apply(global.gen.mkAttributedRef(labels(t.symbol)), transformTrees(args)).setPos(t.pos)
+            tree.tpe = t.tpe
             tree
 
           case t @ LabelDef(name, params, rhs) =>
-            val name1 = unit.fresh.newName(name.toString)
+            val name1 = unit.fresh.newName(t.pos, name.toString)
             if (!labels.isDefinedAt(t.symbol)) {
               val oldLabel = t.symbol
               val sym = method.newLabel(oldLabel.pos, name1)
               sym.setInfo(oldLabel.tpe)
               labels(oldLabel) = sym
             }
-            val tree = copy.LabelDef(t, name1, params, transform(rhs))
+            val tree = treeCopy.LabelDef(t, name1, params, transform(rhs))
             tree.symbol = labels(t.symbol)
 
             ctx.labels += (tree.symbol -> (new Label(tree.symbol) setParams(params map (_.symbol))));
@@ -1726,12 +1664,17 @@ abstract class GenICode extends SubComponent  {
 
     abstract class Cleanup;
     case class MonitorRelease(m: Local) extends Cleanup {
+      override def hashCode = m.hashCode
       override def equals(other: Any) = m == other;
     }
     case class Finalizer(f: Tree) extends Cleanup {
+      override def hashCode = f.hashCode
       override def equals(other: Any) = f == other;
     }
 
+    def duplicateFinalizer(boundLabels: collection.Set[Symbol], targetCtx: Context, finalizer: Tree) =  {
+      (new DuplicateLabels(boundLabels))(targetCtx, finalizer)
+    }
 
     /**
      * The Context class keeps information relative to the current state
@@ -1763,8 +1706,8 @@ abstract class GenICode extends SubComponent  {
       /** The current monitors or finalizers, to be cleaned up upon `return'. */
       var cleanups: List[Cleanup] = Nil
 
-      /** The current exception handler, when we generate code for one. */
-      var currentExceptionHandler: Option[ExceptionHandler] = None
+      /** The exception handlers we are currently generating code for */
+      var currentExceptionHandlers: List[ExceptionHandler] = Nil
 
       /** The current local variable scope. */
       var scope: Scope = EmptyScope
@@ -1795,7 +1738,7 @@ abstract class GenICode extends SubComponent  {
         this.handlers = other.handlers
         this.handlerCount = other.handlerCount
         this.cleanups = other.cleanups
-        this.currentExceptionHandler = other.currentExceptionHandler
+        this.currentExceptionHandlers = other.currentExceptionHandlers
         this.scope = other.scope
       }
 
@@ -1864,10 +1807,7 @@ abstract class GenICode extends SubComponent  {
       def newBlock: Context = {
         val block = method.code.newBlock
         handlers foreach (h => h addCoveredBlock block)
-        currentExceptionHandler match {
-          case Some(e) => e.addBlock(block)
-          case None    => ()
-        }
+        currentExceptionHandlers foreach (h => h.addBlock(block))
         block.varsInScope = new HashSet()
         block.varsInScope ++= scope.varsInScope
         new Context(this) setBasicBlock block
@@ -1914,10 +1854,14 @@ abstract class GenICode extends SubComponent  {
        * exception handler.
        */
       def enterHandler(exh: ExceptionHandler): Context = {
-        currentExceptionHandler = Some(exh)
+        currentExceptionHandlers = exh :: currentExceptionHandlers
         val ctx = newBlock
         exh.setStartBlock(ctx.bb)
         ctx
+      }
+
+      def endHandler() {
+        currentExceptionHandlers = currentExceptionHandlers.tail
       }
 
       /** Remove the given handler from the list of active exception handlers. */
@@ -1936,7 +1880,7 @@ abstract class GenICode extends SubComponent  {
 
       /** Make a fresh local variable. It ensures the 'name' is unique. */
       def makeLocal(pos: Position, tpe: Type, name: String): Local = {
-        val sym = method.symbol.newVariable(pos, unit.fresh.newName(name))
+        val sym = method.symbol.newVariable(pos, unit.fresh.newName(pos, name))
           .setInfo(tpe)
           .setFlag(Flags.SYNTHETIC)
         this.method.addLocal(new Local(sym, toTypeKind(tpe), false))
@@ -1953,7 +1897,7 @@ abstract class GenICode extends SubComponent  {
        *
        * <code> ctx.Try( ctx => {
        *   ctx.bb.emit(...) // protected block
-       * }, (definitions.ThrowableClass,
+       * }, (ThrowableClass,
        *   ctx => {
        *     ctx.bb.emit(...); // exception handler
        *   }), (AnotherExceptionClass,
@@ -1962,16 +1906,44 @@ abstract class GenICode extends SubComponent  {
        */
       def Try(body: Context => Context,
               handlers: List[(Symbol, TypeKind, (Context => Context))],
-              finalizer: Tree) = {
+              finalizer: Tree,
+              tree: Tree) = if (forMSIL) TryMsil(body, handlers, finalizer, tree) else {
+
         val outerCtx = this.dup       // context for generating exception handlers, covered by finalizer
         val finalizerCtx = this.dup   // context for generating finalizer handler
         val afterCtx = outerCtx.newBlock
+        var tmp: Local = null
+        val kind = toTypeKind(tree.tpe)
+        val guardResult = kind != UNIT && mayCleanStack(finalizer)
+        // we need to save bound labels before any code generation is performed on
+        // the current context (otherwise, any new labels in the finalizer that need to
+        // be duplicated would be incorrectly considered bound -- see #2850).
+        val boundLabels: collection.Set[Symbol] = Set.empty ++ labels.keySet
+
+        if (guardResult) {
+          tmp = this.makeLocal(tree.pos, tree.tpe, "tmp")
+        }
+
+        def emitFinalizer(ctx: Context): Context = if (!finalizer.isEmpty) {
+          val ctx1 = finalizerCtx.dup.newBlock
+          ctx.bb.emit(JUMP(ctx1.bb))
+          ctx.bb.close
+
+          if (guardResult) {
+            ctx1.bb.emit(STORE_LOCAL(tmp))
+            val ctx2 = genLoad(duplicateFinalizer(boundLabels, ctx1, finalizer), ctx1, UNIT)
+            ctx2.bb.emit(LOAD_LOCAL(tmp))
+            ctx2
+          } else
+            genLoad(duplicateFinalizer(boundLabels, ctx1, finalizer), ctx1, UNIT)
+        } else ctx
+
 
         val finalizerExh = if (finalizer != EmptyTree) Some({
           val exh = outerCtx.newHandler(NoSymbol, toTypeKind(finalizer.tpe)) // finalizer covers exception handlers
           this.addActiveHandler(exh)  // .. and body aswell
           val ctx = finalizerCtx.enterHandler(exh)
-          val exception = ctx.makeLocal(finalizer.pos, definitions.ThrowableClass.tpe, "exc")
+          val exception = ctx.makeLocal(finalizer.pos, ThrowableClass.tpe, "exc")
           if (settings.Xdce.value) ctx.bb.emit(LOAD_EXCEPTION())
           ctx.bb.emit(STORE_LOCAL(exception));
           val ctx1 = genLoad(finalizer, ctx, UNIT);
@@ -1979,6 +1951,7 @@ abstract class GenICode extends SubComponent  {
           ctx1.bb.emit(THROW());
           ctx1.bb.enterIgnoreMode;
           ctx1.bb.close
+          finalizerCtx.endHandler()
           exh
         }) else None
 
@@ -1987,24 +1960,88 @@ abstract class GenICode extends SubComponent  {
             var ctx1 = outerCtx.enterHandler(exh)
             if (settings.Xdce.value) ctx1.bb.emit(LOAD_EXCEPTION())
             ctx1 = handler._3(ctx1)
-            ctx1.bb.emit(JUMP(afterCtx.bb))
-            ctx1.bb.close
+            // emit finalizer
+            val ctx2 = emitFinalizer(ctx1)
+            ctx2.bb.emit(JUMP(afterCtx.bb))
+            ctx2.bb.close
+            outerCtx.endHandler()
             exh
           }
         val bodyCtx = this.newBlock
         if (finalizer != EmptyTree)
           bodyCtx.addFinalizer(finalizer)
 
+        var finalCtx = body(bodyCtx)
+        finalCtx = emitFinalizer(finalCtx)
+
+        outerCtx.bb.emit(JUMP(bodyCtx.bb))
+        outerCtx.bb.close
+
+        finalCtx.bb.emit(JUMP(afterCtx.bb))
+        finalCtx.bb.close
+
+        afterCtx
+      }
+
+
+      /** try-catch-finally blocks are actually simpler to emit in MSIL, because there
+       *  is support for `finally` in bytecode.
+       *
+       *  A
+       *    try { .. } catch { .. } finally { .. }
+       *  block is de-sugared into
+       *    try { try { ..} catch { .. } } finally { .. }
+       *
+       *  In ICode `finally` block is represented exactly the same as an exception handler,
+       *  but with `NoSymbol` as the exception class. The covered blocks are all blocks of
+       *  the `try { .. } catch { .. }`.
+       *
+       *  Also, TryMsil does not enter any Finalizers into the `cleanups', because the
+       *  CLI takes care of running the finalizer when seeing a `leave' statement inside
+       *  a try / catch.
+       */
+      def TryMsil(body: Context => Context,
+                  handlers: List[(Symbol, TypeKind, (Context => Context))],
+                  finalizer: Tree,
+                  tree: Tree) = {
+
+        val outerCtx = this.dup       // context for generating exception handlers, covered by finalizer
+        val finalizerCtx = this.dup   // context for generating finalizer handler
+        val afterCtx = outerCtx.newBlock
+
+        if (finalizer != EmptyTree) {
+          // finalizer is covers try and all catch blocks, i.e.
+          //   try { try { .. } catch { ..} } finally { .. }
+          val exh = outerCtx.newHandler(NoSymbol, UNIT)
+          this.addActiveHandler(exh)
+          val ctx = finalizerCtx.enterHandler(exh)
+          if (settings.Xdce.value) ctx.bb.emit(LOAD_EXCEPTION())
+          val ctx1 = genLoad(finalizer, ctx, UNIT)
+          // need jump for the ICode to be valid. MSIL backend will emit `Endfinally` instead.
+          ctx1.bb.emit(JUMP(afterCtx.bb))
+          ctx1.bb.close
+          finalizerCtx.endHandler()
+        }
+
+        for (handler <- handlers) {
+          val exh = this.newHandler(handler._1, handler._2)
+          var ctx1 = outerCtx.enterHandler(exh)
+          if (settings.Xdce.value) ctx1.bb.emit(LOAD_EXCEPTION())
+          ctx1 = handler._3(ctx1)
+          // msil backend will emit `Leave` to jump out of a handler
+          ctx1.bb.emit(JUMP(afterCtx.bb))
+          ctx1.bb.close
+          outerCtx.endHandler()
+        }
+
+        val bodyCtx = this.newBlock
+
         val finalCtx = body(bodyCtx)
 
         outerCtx.bb.emit(JUMP(bodyCtx.bb))
         outerCtx.bb.close
 
-        exhs.reverse foreach finalCtx.removeHandler
-        if (finalizer != EmptyTree) {
-          finalCtx.removeFinalizer(finalizer)
-        }
-
+        // msil backend will emit `Leave` to jump out of a try-block
         finalCtx.bb.emit(JUMP(afterCtx.bb))
         finalCtx.bb.close
 
@@ -2049,7 +2086,7 @@ abstract class GenICode extends SubComponent  {
        * jumps to the given basic block.
        */
       def patch(code: Code) {
-        def substMap: Map[Instruction, Instruction] = {
+        def substMap: mutable.Map[Instruction, Instruction] = {
           val map = new HashMap[Instruction, Instruction]()
 
           toPatch foreach (i => map += (i -> patch(i)))
@@ -2057,7 +2094,7 @@ abstract class GenICode extends SubComponent  {
         }
 
         val map = substMap
-        code traverse (_.subst(map))
+        code.blocks foreach (_.subst(map))
       }
 
       /**
@@ -2099,12 +2136,12 @@ abstract class GenICode extends SubComponent  {
     ///////////////// Fake instructions //////////////////////////
 
     /**
-     * Pseudo jump: it takes a Label instead of a basick block.
+     * Pseudo jump: it takes a Label instead of a basic block.
      * It is used temporarily during code generation. It is replaced
      * by a real JUMP instruction when all labels are resolved.
      */
     abstract class PseudoJUMP(label: Label) extends Instruction {
-      override def toString(): String = "PJUMP " + label.symbol.simpleName
+      override def toString(): String = "PJUMP " + label.symbol
 
       override def consumed = 0
       override def produced = 0
@@ -2147,7 +2184,7 @@ abstract class GenICode extends SubComponent  {
       locals -= l
 
     /** Return all locals that are in scope. */
-    def varsInScope: Buffer[Local] = outer.varsInScope ++ locals
+    def varsInScope: Buffer[Local] = outer.varsInScope.clone() ++= locals
 
     override def toString() =
       outer.toString() + locals.mkString("[", ", ", "]")
@@ -2157,5 +2194,4 @@ abstract class GenICode extends SubComponent  {
     override def toString() = "[]"
     override def varsInScope: Buffer[Local] = new ListBuffer
   }
-
 }

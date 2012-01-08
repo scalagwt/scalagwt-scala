@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 package scala
 
@@ -17,6 +16,7 @@ package scala
  *  @version 1.0
  *
  *  @see class Responder
+ *  @since 2.1
  */
 object Responder {
 
@@ -64,7 +64,9 @@ object Responder {
  *  @author Martin Odersky
  *  @author Burak Emir
  *  @version 1.0
+ *  @since 2.1
  */
+@serializable
 abstract class Responder[+A] {
 
   def respond(k: A => Unit): Unit
@@ -88,5 +90,7 @@ abstract class Responder[+A] {
       Responder.this.respond(x => if (p(x)) k(x) else ())
     }
   }
+
+  override def toString = "Responder"
 }
 

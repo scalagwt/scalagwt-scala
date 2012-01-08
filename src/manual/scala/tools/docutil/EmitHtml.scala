@@ -1,9 +1,8 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Stephane Micheloud
  * Adapted from Lex Spoon's sbaz manual
  */
-//$Id$
 
 package scala.tools.docutil
 
@@ -19,13 +18,13 @@ object EmitHtml {
         .replaceAll(">", "&gt;")
 
 /* */
-  def emitSection(section: Section, depth: int) {
+  def emitSection(section: Section, depth: Int) {
     def emitPara(text: AbstractText) {
       out.println("<div>")
       emitText(text)
       out.println("\n</div>")
     }
-    def emitText(text: AbstractText): Unit =
+    def emitText(text: AbstractText) {
       text match {
         case seq:SeqText =>
           seq.components.foreach(emitText)
@@ -90,8 +89,9 @@ object EmitHtml {
         case _ =>
           error("unknown text node: " + text)
       }
+    }
 
-    def emitParagraph(para: Paragraph): Unit =
+    def emitParagraph(para: Paragraph) {
       para match {
         case TextParagraph(text) =>
           out.println("<p>")
@@ -135,6 +135,7 @@ object EmitHtml {
         case _ =>
           error("unknown paragraph node: " + para)
       }
+    }
 
     val name = section.title.replaceAll("\\p{Space}", "_").toLowerCase()
     out.println("\n<h" + depth + " id=\"" + name + "\">" +
@@ -143,7 +144,7 @@ object EmitHtml {
     section.paragraphs.foreach(emitParagraph)
   }
 
-  private def emit3columns(col1: String, col2: String, col3: String) = {
+  private def emit3columns(col1: String, col2: String, col3: String) {
     out.println("<div style=\"float:left;\">")
     out.println(col1)
     out.println("</div>")
@@ -155,21 +156,21 @@ object EmitHtml {
     out.println("</div>")
   }
 
-  private def emitHeader(col1: String, col2: String, col3: String) = {
+  private def emitHeader(col1: String, col2: String, col3: String) {
     out.println("<!-- header -->")
     out.println("<div style=\"margin: 0 0 2em 0;\">")
     emit3columns(col1, col2, col3)
     out.println("</div>")
   }
 
-  private def emitFooter(col1: String, col2: String, col3: String) = {
+  private def emitFooter(col1: String, col2: String, col3: String) {
     out.println("<!-- footer -->")
     out.println("<div style=\"margin: 2em 0 0 0;\">")
     emit3columns(col1, col2, col3)
     out.println("</div>")
   }
 
-  def emitDocument(document: Document) = {
+  def emitDocument(document: Document) {
     out.println("<?xml version=\"1.1\" encoding=\"" + document.encoding + "\"?>")
     out.println("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">")
     out.println("<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n")
@@ -342,12 +343,11 @@ object EmitHtml {
       System.err.println("usage: EmitHtml <classname>")
       exit(1)
     }
-    type AnyClass = Class[_]
     try {
       val cl = this.getClass.getClassLoader()
       val clasz = cl.loadClass(args(0))
-      val meth = clasz.getDeclaredMethod("manpage", Array[AnyClass]())
-      val doc = meth.invoke(null, Array[Object]()).asInstanceOf[Document]
+      val meth = clasz.getDeclaredMethod("manpage")
+      val doc = meth.invoke(null).asInstanceOf[Document]
       emitDocument(doc)
     } catch {
       case ex: Exception =>
@@ -355,5 +355,10 @@ object EmitHtml {
         System.err.println("Error in EmitHtml")
         exit(1)
     }
+  }
+
+  def emitHtml(classname: String, outStream: java.io.OutputStream) {
+    out.setOut(outStream)
+    main(Array(classname))
   }
 }

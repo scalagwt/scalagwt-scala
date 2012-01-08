@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 import symtab._
 import Flags._
@@ -13,7 +13,6 @@ import collection.mutable.{HashMap, ListBuffer}
 abstract class AddInterfaces extends InfoTransform {
   import global._                  // the global environment
   import definitions._             // standard classes and methods
-  import posAssigner.atPos         // for filling in tree positions
 
   /** <p>
    *    The phase sets <code>lateINTERFACE</code> for non-interface traits
@@ -58,7 +57,7 @@ abstract class AddInterfaces extends InfoTransform {
   private def isInterfaceMember(sym: Symbol): Boolean = {
     sym.isType ||
     { sym.info; // to set lateMETHOD flag if necessary
-      sym.isMethod && !(sym hasFlag (PRIVATE | BRIDGE | LABEL)) &&
+      sym.isMethod && !sym.isLabel && !(sym hasFlag (PRIVATE | BRIDGE)) &&
       !sym.isConstructor && !sym.isImplOnly
     }
   }
@@ -77,9 +76,15 @@ abstract class AddInterfaces extends InfoTransform {
       atPhase(implClassPhase) {
         val implName = nme.implClassName(iface.name)
         var impl = if (iface.owner.isClass) iface.owner.info.decl(implName) else NoSymbol
+        if (impl != NoSymbol && settings.XO.value) {
+          log("unlinking impl class " + impl)
+          iface.owner.info.decls.unlink(impl)
+          impl = NoSymbol
+        }
         if (impl == NoSymbol) {
           impl = iface.cloneSymbolImpl(iface.owner)
           impl.name = implName
+          impl.sourceFile = iface.sourceFile
           if (iface.owner.isClass)
             iface.owner.info.decls enter impl
         }
@@ -110,7 +115,7 @@ abstract class AddInterfaces extends InfoTransform {
    *  </p>
    *  <ul>
    *    <li>
-   *      for every interface member of <code>iface</code> its implemention
+   *      for every interface member of <code>iface</code> its implementation
    *      method, if one is needed.
    *    </li>
    *    <li>
@@ -128,14 +133,14 @@ abstract class AddInterfaces extends InfoTransform {
      *  @return           ...
      */
     private def implDecls(implClass: Symbol, ifaceDecls: Scope): Scope = {
-      val decls = newScope
+      val decls = new Scope
       if ((ifaceDecls lookup nme.MIXIN_CONSTRUCTOR) == NoSymbol)
         decls enter (implClass.newMethod(implClass.pos, nme.MIXIN_CONSTRUCTOR)
                      setInfo MethodType(List(), UnitClass.tpe))
-      for (val sym <- ifaceDecls.elements) {
+      for (sym <- ifaceDecls.iterator) {
         if (isInterfaceMember(sym)) {
           if (needsImplMethod(sym)) {
-            val impl = sym.cloneSymbol(implClass).setInfo(sym.info).resetFlag(lateDEFERRED)
+            val impl = sym.cloneSymbol(implClass).resetFlag(lateDEFERRED)
             if (currentRun.compiles(implClass)) implMethodMap(sym) = impl
             decls enter impl
             sym setFlag lateDEFERRED
@@ -154,9 +159,10 @@ abstract class AddInterfaces extends InfoTransform {
     override def complete(sym: Symbol) {
       def implType(tp: Type): Type = tp match {
         case ClassInfoType(parents, decls, _) =>
-          assert(phase == implClassPhase, sym)
+          assert(phase == implClassPhase)
           ClassInfoType(
-            ObjectClass.tpe :: (parents.tail map mixinToImplClass) ::: List(iface.tpe),
+            ObjectClass.tpe :: (parents.tail map mixinToImplClass filter (_.typeSymbol != ObjectClass))
+              ::: List(iface.tpe),
             implDecls(sym, decls),
             sym)
         case PolyType(tparams, restpe) =>
@@ -225,11 +231,11 @@ abstract class AddInterfaces extends InfoTransform {
 
   private def ifaceMemberDef(tree: Tree): Tree =
     if (!tree.isDef || !isInterfaceMember(tree.symbol)) EmptyTree
-    else if (needsImplMethod(tree.symbol)) DefDef(tree.symbol, vparamss => EmptyTree)
+    else if (needsImplMethod(tree.symbol)) DefDef(tree.symbol, EmptyTree)
     else tree
 
   private def ifaceTemplate(templ: Template): Template =
-    copy.Template(templ, templ.parents, emptyValDef, templ.body map ifaceMemberDef)
+    treeCopy.Template(templ, templ.parents, emptyValDef, templ.body map ifaceMemberDef)
 
   private def implMethodDef(tree: Tree, ifaceMethod: Symbol): Tree =
     implMethodMap.get(ifaceMethod) match {
@@ -237,7 +243,7 @@ abstract class AddInterfaces extends InfoTransform {
         tree.symbol = implMethod
         new ChangeOwnerAndReturnTraverser(ifaceMethod, implMethod)(tree)
       case None =>
-        throw new Error("implMethod missing for " + ifaceMethod)
+        abort("implMethod missing for " + ifaceMethod)
     }
 
   private def implMemberDef(tree: Tree): Tree =
@@ -251,7 +257,7 @@ abstract class AddInterfaces extends InfoTransform {
    */
   private def addMixinConstructorDef(clazz: Symbol, stats: List[Tree]): List[Tree] =
     if (treeInfo.firstConstructor(stats) != EmptyTree) stats
-    else DefDef(clazz.primaryConstructor, vparamss => Block(List(), Literal(()))) :: stats
+    else DefDef(clazz.primaryConstructor, Block(List(), Literal(()))) :: stats
 
   private def implTemplate(clazz: Symbol, templ: Template): Template = atPos(templ.pos) {
     val templ1 = atPos(templ.pos) {
@@ -265,7 +271,7 @@ abstract class AddInterfaces extends InfoTransform {
 
   def implClassDefs(trees: List[Tree]): List[Tree] = {
     val buf = new ListBuffer[Tree]
-    for (val tree <- trees)
+    for (tree <- trees)
       tree match {
         case ClassDef(_, _, _, impl) =>
           if (tree.symbol.needsImplClass)
@@ -288,15 +294,16 @@ abstract class AddInterfaces extends InfoTransform {
       Apply(Select(This(clazz), impl.primaryConstructor), List())
     }
     val mixinConstructorCalls: List[Tree] = {
-      for (val mc <- clazz.mixinClasses.reverse;
-           mc.hasFlag(lateINTERFACE) && mc != ScalaObjectClass)
+      for (mc <- clazz.mixinClasses.reverse
+           if mc.hasFlag(lateINTERFACE) && mc != ScalaObjectClass)
       yield mixinConstructorCall(implClass(mc))
     }
     (tree: @unchecked) match {
       case Block(stats, expr) =>
-        val (presuper, supercall :: rest) = stats span (_.symbol.hasFlag(PRESUPER))
+        // needs `hasSymbol' check because `supercall' could be a block (named / default args)
+        val (presuper, supercall :: rest) = stats span (t => t.hasSymbol && t.symbol.hasFlag(PRESUPER))
         //assert(supercall.symbol.isClassConstructor, supercall)
-        copy.Block(tree, presuper ::: (supercall :: mixinConstructorCalls ::: rest), expr)
+        treeCopy.Block(tree, presuper ::: (supercall :: mixinConstructorCalls ::: rest), expr)
     }
   }
 
@@ -309,14 +316,14 @@ abstract class AddInterfaces extends InfoTransform {
       val tree1 = tree match {
         case ClassDef(mods, name, tparams, impl) if (sym.needsImplClass) =>
           implClass(sym).initialize // to force lateDEFERRED flags
-          copy.ClassDef(tree, mods | INTERFACE, name, tparams, ifaceTemplate(impl))
+          treeCopy.ClassDef(tree, mods | INTERFACE, name, tparams, ifaceTemplate(impl))
         case DefDef(mods, name, tparams, vparamss, tpt, rhs)
         if (sym.isClassConstructor && sym.isPrimaryConstructor && sym.owner != ArrayClass) =>
-          copy.DefDef(tree, mods, name, tparams, vparamss, tpt,
+          treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt,
                       addMixinConstructorCalls(rhs, sym.owner)) // (3)
         case Template(parents, self, body) =>
           val parents1 = sym.owner.info.parents map (t => TypeTree(t) setPos tree.pos)
-          copy.Template(tree, parents1, emptyValDef, body)
+          treeCopy.Template(tree, parents1, emptyValDef, body)
         case This(_) =>
           if (sym.needsImplClass) {
             val impl = implClass(sym)
@@ -338,7 +345,7 @@ abstract class AddInterfaces extends InfoTransform {
               else mix
             }
           if (sym.needsImplClass) Super(implClass(sym), mix1) setPos tree.pos
-          else copy.Super(tree, qual, mix1)
+          else treeCopy.Super(tree, qual, mix1)
 */
         case _ =>
           tree

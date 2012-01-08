@@ -12,17 +12,17 @@ package scala.runtime
 
 /**
  * Miscellaneous utilities for Java source code.
- * 
+ *
  * NOTE: Although these compile to correct Java bytecode, they
  * do not compile to correct Java source code.
- * 
+ *
  * TODO(spoon): Check with scala-devel on how to make this
  * object be ignored for .NET.
- * 
+ *
  * @author Lex Spoon
  */
 object JavaSourceMisc {
-  /** 
+  /**
    * Throw an exception.  This is used, when generating Java
    * source code, as a replacement for the Java <code>throw</code>
    * expression.  By using this method instead of the Java

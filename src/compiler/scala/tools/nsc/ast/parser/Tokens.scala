@@ -1,12 +1,19 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2006 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.ast.parser
+package scala.tools.nsc
+package ast.parser
 
-object Tokens {
+import annotation.switch
+
+/** Common code between JavaTokens and Tokens.  Not as much (and not as concrete)
+ *  as one might like because JavaTokens for no clear reason chose new numbers for
+ *  identical token sets.
+ */
+abstract class Tokens {
+  import util.Chars._
 
   /** special tokens */
   final val EMPTY = -3
@@ -21,6 +28,23 @@ object Tokens {
   final val FLOATLIT = 4
   final val DOUBLELIT = 5
   final val STRINGLIT = 6
+
+  def LPAREN: Int
+  def RBRACE: Int
+
+  def isIdentifier(code: Int): Boolean
+  def isLiteral(code: Int): Boolean
+  def isKeyword(code: Int): Boolean
+  def isSymbol(code: Int): Boolean
+
+  final def isSpace(at: Char)         = at == ' ' || at == '\t'
+  final def isNewLine(at: Char)       = at == CR || at == LF || at == FF
+  final def isBrace(code : Int)       = code >= LPAREN && code <= RBRACE
+  final def isOpenBrace(code : Int)   = isBrace(code) && (code % 2 == 0)
+  final def isCloseBrace(code : Int)  = isBrace(code) && (code % 2 == 1)
+}
+
+object Tokens extends Tokens {
   final val SYMBOLLIT = 7
   def isLiteral(code : Int) =
     code >= CHARLIT && code <= SYMBOLLIT
@@ -31,15 +55,13 @@ object Tokens {
   def isIdentifier(code : Int) =
     code >= IDENTIFIER && code <= BACKQUOTED_IDENT
 
-  def canBeginExpression(code : Int) = code match {
-  case IDENTIFIER|BACKQUOTED_IDENT|USCORE => true
-  case LBRACE|LPAREN|LBRACKET|COMMENT|STRINGLIT => true
-  case IF|DO|WHILE|FOR|NEW|TRY|THROW => true
-  case NULL|THIS|TRUE|FALSE => true
-  case code if isLiteral(code) => true
-  case _ => false
+  @switch def canBeginExpression(code : Int) = code match {
+    case IDENTIFIER|BACKQUOTED_IDENT|USCORE       => true
+    case LBRACE|LPAREN|LBRACKET|COMMENT|STRINGLIT => true
+    case IF|DO|WHILE|FOR|NEW|TRY|THROW            => true
+    case NULL|THIS|TRUE|FALSE                     => true
+    case code                                     => isLiteral(code)
   }
-
 
   /** keywords */
   final val IF = 20
@@ -89,14 +111,13 @@ object Tokens {
   def isKeyword(code : Int) =
     code >= IF && code <= LAZY
 
-  def isDefinition(code : Int) = code match {
-  case CLASS|TRAIT|OBJECT => true
-  case CASECLASS|CASEOBJECT => true
-  case DEF|VAL|VAR => true
-  case TYPE => true
-  case _ => false
+  @switch def isDefinition(code : Int) = code match {
+    case CLASS|TRAIT|OBJECT => true
+    case CASECLASS|CASEOBJECT => true
+    case DEF|VAL|VAR => true
+    case TYPE => true
+    case _ => false
   }
-
 
   /** special symbols */
   final val COMMA = 70
@@ -126,11 +147,6 @@ object Tokens {
   final val LBRACE = 94
   final val RBRACE = 95
 
-  def isBrace(code : Int) =
-    code >= LPAREN && code <= RBRACE
-  def isOpenBrace(code : Int) = isBrace(code) && (code % 2 == 0)
-  def isCloseBrace(code : Int) = isBrace(code) && (code % 2 == 1)
-
   /** XML mode */
   final val XMLSTART = 96
 
@@ -140,15 +156,4 @@ object Tokens {
   final val WHITESPACE = 105
   final val IGNORE = 106
   final val ESCAPE = 109
-
-  def isSpace(at : Char) = at match {
-  case ' ' | '\t' => true
-  case _ => false
-  }
-  import scala.tools.nsc.util.SourceFile._
-
-  def isNewLine(at : Char) = at match {
-  case CR | LF | FF => true
-  case _ => false
-  }
 }

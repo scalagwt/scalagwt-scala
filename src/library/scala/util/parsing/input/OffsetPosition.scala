@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -18,7 +18,7 @@ import collection.mutable.ArrayBuffer
  *
  * @author Martin Odersky
  */
-case class OffsetPosition(source: CharSequence, offset: Int) extends Position {
+case class OffsetPosition(source: java.lang.CharSequence, offset: Int) extends Position {
 
   /** An index that contains all line starts, including first line, and eof */
   private lazy val index: Array[Int] = {
@@ -50,8 +50,8 @@ case class OffsetPosition(source: CharSequence, offset: Int) extends Position {
    * @param lnum a 1-based integer index into the `document'
    * @return the line at `lnum' (not including a newline)
    */
-  def lineContents(lnum: Int): String =
-    source.subSequence(index(lnum - 1), index(lnum)).toString
+  def lineContents: String =
+    source.subSequence(index(line - 1), index(line)).toString
 
   /** Returns a string representation of the `Position', of the form `line.column' */
   override def toString = line+"."+column

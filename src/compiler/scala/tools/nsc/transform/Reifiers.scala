@@ -1,4 +1,5 @@
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 import scala.tools.nsc.symtab.SymbolTable
 import scala.reflect
 import collection.mutable.HashMap
@@ -17,11 +18,14 @@ trait Reifiers {
     if (sym.isClass) reflect.Class(fullname)
     else if (sym.isType) reflect.TypeField(fullname, reify(sym.info))
     else if (sym.isMethod) reflect.Method(fullname, reify(sym.info))
+    else if (sym.isValueParameter) reflect.LocalValue(reflect.NoSymbol, fullname, reify(sym.info))
     else reflect.Field(fullname, reify(sym.info));
 
   def reify(sym: Symbol): reflect.Symbol = {
     if (sym.isRoot || sym.isRootPackage || sym.isEmptyPackageClass || sym.isEmptyPackage)
       reflect.RootSymbol
+    else if (sym.isValueParameter)
+      mkGlobalSymbol(sym.name.toString, sym)
     else if (sym.owner.isTerm)
       reflect.NoSymbol
     else reify(sym.owner) match {
@@ -60,9 +64,9 @@ trait Reifiers {
       val rsym = reify(sym)
       val rargs = args map reify
       val beforeArgs = reflect.PrefixedType(rpre, rsym)
-      if(rargs.isEmpty)
+      if (rargs.isEmpty)
 	beforeArgs
-      else if(beforeArgs == NoType)
+      else if (rpre == reflect.NoType || rsym == reflect.NoSymbol)
 	beforeArgs
       else
 	reflect.AppliedType(beforeArgs, rargs)
@@ -72,8 +76,8 @@ trait Reifiers {
       if (_log_reify_type_) println("cannot handle RefinedType "+tp); reflect.NoType
     case ClassInfoType(parents, defs, clazz) =>
       if (_log_reify_type_) println("cannot handle ClassInfoType "+tp); reflect.NoType
-    case MethodType(paramtypes, result) =>
-      reflect.MethodType(paramtypes.map(reify), reify(result))
+    case MethodType(params, result) =>
+      reflect.MethodType(params.map(reify), reify(result))
     case PolyType(tparams, result) =>
       val boundss =
 	for {
@@ -86,7 +90,7 @@ trait Reifiers {
 	boundss,
 	reify(result))
       //todo: treat ExistentialType
-    case AnnotatedType(attribs, tp, _) =>
+    case AnnotatedType(annots, tp, _) =>
       reify(tp)
     case _ =>
       println("could not reify: " + tp)
@@ -139,8 +143,8 @@ trait Reifiers {
 	  appliedType(untpe, args.map(unreify))
       case reflect.TypeBounds(lo, hi) =>
 	TypeBounds(unreify(lo), unreify(hi))
-      case reflect.MethodType(formals, restpe) =>
-	MethodType(formals.map(unreify), unreify(restpe))
+      case reflect.MethodType(params, restpe) =>
+	MethodType(params.map(unreify), unreify(restpe))
       case reflect.PolyType(typeParams, typeBounds, resultType) =>
 	PolyType(typeParams.map(unreify), unreify(resultType))
       //todo: treat ExistentialType
@@ -188,7 +192,7 @@ trait Reifiers {
         case Some(tgt) => tgt
       }
     def hasAllTargets: Boolean =
-      targets.elements.map(_._2).forall {
+      targets.iterator.map(_._2).forall {
         case Some(_) => true
         case None => false
       }
@@ -214,8 +218,6 @@ trait Reifiers {
         val rsym = reify(tree.symbol);
         if (rsym == reflect.NoSymbol) throw new TypeError("cannot reify symbol: " + tree.symbol)
         else reflect.Select(reify(qual), reify(tree.symbol))
-
-      case _ : StubTree => reflect.Literal(0)
 
       case Literal(constant) =>
         reflect.Literal(constant.value)
@@ -250,6 +252,9 @@ trait Reifiers {
         reflect.This(reify(tree.symbol))
       case Block(stats, expr) =>
         reflect.Block(stats.map(reify), reify(expr))
+      case New(clazz) if (clazz.isType) =>
+	val reifiedSymbol = reify(clazz.symbol)
+	reflect.New(reflect.Ident(reifiedSymbol))
       case New(clazz) =>
         val reifiedClass = reify(clazz)
         reflect.New(reifiedClass)

@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -18,26 +16,25 @@ package scala.xml
  *  @param text the text contained in this node, may not be <code>null</code>.
  */
 @serializable
-class Atom[+A](val data: A) extends SpecialNode {
+class Atom[+A](val data: A) extends SpecialNode
+{
+  if (data == null)
+    throw new IllegalArgumentException("cannot construct Atom(null)")
 
-  data.asInstanceOf[AnyRef] match {
-    case null => new IllegalArgumentException("cannot construct Atom(null)")
-    case _ =>
+  override def basisForHashCode: Seq[Any] = Seq(data)
+  override def strict_==(other: Equality) = other match {
+    case x: Atom[_] => data == x.data
+    case _          => false
   }
-  final override def typeTag$: Int = -1
+  override def canEqual(other: Any) = other match {
+    case _: Atom[_] => true
+    case _          => false
+  }
 
-  /** the constant "#PCDATA"
-   */
+  final override def doCollectNamespaces = false
+  final override def doTransform         = false
+
   def label = "#PCDATA"
-
-  override def equals(x: Any) = x match {
-    case s:Atom[_] => data == s.data
-    case _         => false
-  }
-
-  /** hashcode for this Text */
-  override def hashCode() =
-    data.hashCode()
 
   /** Returns text, with some characters escaped according to the XML
    *  specification.
@@ -45,7 +42,7 @@ class Atom[+A](val data: A) extends SpecialNode {
    *  @param  sb ...
    *  @return ...
    */
-  def toString(sb: StringBuilder) =
+  def buildString(sb: StringBuilder) =
     Utility.escape(data.toString(), sb)
 
   override def text: String = data.toString()

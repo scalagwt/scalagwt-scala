@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2002-2008 LAMP/EPFL
+ * Copyright 2002-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.reporters
+package scala.tools.nsc
+package reporters
 
 import java.io.{BufferedReader, InputStreamReader, IOException, PrintWriter}
 import util._
@@ -16,6 +16,9 @@ import util._
 class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: PrintWriter) extends AbstractReporter {
   /** Whether a short file name should be displayed before errors */
   var shortname: Boolean = false
+
+  /** maximal number of error messages to be printed */
+  final val ERROR_LIMIT = 100
 
   private def label(severity: Severity): String = severity match {
     case ERROR   => "error"
@@ -45,27 +48,20 @@ class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: Pr
 
   /** Prints the message with the given position indication. */
   def printMessage(posIn: Position, msg: String) {
-    if (posIn ne null) {
-      val pos = posIn.inUltimateSource(posIn.source.getOrElse(null))
-      val buf = new StringBuilder(msg)
-      if (!pos.source.isEmpty) {
-        buf.insert(0, " ")
-        buf.insert(0, pos.line.map(ln => ":" + pos.line.get + ":").getOrElse(":"))
-      }
-      //println(getSource.file)
-      pos match {
-        case FakePos(msg) =>
-          buf.insert(0, msg + " ")
-        case _ if !pos.source.isEmpty =>
-          val file = pos.source.get.file
-          buf.insert(0, if (shortname) file.name else file.path)
-        case _ =>
-      }
-      printMessage(buf.toString())
-      if (!pos.line.isEmpty)
+    val pos = if (posIn eq null) NoPosition
+              else if (posIn.isDefined) posIn.inUltimateSource(posIn.source)
+              else posIn
+    pos match {
+      case FakePos(fmsg) =>
+        printMessage(fmsg+" "+msg)
+      case NoPosition =>
+        printMessage(msg)
+      case _ =>
+        val buf = new StringBuilder(msg)
+        val file = pos.source.file
+        printMessage((if (shortname) file.name else file.path)+":"+pos.line+": "+msg)
         printSourceLine(pos)
-    } else
-      printMessage(msg)
+    }
   }
 
   def print(pos: Position, msg: String, severity: Severity) {
@@ -84,16 +80,8 @@ class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: Pr
    *
    *  @param pos ...
    */
-  def printColumnMarker(pos: Position) = if (!pos.column.isEmpty) {
-    val buffer = new StringBuilder(pos.column.get)
-    var i = 1
-    while (i < pos.column.get) {
-      buffer.append(' ')
-      i += 1
-    }
-    if (pos.column.get > 0) buffer.append('^')
-    printMessage(buffer.toString())
-  }
+  def printColumnMarker(pos: Position) =
+    if (pos.isDefined) { printMessage(" " * (pos.column - 1) + "^") }
 
   /** Prints the number of errors and warnings if their are non-zero. */
   def printSummary() {
@@ -103,7 +91,8 @@ class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: Pr
 
   def display(pos: Position, msg: String, severity: Severity) {
     severity.count += 1
-    print(pos, msg, severity)
+    if (severity != ERROR || severity.count <= ERROR_LIMIT)
+      print(pos, msg, severity)
   }
 
   def displayPrompt: Unit = try {
@@ -113,18 +102,21 @@ class ConsoleReporter(val settings: Settings, reader: BufferedReader, writer: Pr
       writer.flush()
       var line = reader.readLine()
       if (line ne null) {
-	line = line.toLowerCase()
-	if ("abort" startsWith line)
-            throw new Error("user abort")
-	if ("resume" startsWith line) continue = false
+	      line = line.toLowerCase()
+	      if ("abort" startsWith line)
+          abort("user abort")
+	      if ("resume" startsWith line)
+	        continue = false
       }
     }
-  } catch {
+  }
+  catch {
     case ex: IOException => {
       ex.printStackTrace()
-      throw new Error("input read error")
+      abort("input read error")
     }
   }
 
+  private def abort(msg: String) = throw new Error(msg)
   override def flush() { writer.flush() }
 }

@@ -1,15 +1,15 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2006, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.xml.factory
+package scala.xml
+package factory
 
 
 /** <p>
@@ -58,7 +58,7 @@ with scala.util.logging.Logged {
     if (logNode)
       log("[makeNode for "+label+"]");
 
-    val hash = Utility.hashCode(pre, label, attrSeq.hashCode(), scope.hashCode(), children)
+    val hash = Utility.hashCode(pre, label, attrSeq.##, scope.##, children)
 
     /*
     if(logCompressLevel >= FULL) {

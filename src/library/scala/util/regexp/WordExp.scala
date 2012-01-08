@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.util.regexp
@@ -45,12 +44,12 @@ abstract class WordExp extends Base {
   type _labelT <: Label
 
   case class Letter(a: _labelT) extends RegExp {
-    final val isNullable = false
+    final lazy val isNullable = false
     var pos = -1
   }
 
   case class Wildcard() extends RegExp {
-    final val isNullable = false
+    final lazy val isNullable = false
     var pos = -1
   }
 }

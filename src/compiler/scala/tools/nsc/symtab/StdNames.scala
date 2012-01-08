@@ -1,17 +1,17 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.symtab
+package scala.tools.nsc
+package symtab
 
-import scala.tools.nsc.util.NameTransformer
+import scala.reflect.NameTransformer
+import util.Chars.isOperatorPart
 
-trait StdNames {
-  self: SymbolTable =>
+trait StdNames extends reflect.generic.StdNames { self: SymbolTable =>
 
-  object nme {
+  object nme extends StandardNames {
 
     // Scala keywords; enter them first to minimize scanner.maxKey
     val ABSTRACTkw = newTermName("abstract")
@@ -37,6 +37,7 @@ trait StdNames {
     val NULLkw = newTermName("null")
     val OBJECTkw = newTermName("object")
     val OUTER = newTermName("$outer")
+    val OUTER_LOCAL = newTermName("$outer ")
     val OVERRIDEkw = newTermName("override")
     val PACKAGEkw = newTermName("package")
     val PRIVATEkw = newTermName("private")
@@ -49,6 +50,7 @@ trait StdNames {
     val THROWkw = newTermName("throw")
     val TRAITkw = newTermName("trait")
     val TRUEkw = newTermName("true")
+    val TYPE_ = newTermName("TYPE")
     val TRYkw = newTermName("try")
     val TYPEkw = newTermName("type")
     val VALkw = newTermName("val")
@@ -70,7 +72,7 @@ trait StdNames {
 
     val LOCALDUMMY_PREFIX_STRING = "<local "
     val SUPER_PREFIX_STRING = "super$"
-    val EXPAND_SEPARATOR_STRING = "$$"
+    val TRAIT_SETTER_SEPARATOR_STRING = "$_setter_$"
     val TUPLE_FIELD_PREFIX_STRING = "_"
     val CHECK_IF_REFUTABLE_STRING = "check$ifrefutable$"
 
@@ -79,28 +81,37 @@ trait StdNames {
     val INTERPRETER_VAR_PREFIX = "res"
     val INTERPRETER_IMPORT_WRAPPER = "$iw"
     val INTERPRETER_SYNTHVAR_PREFIX = "synthvar$"
+    val EVIDENCE_PARAM_PREFIX = "evidence$"
 
     def LOCAL(clazz: Symbol) = newTermName(LOCALDUMMY_PREFIX_STRING + clazz.name+">")
     def TUPLE_FIELD(index: Int) = newTermName(TUPLE_FIELD_PREFIX_STRING + index)
 
-    val LOCAL_SUFFIX = newTermName(" ")
+    val LOCAL_SUFFIX = newTermName(LOCAL_SUFFIX_STRING)
     val SETTER_SUFFIX = encode("_=")
     val IMPL_CLASS_SUFFIX = newTermName("$class")
     val MODULE_SUFFIX = newTermName("$module")
     val LOCALDUMMY_PREFIX = newTermName(LOCALDUMMY_PREFIX_STRING)
-    val THIS_SUFFIX = newTermName(".this")
     val SELECTOR_DUMMY = newTermName("<unapply-selector>")
 
     val MODULE_INSTANCE_FIELD = newTermName("MODULE$")
+    val SPECIALIZED_INSTANCE  = newTermName("specInstance$")
 
     def isLocalName(name: Name) = name.endsWith(LOCAL_SUFFIX)
     def isSetterName(name: Name) = name.endsWith(SETTER_SUFFIX)
     def isLocalDummyName(name: Name) = name.startsWith(LOCALDUMMY_PREFIX)
+    def isTraitSetterName(name: Name) = isSetterName(name) && name.pos(TRAIT_SETTER_SEPARATOR_STRING) < name.length
     def isOpAssignmentName(name: Name) =
-      name.endsWith(nme.EQL) && name != nme.EQEQ && !name.endsWith(nme.USCOREEQL)
+      name(name.length - 1) == '=' &&
+      isOperatorPart(name(0)) &&
+      name(0) != '=' && name != NEraw && name != LEraw && name != GEraw
 
-    /** If `name' is an expandedName, the original name. Otherwise `name' itself.
-     *  @see Symbol.expandedName
+    /** The expanded setter name of `name' relative to this class `base`
+     */
+    def expandedSetterName(name: Name, base: Symbol): Name =
+      expandedName(name, base, separator = TRAIT_SETTER_SEPARATOR_STRING)
+
+    /** If `name' is an expandedName name, the original name.
+     *  Otherwise `name' itself.
      */
     def originalName(name: Name): Name = {
       var i = name.length
@@ -111,23 +122,45 @@ trait StdNames {
       } else name
     }
 
+    /** Return the original name and the types on which this name
+     *  is specialized. For example,
+     *  {{{
+     *     splitSpecializedName("foo$mIcD$sp") == ('foo', "I", "D")
+     *  }}}
+     *  `foo$mIcD$sp` is the name of a method specialized on two type
+     *  parameters, the first one belonging to the method itself, on Int,
+     *  and another one belonging to the enclosing class, on Double.
+     */
+    def splitSpecializedName(name: Name): (Name, String, String) =
+      if (name.endsWith("$sp")) {
+        val name1 = name.subName(0, name.length - 3)
+        val idxC = name1.lastPos('c')
+        val idxM = name1.lastPos('m', idxC)
+        (name1.subName(0, idxM - 1).toString,
+         name1.subName(idxC + 1, name1.length).toString,
+         name1.subName(idxM + 1, idxC).toString)
+      } else
+        (name, "", "")
+
     def localToGetter(name: Name): Name = {
       assert(isLocalName(name))//debug
       name.subName(0, name.length - LOCAL_SUFFIX.length)
     }
 
     def getterToLocal(name: Name): Name = {
-      assert(!isLocalName(name) && !isSetterName(name))//debug
       newTermName(name.toString() + LOCAL_SUFFIX)
     }
 
     def getterToSetter(name: Name): Name = {
-      assert(!isLocalName(name) && !isSetterName(name))//debug
       newTermName(name.toString() + SETTER_SUFFIX)
     }
 
     def setterToGetter(name: Name): Name = {
-      name.subName(0, name.length - SETTER_SUFFIX.length)
+      val p = name.pos(TRAIT_SETTER_SEPARATOR_STRING)
+      if (p < name.length)
+        setterToGetter(name.subName(p + TRAIT_SETTER_SEPARATOR_STRING.length, name.length))
+      else
+        name.subName(0, name.length - SETTER_SUFFIX.length)
     }
 
     def getterName(name: Name): Name =
@@ -160,25 +193,16 @@ trait StdNames {
     def bitmapName(n: Int): Name = newTermName("bitmap$" + n)
 
     val ERROR = newTermName("<error>")
-    val ERRORtype = newTypeName("<error>")
     val LOCALCHILD = newTypeName("<local child>")
 
     val NOSYMBOL = newTermName("<none>")
-    val EMPTY = newTermName("")
     val ANYNAME = newTermName("<anyname>")
     val WILDCARD = newTermName("_")
     val WILDCARD_STAR = newTermName("_*")
-    val COMPOUND_NAME = newTermName("<ct>")
-    val ANON_CLASS_NAME = newTermName("$anon")
-    val ANON_FUN_NAME = newTermName("$anonfun")
-    val REFINE_CLASS_NAME = newTermName("<refinement>")
-    val EMPTY_PACKAGE_NAME = newTermName("<empty>")
-    val IMPORT = newTermName("<import>")
-    val ZERO = newTermName("<zero>")
+
     val STAR = newTermName("*")
-    val ROOT = newTermName("<root>")
-    val ROOTPKG = newTermName("_root_")
     val REPEATED_PARAM_CLASS_NAME = newTermName("<repeated>")
+    val JAVA_REPEATED_PARAM_CLASS_NAME = newTermName("<repeated...>")
     val BYNAME_PARAM_CLASS_NAME = newTermName("<byname>")
     val EQUALS_PATTERN_NAME = newTermName("<equals>")
     val SELF = newTermName("$this")
@@ -193,7 +217,6 @@ trait StdNames {
     val PLUS = encode("+")
     val PLUSPLUS = encode("++")
     val TILDE = encode("~")
-    val EQEQ = encode("==")
     val BANG = encode("!")
     val BANGEQ = encode("!=")
     val BARBAR = encode("||")
@@ -202,6 +225,7 @@ trait StdNames {
     val PERCENT = encode("%")
     val EQL = encode("=")
     val USCOREEQL = encode("_=")
+    val HASHHASH = encode("##")
 
     val Nothing = newTermName("Nothing")
     val Null = newTermName("Null")
@@ -209,19 +233,18 @@ trait StdNames {
     val AnyVal = newTermName("AnyVal")
     val AnyRef = newTermName("AnyRef")
     val Array = newTermName("Array")
+    val Boolean = newTermName("Boolean")
     val Byte = newTermName("Byte")
     val Catch = newTermName("Catch")
     val Char = newTermName("Char")
-    val Boolean = newTermName("Boolean")
     val Do = newTermName("Do")
     val Double = newTermName("Double")
-    val Element = newTermName("Element")
     val Finally = newTermName("Finally")
     val Float = newTermName("Float")
     val Function = newTermName("Function")
     val Function1 = newTermName("Function1")
     val Int = newTermName("Int")
-    val Labelled = newTermName("Labelled")
+    val List = newTermName("List")
     val Long = newTermName("Long")
     val Nil = newTermName("Nil")
     val Object = newTermName("Object")
@@ -235,52 +258,43 @@ trait StdNames {
     val Short = newTermName("Short")
     val Singleton = newTermName("Singleton")
     val Some = newTermName("Some")
-    val SourceFile = newTermName("SourceFile")
     val String = newTermName("String")
     val Symbol = newTermName("Symbol")
-    val Synthetic = newTermName("Synthetic")
     val System = newTermName("System")
-    val Text = newTermName("Text")
     val Throwable = newTermName("Throwable")
     val Try = newTermName("Try")
     val Tuple = newTermName("Tuple")
-    val Type = newTermName("Type")
     val Tuple2 = newTermName("Tuple2")
     val Unit = newTermName("Unit")
-    val While = newTermName("While")
 
     val apply = newTermName("apply")
-    val array = newTermName("array")
     val arrayValue = newTermName("arrayValue")
     val arraycopy = newTermName("arraycopy")
     val assert_ = newTermName("assert")
     val assume_ = newTermName("assume")
     val asInstanceOf_ = newTermName("asInstanceOf")
-    val asInstanceOfErased = newTermName("asInstanceOf$erased")
-    val bind = newTermName("bind")
-    val booleanValue = newTermName("booleanValue")
     val box = newTermName("box")
-    val boxArray = newTermName("boxArray")
-    val forceBoxedArray = newTermName("forceBoxedArray")
+    val bytes = newTermName("bytes")
+    val canEqual_ = newTermName("canEqual")
     val checkInitialized = newTermName("checkInitialized")
     val classOf = newTermName("classOf")
-    val coerce = newTermName("coerce")
-    val defaultValue = newTermName("defaultValue")
-    val detach = newTermName("detach")
+    val identity = newTermName("identity")
+    val conforms = newTermName("conforms")
+    val copy = newTermName("copy")
+    val dottype = newTermName(".type")
     val drop = newTermName("drop")
-    val dummy = newTermName("$dummy")
     val elem = newTermName("elem")
-    val elements = newTermName("elements")
     val eq = newTermName("eq")
     val equals_ = newTermName("equals")
     val _equals = newTermName("_equals")
-    val _equalsWithVarArgs = newTermName("_equalsWithVarArgs")
+    val inlinedEquals = newTermName("inlinedEquals")
     val error = newTermName("error")
     val ex = newTermName("ex")
-    val fail = newTermName("fail")
+    val add_ = newTermName("add")
     val false_ = newTermName("false")
     val filter = newTermName("filter")
     val finalize_ = newTermName("finalize")
+    val find_ = newTermName("find")
     val flatMap = newTermName("flatMap")
     val forName = newTermName(if (forMSIL) "GetType" else "forName")
     val foreach = newTermName("foreach")
@@ -288,15 +302,13 @@ trait StdNames {
     val getCause = newTermName("getCause")
     val getClass_ = newTermName("getClass")
     val getMethod_ = newTermName("getMethod")
-    val hasAsInstance = newTermName("hasAsInstance")
+    val hash_ = newTermName("hash")
     val hashCode_ = newTermName("hashCode")
     val hasNext = newTermName("hasNext")
     val head = newTermName("head")
-    val identity = newTermName("identity")
-    val intern = newTermName("intern")
     val invoke_ = newTermName("invoke")
+    val isArray = newTermName("isArray")
     val isInstanceOf_ = newTermName("isInstanceOf")
-    val isInstanceOfErased = newTermName("isInstanceOf$erased")
     val isDefinedAt = newTermName("isDefinedAt")
     val isEmpty = newTermName("isEmpty")
     val java = newTermName("java")
@@ -304,47 +316,43 @@ trait StdNames {
     val length = newTermName("length")
     val lengthCompare = newTermName("lengthCompare")
     val lift_ = newTermName("lift")
+    val main = newTermName("main")
     val map = newTermName("map")
     val Mutable = newTypeName("Mutable")
-    val n = newTermName("n")
     val ne = newTermName("ne")
-    val nobinding = newTermName("nobinding")
-    val next = newTermName("next")
     val newArray = newTermName("newArray")
+    val next = newTermName("next")
     val notify_ = newTermName("notify")
     val notifyAll_ = newTermName("notifyAll")
     val null_ = newTermName("null")
-    val predef = newTermName("predef")
+    val ofDim = newTermName("ofDim")
     val print = newTermName("print")
     val productArity = newTermName("productArity")
     val productElement = newTermName("productElement")
+    // val productElementName = newTermName("productElementName")
     val productPrefix = newTermName("productPrefix")
     val readResolve = newTermName("readResolve")
-    val receive = newTermName("receive")
-    val report = newTermName("report")
-    val runtime = newTermName("runtime")
     val sameElements = newTermName("sameElements")
     val scala_ = newTermName("scala")
     val self = newTermName("self")
     val synchronized_ = newTermName("synchronized")
-    val tag = newTermName("$tag")
     val tail = newTermName("tail")
+    val toArray = newTermName("toArray")
     val toList = newTermName("toList")
+    val toSeq = newTermName("toSeq")
     val toString_ = newTermName("toString")
-    val that = newTermName("that")
-    val that1 = newTermName("that1")
+    val clone_ = newTermName("clone")
     val this_ = newTermName("this")
     val throw_ = newTermName("throw")
     val true_ = newTermName("true")
     val unapply = newTermName("unapply")
     val unapplySeq = newTermName("unapplySeq")
-    val unbind = newTermName("unbind")
     val unbox = newTermName("unbox")
     val update = newTermName("update")
     val value = newTermName("value")
     val view_ = newTermName("view")
     val wait_ = newTermName("wait")
-    val xml = newTermName("xml")
+    val withFilter = newTermName("withFilter")
     val zip = newTermName("zip")
 
     val ZAND = encode("&&")
@@ -373,6 +381,13 @@ trait StdNames {
     val UNARY_- = encode("unary_-")
     val UNARY_! = encode("unary_!")
 
+    // unencoded comparisons
+    val EQraw = newTermName("==")
+    val NEraw = newTermName("!=")
+    val LEraw = newTermName("<=")
+    val GEraw = newTermName(">=")
+    val DOLLARraw = newTermName("$")
+
     // value-conversion methods
     val toByte = newTermName("toByte")
     val toShort = newTermName("toShort")
@@ -395,11 +410,14 @@ trait StdNames {
     val JacoMetaATTR = newTermName("JacoMeta")
     val SignatureATTR = newTermName("Signature")
     val ScalaSignatureATTR = newTermName("ScalaSig")
-    val JavaInterfaceATTR = newTermName("JacoInterface")
     val AnnotationDefaultATTR = newTermName("AnnotationDefault")
+    // Stores Java annotations with RetentionPolicy.RUNTIME
     val RuntimeAnnotationATTR = newTermName("RuntimeVisibleAnnotations")
+    // Stores Java annotations with RetentionPolicy.CLASS. Currently not used (Apr 2009).
     val ClassfileAnnotationATTR = newTermName("RuntimeInvisibleAnnotations")
+    // Stores Java annotations on parameters with RetentionPolicy.RUNTIME
     val RuntimeParamAnnotationATTR = newTermName("RuntimeVisibleParameterAnnotations")
+    val ScalaATTR = newTermName("Scala")
   }
 
   def encode(str: String): Name = newTermName(NameTransformer.encode(str))
@@ -411,16 +429,18 @@ trait StdNames {
     val String       : Name
     val Throwable    : Name
     val NPException  : Name // NullPointerException
-    val NLRException : Name = newTermName("scala.runtime.NonLocalReturnException")
+    val NLRControl   : Name = newTermName("scala.runtime.NonLocalReturnControl")
     val ValueType    : Name
     val Serializable : Name
     val BeanProperty : Name
+    val BooleanBeanProperty: Name
     val Delegate     : Name
     val IOOBException: Name // IndexOutOfBoundsException
     val Code         : Name
     val BoxedNumber  : Name
     val BoxedCharacter : Name
     val BoxedBoolean : Name
+    val MethodAsObject : Name
 
     import scala.collection.mutable.HashMap
     val Boxed = new HashMap[Name, Name]
@@ -438,16 +458,24 @@ trait StdNames {
     final val IOOBException = newTermName("java.lang.IndexOutOfBoundsException")
     final val BoxedNumber   = newTermName("java.lang.Number")
     final val BoxedCharacter = newTermName("java.lang.Character")
-    final val BoxedBoolean = newTermName("java.lang.Boolean")
+    final val BoxedBoolean  = newTermName("java.lang.Boolean")
+    final val BoxedByte     = newTermName("java.lang.Byte")
+    final val BoxedShort    = newTermName("java.lang.Short")
+    final val BoxedInteger  = newTermName("java.lang.Integer")
+    final val BoxedLong     = newTermName("java.lang.Long")
+    final val BoxedFloat    = newTermName("java.lang.Float")
+    final val BoxedDouble   = newTermName("java.lang.Double")
 
-    Boxed += (nme.Boolean -> newTermName("java.lang.Boolean"))
-    Boxed += (nme.Byte    -> newTermName("java.lang.Byte"))
-    Boxed += (nme.Char    -> newTermName("java.lang.Character"))
-    Boxed += (nme.Short   -> newTermName("java.lang.Short"))
-    Boxed += (nme.Int     -> newTermName("java.lang.Integer"))
-    Boxed += (nme.Long    -> newTermName("java.lang.Long"))
-    Boxed += (nme.Float   -> newTermName("java.lang.Float"))
-    Boxed += (nme.Double  -> newTermName("java.lang.Double"))
+    final val MethodAsObject = newTermName("java.lang.reflect.Method")
+
+    Boxed += (nme.Boolean -> BoxedBoolean)
+    Boxed += (nme.Byte    -> BoxedByte)
+    Boxed += (nme.Char    -> BoxedCharacter)
+    Boxed += (nme.Short   -> BoxedShort)
+    Boxed += (nme.Int     -> BoxedInteger)
+    Boxed += (nme.Long    -> BoxedLong)
+    Boxed += (nme.Float   -> BoxedFloat)
+    Boxed += (nme.Double  -> BoxedDouble)
   }
 
   private class MSILNames extends SymbolNames {
@@ -460,12 +488,14 @@ trait StdNames {
     final val ValueType     = newTermName("System.ValueType")
     final val Serializable  = nme.NOSYMBOL
     final val BeanProperty  = nme.NOSYMBOL
+    final val BooleanBeanProperty = nme.NOSYMBOL
     final val Delegate      = newTermName("System.MulticastDelegate")
     final val IOOBException = newTermName("System.IndexOutOfRangeException")
     final val Code          = nme.NOSYMBOL
     final val BoxedNumber   = newTermName("System.IConvertible")
     final val BoxedCharacter = newTermName("System.IConvertible")
     final val BoxedBoolean = newTermName("System.IConvertible")
+    final val MethodAsObject = nme.NOSYMBOL // TODO: is there something like Method in MSIL?
 
     Boxed += (nme.Boolean -> newTermName("System.Boolean"))
     Boxed += (nme.Byte    -> newTermName("System.Byte"))
@@ -480,17 +510,11 @@ trait StdNames {
   private class J2SENames extends JavaNames {
     final val Serializable  = newTermName("java.io.Serializable")
     final val BeanProperty  = newTermName("scala.reflect.BeanProperty")
+    final val BooleanBeanProperty  = newTermName("scala.reflect.BooleanBeanProperty")
     final val Code          = newTermName("scala.reflect.Code")
   }
 
-  private class CLDCNames extends JavaNames {
-    final val Serializable  = nme.NOSYMBOL
-    final val BeanProperty  = nme.NOSYMBOL
-    final val Code          = nme.NOSYMBOL
-  }
-
-  val sn: SymbolNames =
+  lazy val sn: SymbolNames =
     if (forMSIL) new MSILNames
-    else if (forCLDC) new CLDCNames
     else new J2SENames
 }

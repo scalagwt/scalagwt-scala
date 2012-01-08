@@ -1,8 +1,7 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Stephane Micheloud
  */
-//$Id$
 
 package scala.man1
 
@@ -75,28 +74,28 @@ object fsc extends Command {
 
       CodeSample(
       """> fsc -verbose -d /tmp test.scala
-        |...
+        |\&...
         |[Port number: 32834]
         |[Starting new Scala compile server instance]
         |[Classpath = ...]
         |[loaded directory path ... in 692ms]
-        |...
+        |\&...
         |[parsing test.scala]
-        |...
+        |\&...
         |[total in 943ms]
         |
         |> fsc -verbose -d /tmp test.scala
-        |...
+        |\&...
         |[Port number: 32834]
         |[parsing test.scala]
-        |...
+        |\&...
         |[total in 60ms]
         |
         |> fsc -verbose -d /tmp test.scala
-        |...
+        |\&...
         |[Port number: 32834]
         |[parsing test.scala]
-        |...
+        |\&...
         |[total in 42ms]
         |
         |> fsc -verbose -shutdown
@@ -112,6 +111,10 @@ object fsc extends Command {
         "for running the Scala code.  Arguments may be specified " &
         "as part of the environment variable; spaces, quotation marks, " &
         "etc., will be passed directly to the shell for expansion."),
+      Definition(
+        MBold("JAVA_HOME"),
+        "Specify JDK/JRE home directory. This directory is used to locate " &
+        "the " & MBold("java") & " command unless " & MBold("JAVACMD") & " variable set."),
       Definition(
         MBold("JAVA_OPTS"),
         SeqPara(

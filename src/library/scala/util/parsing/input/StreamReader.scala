@@ -1,16 +1,16 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id: $
 
 package scala.util.parsing.input
 
 import java.io.BufferedReader
+import scala.collection.immutable.PagedSeq
 
 /** An object to create a StreamReader from a <code>java.io.Reader</code>.
  *
@@ -21,59 +21,54 @@ import java.io.BufferedReader
  */
 object StreamReader {
   final val EofCh = '\032'
-  final val CR = '\015'
 
   def apply(in: java.io.Reader): StreamReader = {
-    val bin = new BufferedReader(in)
-    new StreamReader(bin, bin.readLine, 1, 1)
+    new StreamReader(PagedSeq.fromReader(in), 0, 1)
   }
 }
 
-/** A character array reader reads a stream of characters (keeping track of
- *  their positions) from an array.
+/** A StreamReader reads from a character sequence, typically created as a PagedSeq
+ *  from a java.io.Reader
  *
  *  NOTE:
  *  StreamReaders do not really fulfill the new contract for readers, which
  *  requires a `source' CharSequence representing the full input.
  *  Instead source is treated line by line.
- *  As a consequence, regex matching cannot extend beyond a single lines
+ *  As a consequence, regex matching cannot extend beyond a single line
  *  when a StreamReader are used for input.
  *
- * @param bin the underlying java.io.BufferedReader
- * @param sourceLine  the line at column `col' in the stream
- * @param line   the 1-based line number of the character returned by `first'
- * @param column the 1-based column number of the character returned by `first'
+ *  If you need to match regexes spanning several lines you should consider
+ *  class <code>PagedSeqReader</code> instead.
  *
- * @author Miles Sabin
+ *  @author Miles Sabin
+ *  @author Martin Odersky
  */
-sealed class StreamReader private (bin: BufferedReader, sourceLine: String, ln: Int, col: Int)
-extends Reader[Char] {
+sealed class StreamReader(seq: PagedSeq[Char], off: Int, lnum: Int) extends PagedSeqReader(seq, off) {
   import StreamReader._
 
-  def source: CharSequence = sourceLine
-  def offset: Int = col-1
+  override def rest: StreamReader =
+    if (off == seq.length) this
+    else if (seq(off) == '\n')
+      new StreamReader(seq.slice(off + 1), 0, lnum + 1)
+    else new StreamReader(seq, off + 1, lnum)
 
-  def first =
-    if (sourceLine == null)
-      EofCh
-    else if (col > sourceLine.length)
-      CR
+  private def nextEol = {
+    var i = off
+    while (i < seq.length && seq(i) != '\n' && seq(i) != EofCh) i += 1
+    i
+  }
+
+  override def drop(n: Int): StreamReader = {
+    val eolPos = nextEol
+    if (eolPos < off + n && eolPos < seq.length)
+      new StreamReader(seq.slice(eolPos + 1), 0, lnum + 1).drop(off + n - (eolPos + 1))
     else
-      sourceLine(col-1)
+      new StreamReader(seq, off + n, lnum)
+  }
 
-  def rest: StreamReader =
-    if (sourceLine == null)
-      this
-    else if (col > sourceLine.length)
-      new StreamReader(bin, bin.readLine, ln+1, 1)
-    else
-      new StreamReader(bin, sourceLine, ln, col+1)
-
-  def pos: Position = new Position {
-    	def line = ln
-      def column = col
-      def lineContents(lnum: Int) = sourceLine
-    }
-
-  def atEnd = (sourceLine == null)
+  override def pos: Position = new Position {
+    def line = lnum
+    def column = off + 1
+    def lineContents = seq.slice(0, nextEol).toString
+  }
 }

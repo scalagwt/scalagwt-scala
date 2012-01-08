@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="sabbus-pack">
+
+  <description>
+    SuperSabbus extension for packaging a distribution to Sbaz or other distribution methods. THIS FILE IS NOT STAND-ALONE AND SHOULD ONLY BE USED THROUGH ENTRY POINTS IN SUPERSABBUS.
+  </description>
+  
+<!-- ===========================================================================
+PROPERTIES
+============================================================================ -->
+  
+  <property name="sbaz.universe" value="http://www.scala-lang.org/downloads/packages"/>
+  
+<!-- ===========================================================================
+MAIN DISTRIBUTION PACKAGING
+============================================================================ -->
+  
+  <target name="pack-archives.start">
+    <mkdir dir="${dists.dir}/archives"/>
+  </target>
+  
+  <target name="pack-archives.tar" depends="pack-archives.start">
+    <tar destfile="${dists.dir}/archives/scala-${version.number}.tgz"
+         compression="gzip" longfile="gnu">
+      <tarfileset dir="${dist.dir}" prefix="scala-${version.number}" includes="bin/**" mode="755"/>
+      <tarfileset dir="${dist.dir}" prefix="scala-${version.number}" excludes="bin/**"/>
+    </tar>
+    <checksum file="${dists.dir}/archives/scala-${version.number}.tgz" fileext=".md5"/>
+  </target>
+  
+  <target name="pack-archives.zip" depends="pack-archives.tar">
+    <zip destfile="${dists.dir}/archives/scala-${version.number}.zip">
+      <zipfileset prefix="scala-${version.number}" dir="${dist.dir}"/>
+    </zip>
+    <checksum file="${dists.dir}/archives/scala-${version.number}.zip" fileext=".md5"/>
+  </target>
+
+  <target name="pack-devel-docs.tar" depends="pack-archives.zip">
+    <tar destfile="${dists.dir}/archives/scala-${version.number}-devel-docs.tgz"
+         compression="gzip" longfile="gnu">
+      <tarfileset dir="${dist.dir}/doc/scala-devel-docs" prefix="scala-${version.number}-devel-docs"/>
+    </tar>
+    <checksum file="${dists.dir}/archives/scala-${version.number}-devel-docs.tgz" fileext=".md5"/>
+  </target>
+  
+  <target name="pack-archives.src" depends="pack-devel-docs.tar">
+    <tar destfile="${dists.dir}/archives/scala-${version.number}-sources.tgz"
+         compression="gzip" longfile="gnu">
+      <tarfileset dir="${basedir}" prefix="scala-${version.number}-sources">
+        <exclude name="bin/**"/>
+        <exclude name="build/**"/>
+        <exclude name="debian/**"/>
+        <exclude name="dists/**"/>
+        <exclude name="logs/**"/>
+        <exclude name="sandbox/**"/>
+        <exclude name="test/partest"/>
+      </tarfileset>
+      <tarfileset dir="${basedir}" prefix="scala-${version.number}-sources" filemode="755">
+        <include name="test/partest"/>
+      </tarfileset>
+    </tar>
+    <checksum file="${dists.dir}/archives/scala-${version.number}-sources.tgz" fileext=".md5"/>
+  </target>
+  
+  <target name="pack-archives.done" depends="pack-archives.src"/>
+  
+<!-- ===========================================================================
+MAIN DISTRIBUTION SBAZ
+============================================================================ -->
+  
+  <target name="pack-sbaz.start">
+    <mkdir dir="${dists.dir}/sbaz"/>
+  </target>
+  
+  <target name="pack-sbaz.lib" depends="pack-sbaz.start">
+    <sbaz
+      file="${dists.dir}/sbaz/scala-library-${version.number}.sbp"
+      adfile="${dists.dir}/sbaz/scala-library-${version.number}.advert"
+      name="scala-library"
+      version="${version.number}"
+      desc="The Scala library. This is the minimal requirement to run any Scala program."
+      link="${sbaz.universe}/scala-library-${version.number}.sbp">
+      <libset dir="${dist.dir}/lib" includes="scala-library.jar,scala-dbc.jar,scala-swing.jar"/>
+      <srcset dir="${dist.dir}/src" includes="scala-library-src.jar,scala-dbc-src.jar,scala-swing-src.jar"/>
+      <looseset destination="doc">
+        <fileset dir="${dist.dir}/doc" includes="LICENSE,README"/>
+      </looseset>
+    </sbaz>
+  </target>
+  
+  <target name="pack-sbaz.comp" depends="pack-sbaz.lib">
+    <sbaz
+      file="${dists.dir}/sbaz/scala-devel-${version.number}.sbp"
+      adfile="${dists.dir}/sbaz/scala-devel-${version.number}.advert"
+      name="scala-devel"
+      version="${version.number}"
+      desc="The Scala developer tools. This contains everything that is required to write, test and document new Scala programs."
+      depends="scala-library"
+      link="${sbaz.universe}/scala-devel-${version.number}.sbp">
+      <binset
+          dir="${dist.dir}/bin"
+          includes="scala,scala.bat,scalac,scalac.bat,scaladoc,scaladoc.bat,fsc,fsc.bat"/>
+      <libset dir="${dist.dir}/lib" includes="scala-compiler.jar,jline.jar"/>
+      <miscset dir="${dist.dir}/misc/scala-devel"
+        includes="plugins/continuations.jar"/>
+      <manset dir="${dist.dir}/man" includes="**"/>
+      <srcset dir="${dist.dir}/src" includes="scala-compiler-src.jar"/>
+    </sbaz>
+  </target>
+
+  <target name="pack-sbaz.test" depends="pack-sbaz.comp">
+    <sbaz
+      file="${dists.dir}/sbaz/scala-test-${version.number}.sbp"
+      adfile="${dists.dir}/sbaz/scala-test-${version.number}.advert"
+      name="scala-test"
+      version="${version.number}"
+      desc="The Scala test package contains everything needed to test Scala."
+      link="${sbaz.universe}/scala-test-${version.number}.sbp">
+      <binset dir="${basedir}/test"
+        includes="clitest,diff/diff.*,diff/lib*.dll,partest,partest.bat"/>
+      <miscset dir="${basedir}/test"
+        includes="files/**/*.args,files/**/*.check,files/**/*.dll,files/**/*.jar,files/**/*.java,files/**/*.scala,files/**/*.flags,files/cli/**/*.check.*,files/jvm/*.so,files/shootout/*.javaopts,files/shootout/*.runner,files/shootout/*.txt,files/**/*.test"/>
+        <!-- <srcset dir="${dist.dir}/src" includes="scala-partest-src.jar"/> -->
+      <libset dir="${dist.dir}/lib" includes="scala-partest.jar"/>
+      <libset dir="${lib.dir}" includes="scalacheck.jar"/>
+    </sbaz>
+  </target>
+
+  <target name="pack-sbaz.scalap" depends="pack-sbaz.test">
+    <sbaz
+      file="${dists.dir}/sbaz/scalap-${version.number}.sbp"
+      adfile="${dists.dir}/sbaz/scalap-${version.number}.advert"
+      name="scalap"
+      version="${version.number}"
+      desc="The scalap package contains the Scala classfile decoder."
+      link="${sbaz.universe}/scalap-${version.number}.sbp">
+      <binset dir="${dist.dir}/bin"
+        includes="scalap,scalap.bat"/>
+      <libset dir="${dist.dir}/lib" includes="scalap.jar"/>
+    </sbaz>
+  </target>
+  
+  <target name="pack-sbaz.doc" depends="pack-sbaz.scalap">
+    <sbaz
+      file="${dists.dir}/sbaz/scala-devel-docs-${version.number}.sbp"
+      adfile="${dists.dir}/sbaz/scala-devel-docs-${version.number}.advert"
+      name="scala-devel-docs"
+      version="${version.number}"
+      desc="The Scala developer documentation. This contains all developer documentation."
+      link="${sbaz.universe}/scala-devel-docs-${version.number}.sbp">
+      <docset dir="${dist.dir}/doc/scala-devel-docs"/>
+    </sbaz>
+  </target>
+
+  <target name="pack-sbaz.all" depends="pack-sbaz.doc">
+    <sbaz
+      file="${dists.dir}/sbaz/scala-${version.number}.sbp"
+      adfile="${dists.dir}/sbaz/scala-${version.number}.advert"
+      name="scala"
+      version="${version.number}"
+      desc="The base Scala package that contains everything needed to start using Scala."
+      depends="scala-library,scala-devel"
+      link="${sbaz.universe}/scala-${version.number}.sbp"/>
+  </target>
+
+  
+  <target name="pack-sbaz.done" depends="pack-sbaz.all"/>
+
+  <target name="pack-maven.start">
+    <mkdir dir="${dists.dir}/maven/${version.number}"/>
+  </target>
+
+  <target name="pack-maven.libs" depends="pack-maven.start">
+    <macrodef name="mvn-copy-lib">
+      <attribute name="mvn.artifact.name"/>
+      <sequential>
+        <mkdir dir="${dists.dir}/maven/${version.number}/@{mvn.artifact.name}"/>
+        <copy todir="${dists.dir}/maven/${version.number}/@{mvn.artifact.name}">
+          <fileset dir="${dist.dir}/lib/">
+            <filename name="@{mvn.artifact.name}.jar"/>
+          </fileset>
+          <fileset dir="${src.dir}/build/maven/">
+            <filename name="@{mvn.artifact.name}-pom.xml"/>
+          </fileset>
+          <fileset dir="${dist.dir}/src/">
+            <filename name="@{mvn.artifact.name}-src.jar"/>
+          </fileset>
+        </copy>
+      </sequential>
+    </macrodef>
+    <mvn-copy-lib mvn.artifact.name="scala-library"/>
+    <mvn-copy-lib mvn.artifact.name="scala-compiler"/>
+    <mvn-copy-lib mvn.artifact.name="scala-dbc"/>
+    <mvn-copy-lib mvn.artifact.name="scala-swing"/>
+    <mvn-copy-lib mvn.artifact.name="scala-partest"/>
+    <mvn-copy-lib mvn.artifact.name="scalap"/>
+  </target>
+
+  <target name="pack-maven.plugins" depends="pack-maven.start">
+    <macrodef name="mvn-copy-plugin">
+      <attribute name="mvn.artifact.name"/>
+      <sequential>
+        <mkdir dir="${dists.dir}/maven/${version.number}/plugins/@{mvn.artifact.name}"/>
+        <copy todir="${dists.dir}/maven/${version.number}/plugins/@{mvn.artifact.name}">
+          <fileset dir="${dist.dir}/misc/scala-devel/plugins/">
+            <filename name="@{mvn.artifact.name}.jar"/>
+          </fileset>
+          <fileset dir="${src.dir}/build/maven/">
+            <filename name="@{mvn.artifact.name}-plugin-pom.xml"/>
+          </fileset>
+        </copy>
+      </sequential>
+    </macrodef>
+    <mvn-copy-plugin mvn.artifact.name="continuations"/>
+  </target>
+
+  <target name="pack-maven.docs" depends="pack-maven.libs, pack-maven.plugins">
+    <jar destfile="${dists.dir}/maven/${version.number}/scala-library/scala-library-docs.jar"
+         basedir="${build-docs.dir}/library">
+      <include name="**/*"/>
+    </jar>
+    <!-- scala-swing api is included in main library api
+    <jar destfile="${dists.dir}/maven/${version.number}/scala-swing/scala-swing-docs.jar"
+         basedir="${build-docs.dir}/swing">
+      <include name="**/*"/>
+    </jar>
+    -->
+  </target>
+
+  <target name="pack-maven.latest.unix" depends="pack-maven.docs" unless="os.win">
+    <symlink link="${dists.dir}/maven/latest"
+             resource="${dists.dir}/maven/${version.number}"
+             overwrite="yes"/>
+  </target>
+
+  <target name="pack-maven.latest.win" depends="pack-maven.docs" if="os.win">
+    <copy todir="${dists.dir}/maven/latest">
+      <fileset dir="${dists.dir}/maven/${version.number}"/>
+    </copy>
+  </target>
+
+  <target name="pack-maven.scripts" depends="pack-maven.latest.unix,pack-maven.latest.win">
+    <copy todir="${dists.dir}/maven/${version.number}"
+          file="${lib-ant.dir}/maven-ant-tasks-2.0.9.jar"/>
+    <copy tofile="${dists.dir}/maven/${version.number}/build.xml"
+          file="${src.dir}/build/maven/maven-deploy.xml"/>
+    <!-- export properties for use when deploying -->
+    <property name="maven.snapshot.version.number"
+              value="${version.major}.${version.minor}.${version.patch}-SNAPSHOT"/>
+    <echoproperties destfile="${dists.dir}/maven/${version.number}/build.properties"/>
+  </target>
+
+  <target name="pack-maven.done" depends="pack-maven.scripts"/>
+
+<!-- ===========================================================================
+JAVA FOUR DISTRIBUTION PACKAGING
+============================================================================ -->
+  
+  <target name="fourpack-archives.start">
+    <mkdir dir="${dists.dir}/archives"/>
+  </target>
+  
+  <target name="fourpack-archives.tar" depends="fourpack-archives.start">
+    <tar destfile="${dists.dir}/archives/scala-${version.number}-jvm4.tgz"
+         compression="gzip" longfile="gnu">
+      <tarfileset dir="${dists.dir}/scala-jvm4-${version.number}" prefix="scala-${version.number}-jvm4"
+        includes="bin/**" mode="755"/>
+      <tarfileset dir="${dists.dir}/scala-jvm4-${version.number}" prefix="scala-${version.number}-jvm4"
+        excludes="bin/**"/>
+    </tar>
+    <checksum file="${dists.dir}/archives/scala-${version.number}-jvm4.tgz" fileext=".md5"/>
+  </target>
+  
+  <target name="fourpack-archives.zip" depends="fourpack-archives.tar">
+    <zip destfile="${dists.dir}/archives/scala-${version.number}-jvm4.zip">
+      <zipfileset dir="${dists.dir}/scala-jvm4-${version.number}" prefix="scala-${version.number}-jvm4"/>
+    </zip>
+    <checksum file="${dists.dir}/archives/scala-${version.number}-jvm4.zip" fileext=".md5"/>
+  </target>
+  
+  <target name="fourpack-archives.done" depends="fourpack-archives.zip"/>
+
+<!-- ===========================================================================
+MISCELLANEOUS
+============================================================================ -->
+
+  <target name="pack-all.done" depends="pack-archives.done, pack-sbaz.done, pack-maven.done"/>
+
+  <target name="fourpack-all.done" depends="fourpack-archives.done"/>
+
+<!-- ===========================================================================
+MISCELLANEOUS
+============================================================================ -->
+
+  <target name="graph.init">
+    <echo message="${basedir}/lib/ant/vizant.jar"/>
+    <taskdef name="vizant" classname="vizant.Vizant" classpath="${basedir}/../../lib/ant/vizant.jar"/>
+  </target>
+  
+  <target name="graph.pack" depends="graph.init">
+    <vizant antfile="${ant.file}" outfile="${ant.project.name}.dot"/>
+  </target>
+  
+</project>

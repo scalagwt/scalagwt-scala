@@ -1,60 +1,77 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-package scala.collection.immutable
 
-trait SortedMap[A,+B] extends Map[A,B] with collection.SortedMap[A,B] {
+package scala.collection
+package immutable
 
-  override def rangeImpl(from: Option[A], until: Option[A]): SortedMap[A,B]
+import generic._
+import mutable.Builder
+import annotation.unchecked.uncheckedVariance
 
-  override def from(from: A) = rangeImpl(Some(from), None)
+/** A map whose keys are sorted.
+ *
+ *  @tparam A     the type of the keys contained in this sorted map.
+ *  @tparam B     the type of the values associated with the keys.
+ *
+ *  @author Sean McDirmid
+ *  @author Martin Odersky
+ *  @version 2.8
+ *  @since   2.4
+ *  @define Coll immutable.SortedMap
+ *  @define coll immutable sorted map
+ */
+trait SortedMap[A, +B] extends Map[A, B]
+                         with scala.collection.SortedMap[A, B]
+                         with MapLike[A, B, SortedMap[A, B]]
+                         with SortedMapLike[A, B, SortedMap[A, B]] {
 
-  override def until(until: A) = rangeImpl(None, Some(until))
+  override protected[this] def newBuilder : Builder[(A, B), SortedMap[A, B]] =
+    SortedMap.newBuilder[A, B]
 
-  override def range(from: A, until: A) = rangeImpl(Some(from),Some(until))
+  override def empty: SortedMap[A, B] = SortedMap.empty
 
-  override def empty[C]: SortedMap[A, C]
+  override def updated [B1 >: B](key: A, value: B1): SortedMap[A, B1] = this + ((key, value))
 
-  override def update [B1 >: B] (key: A, value: B1): SortedMap[A, B1]
+  /** Add a key/value pair to this map.
+   *  @param    key the key
+   *  @param    value the value
+   *  @return   A new map with the new binding added to this map
+   *  @note     needs to be overridden in subclasses
+   */
+  def + [B1 >: B](kv: (A, B1)): SortedMap[A, B1] = throw new AbstractMethodError("SortedMap.+")
 
-  override def + [B1 >: B] (kv: Pair[A, B1]): SortedMap[A, B1] = update(kv._1, kv._2)
+  /** Adds two or more elements to this collection and returns
+   *  a new collection.
+   *
+   *  @param elem1 the first element to add.
+   *  @param elem2 the second element to add.
+   *  @param elems the remaining elements to add.
+   */
+  override def + [B1 >: B] (elem1: (A, B1), elem2: (A, B1), elems: (A, B1) *): SortedMap[A, B1] =
+    this + elem1 + elem2 ++ elems
 
-  override def + [B1 >: B] (kv1: Pair[A, B1], kv2: Pair[A, B1], kvs: Pair[A, B1]*): SortedMap[A, B1] =
-    this + kv1 + kv2 ++ kvs
+  /** Adds a number of elements provided by a traversable object
+   *  and returns a new collection with the added elements.
+   *
+   *  @param elems     the traversable object.
+   */
+  override def ++[B1 >: B](xs: TraversableOnce[(A, B1)]): SortedMap[A, B1] =
+    ((repr: SortedMap[A, B1]) /: xs) (_ + _)
+}
 
-  override def ++ [B1 >: B] (kvs: Iterable[Pair[A, B1]]): SortedMap[A, B1] =
-    ((this: SortedMap[A, B1]) /: kvs) ((m, kv) => m + kv)
-
-  override def ++ [B1 >: B] (kvs: Iterator[Pair[A, B1]]): SortedMap[A, B1] =
-    ((this: SortedMap[A, B1]) /: kvs) ((m, kv) => m + kv)
-
-  override def - (key: A): SortedMap[A, B]
-
-  override def - (key1: A, key2: A, keys: A*): SortedMap[A, B] =
-    this - key1 - key2 -- keys
-
-  override def -- (keys: Iterable[A]): SortedMap[A, B] = this -- keys.elements
-
-  override def -- (keys: Iterator[A]): SortedMap[A, B] =
-    (this /: keys) ((m, key) => m - key)
-
-  override def transform[C](f: (A, B) => C): SortedMap[A, C] = {
-    var res = empty[C]
-    foreach { case (key, value) => res = res.update(key, f(key, value)) }
-    res
-  }
-  override def filter(p: Pair[A, B] => Boolean): SortedMap[A, B] = {
-    var res = this
-    foreach {
-      case kv @ (key, _) => if (!p(kv)) { res = res - key }
-    }
-    res
-  }
+/** $factoryInfo
+ *  @define Coll immutable.SortedMap
+ *  @define coll immutable sorted map
+ */
+object SortedMap extends ImmutableSortedMapFactory[SortedMap] {
+  /** $sortedMapCanBuildFromInfo */
+  implicit def canBuildFrom[A, B](implicit ord: Ordering[A]): CanBuildFrom[Coll, (A, B), SortedMap[A, B]] = new SortedMapCanBuildFrom[A, B]
+  def empty[A, B](implicit ord: Ordering[A]): SortedMap[A, B] = TreeMap.empty[A, B]
 }

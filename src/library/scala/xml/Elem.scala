@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -19,16 +17,17 @@ package scala.xml
  * Copyright 2008 Google Inc. All Rights Reserved.
  * @author Burak Emir <bqe@google.com>
  */
-object Elem {
-
+object Elem
+{
   def apply(prefix: String,label: String, attributes: MetaData, scope: NamespaceBinding, child: Node*) =
     new Elem(prefix,label,attributes,scope,child:_*)
 
-  def unapplySeq(n:Node) = if (n.isInstanceOf[SpecialNode] || n.isInstanceOf[Group]) None else
-    Some(Tuple5(n.prefix, n.label, n.attributes, n.scope, n.child))
-
-
+  def unapplySeq(n: Node) = n match {
+    case _: SpecialNode | _: Group  => None
+    case _                          => Some((n.prefix, n.label, n.attributes, n.scope, n.child))
+  }
 }
+
 /** The case class <code>Elem</code> extends the <code>Node</code> class,
  *  providing an immutable data object representing an XML element.
  *
@@ -41,27 +40,29 @@ object Elem {
  * Copyright 2008 Google Inc. All Rights Reserved.
  * @author Burak Emir <bqe@google.com>
  */
-// "val" is redundant for non-overriding arguments
-@serializable class Elem(override val prefix: String,
-                val label: String,
-                override val attributes: MetaData,
-                override val scope: NamespaceBinding,
-                val child: Node*) extends Node {
+@serializable
+class Elem(
+  override val prefix: String,
+  val label: String,
+  override val attributes: MetaData,
+  override val scope: NamespaceBinding,
+  val child: Node*)
+extends Node
+{
+  final override def doCollectNamespaces = true
+  final override def doTransform         = true
 
-  if ((null != prefix) && 0 == prefix.length())
+  if (prefix == "")
     throw new IllegalArgumentException("prefix of zero length, use null instead")
 
-  if (null == scope)
-    throw new IllegalArgumentException("scope is null, try xml.TopScope for empty scope")
+  if (scope == null)
+    throw new IllegalArgumentException("scope is null, use xml.TopScope for empty scope")
 
   //@todo: copy the children,
   //  setting namespace scope if necessary
   //  cleaning adjacent text nodes if necessary
 
-  final override def typeTag$: Int = 0
-
-  override def hashCode(): Int =
-    Utility.hashCode(prefix, label, attributes.hashCode(), scope.hashCode(), child)
+  override def basisForHashCode: Seq[Any] = prefix :: label :: attributes :: child.toList
 
   /** Returns a new element with updated attributes, resolving namespace uris from this element's scope.
    *  See MetaData.update for details.
@@ -69,21 +70,23 @@ object Elem {
    *  @return a new symbol with updated attributes
    */
   final def %(updates: MetaData): Elem =
-    Elem(prefix,
-         label,
-         MetaData.update(attributes, scope, updates),
-         scope,
-         child:_*)
+    copy(attributes = MetaData.update(attributes, scope, updates))
 
-   /** Returns concatenation of <code>text(n)</code> for each child
-    *  <code>n</code>.
-    */
-   override def text = {
-     val sb = new StringBuilder()
-     val it = child.elements
-     while (it.hasNext)
-       sb.append(it.next.text)
-     sb.toString()
-   }
+  /** Returns a copy of this element with any supplied arguments replacing
+   *  this element's value for that field.
+   *
+   *  @return a new symbol with updated attributes
+   */
+  def copy(
+    prefix: String = this.prefix,
+    label: String = this.label,
+    attributes: MetaData = this.attributes,
+    scope: NamespaceBinding = this.scope,
+    child: Seq[Node] = this.child.toSeq
+  ): Elem = Elem(prefix, label, attributes, scope, child: _*)
 
+  /** Returns concatenation of <code>text(n)</code> for each child
+   *  <code>n</code>.
+   */
+  override def text = child map (_.text) mkString
 }

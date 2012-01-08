@@ -1,10 +1,10 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.transform
+package scala.tools.nsc
+package transform
 
 /** <p>
  *    A base class for transforms.
@@ -16,7 +16,7 @@ package scala.tools.nsc.transform
  *  @author Martin Odersky
  *  @version 1.0
  */
-abstract class Transform extends SubComponent {
+trait Transform extends SubComponent {
 
   /** The transformer factory */
   protected def newTransformer(unit: global.CompilationUnit): global.Transformer

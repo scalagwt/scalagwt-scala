@@ -1,90 +1,75 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://www.scala-lang.org/           **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-
-package scala.xml.dtd
-
+package scala.xml
+package dtd
 
 /** an ExternalIDs - either PublicID or SystemID
  *
- * @author Burak Emir
- * @param  target target name of this PI
- * @param  text   text contained in this node, may not contain "?>"
-**/
+ *  @author Burak Emir
+ */
+abstract class ExternalID extends parsing.TokenTests
+{
+  def quoted(s: String) = {
+    val c = if (s contains '"') '\'' else '"'
+    c + s + c
+  }
 
-abstract class ExternalID  {
+  // public != null: PUBLIC " " publicLiteral " " [systemLiteral]
+  // public == null: SYSTEM " " systemLiteral
+  override def toString(): String = {
+    lazy val quotedSystemLiteral = quoted(systemId)
+    lazy val quotedPublicLiteral = quoted(publicId)
 
-  /** returns "PUBLIC "+publicLiteral+" SYSTEM "+systemLiteral */
-  override def toString(): String
-
-  /** returns "PUBLIC "+publicLiteral+" SYSTEM "+systemLiteral */
-   def toString(sb: StringBuilder): StringBuilder
+    if (publicId == null) "SYSTEM " + quotedSystemLiteral
+    else "PUBLIC " + quotedPublicLiteral +
+      (if (systemId == null) "" else " " + quotedSystemLiteral)
+  }
+  def buildString(sb: StringBuilder): StringBuilder =
+    sb.append(this.toString())
 
   def systemId: String
-
+  def publicId: String
 }
 
 /** a system identifier
  *
- * @author Burak Emir
- * @param  systemLiteral the system identifier literal
-**/
+ *  @author Burak Emir
+ *  @param  systemLiteral the system identifier literal
+ */
+case class SystemID(systemId: String) extends ExternalID {
+  val publicId = null
 
-case class SystemID( systemId:String ) extends ExternalID with parsing.TokenTests{
-
-  if( !checkSysID(systemId) )
-    throw new IllegalArgumentException(
-      "can't use both \" and ' in systemLiteral"
-    )
-  /** returns " SYSTEM "+systemLiteral */
-  override def toString() =
-    Utility.systemLiteralToString(systemId)
-
-  override def toString(sb: StringBuilder): StringBuilder =
-    Utility.systemLiteralToString(sb, systemId)
+  if (!checkSysID(systemId))
+    throw new IllegalArgumentException("can't use both \" and ' in systemId")
 }
 
 
-/** a public identifier
+/** a public identifier (see http://www.w3.org/QA/2002/04/valid-dtd-list.html).
  *
- * @author Burak Emir
- * @param  publicLiteral the public identifier literal
- * @param  systemLiteral (can be null for notation pubIDs) the system identifier literal
-**/
-case class PublicID(publicId: String, systemId: String)
-extends ExternalID with parsing.TokenTests {
+ *  @author Burak Emir
+ *  @param  publicLiteral the public identifier literal
+ *  @param  systemLiteral (can be null for notation pubIDs) the system identifier literal
+ */
+case class PublicID(publicId: String, systemId: String) extends ExternalID {
+  if (!checkPubID(publicId))
+    throw new IllegalArgumentException("publicId must consist of PubidChars")
 
-  if( !checkPubID( publicId ))
-    throw new IllegalArgumentException(
-      "publicId must consist of PubidChars"
-    )
-  if( (systemId ne null) && !checkSysID( systemId ) )
-    throw new IllegalArgumentException(
-      "can't use both \" and ' in systemId"
-    )
+  if (systemId != null && !checkSysID(systemId))
+    throw new IllegalArgumentException("can't use both \" and ' in systemId")
 
   /** the constant "#PI" */
-  def label    = "#PI"
+  def label = "#PI"
 
   /** always empty */
   def attribute = Node.NoAttributes
 
   /** always empty */
   def child = Nil
-
-  /** appends "PUBLIC "+publicId+" SYSTEM "+systemId to argument */
-  override def toString(sb: StringBuilder): StringBuilder = {
-    Utility.publicLiteralToString( sb, publicId ).append(' ')
-    if(systemId ne null)
-      Utility.systemLiteralToString( sb, systemId )
-    else
-      sb
-  }
 }

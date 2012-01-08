@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -17,48 +15,24 @@ package scala.xml
  * @param  target target name of this PI
  * @param  text   text contained in this node, may not contain "?>"
  */
-case class ProcInstr(target:String, proctext:String) extends SpecialNode {
-
+case class ProcInstr(target: String, proctext: String) extends SpecialNode
+{
   if (!Utility.isName(target))
     throw new IllegalArgumentException(target+" must be an XML Name")
-  else if (text.indexOf("?>") != -1)
+  if (proctext contains "?>")
     throw new IllegalArgumentException(proctext+" may not contain \"?>\"")
+  if (target.toLowerCase == "xml")
+    throw new IllegalArgumentException(target+" is reserved")
 
-  final override def typeTag$: Int = -2
+  final override def doCollectNamespaces = false
+  final override def doTransform         = false
 
-  (target: Seq[Char]) match {
-    case Seq('X'|'x','M'|'m','L'|'l') =>
-      throw new IllegalArgumentException(target+" is reserved")
-    case _ =>
-  }
-
-  /** structural equality */
-  override def equals(x: Any): Boolean = x match {
-    case ProcInstr(x, y) => x.equals(target) && y.equals(proctext)
-    case _ => false
-  }
-
-  /** the constant "#PI" */
-  final def label = "#PI"
-
-  /** hashcode for this PI */
-  override def hashCode() = target.hashCode() * 7 + proctext.hashCode()
-
-
+  final def label   = "#PI"
   override def text = ""
 
   /** appends &quot;&lt;?&quot; target (&quot; &quot;+text)?+&quot;?&gt;&quot;
    *  to this stringbuffer.
    */
-  override def toString(sb: StringBuilder) = {
-    sb
-    .append("<?")
-    .append(target);
-    if (proctext.length() > 0) {
-      sb
-      .append(' ')
-      .append(proctext);
-    }
-    sb.append("?>")
-  }
+  override def buildString(sb: StringBuilder) =
+    sb append "<?%s%s?>".format(target, (if (proctext == "") "" else " " + proctext))
 }

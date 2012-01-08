@@ -1,185 +1,98 @@
 /* NSC -- new Scala compiler
- * Copyright 2006-2007 LAMP/EPFL
+ * Copyright 2006-2010 LAMP/EPFL
  * @author  Lex Spoon
  */
 
-// $Id$
 
 package scala.tools.nsc
 
-import java.io.File
+import java.io.IOException
 import java.lang.{ClassNotFoundException, NoSuchMethodException}
 import java.lang.reflect.InvocationTargetException
-import java.net.URL
+import java.net.{ URL, MalformedURLException }
+import scala.tools.util.PathResolver
 
-import util.ClassPath
+import io.{ File, Process }
+import util.{ ClassPath, ScalaClassLoader, waitingForThreads }
+import Properties.{ versionString, copyrightString }
 
 /** An object that runs Scala code.  It has three possible
   * sources for the code to run: pre-compiled code, a script file,
   * or interactive entry.
   */
 object MainGenericRunner {
-  /** Append jars found in ${scala.home}/lib to
-   *  a specified classpath.  Also append "." if the
-   *  input classpath is empty; otherwise do not.
-   *
-   *  @param  classpath
-   *  @return ...
-   */
-  private def addClasspathExtras(classpath: String): String = {
-    val scalaHome = Properties.scalaHome
-
-    val extraClassPath =
-      if (scalaHome eq null)
-        ""
-      else {
-        val libdir = new File(new File(scalaHome), "lib")
-        if (!libdir.exists || libdir.isFile)
-          return classpath
-
-        val filesInLib = libdir.listFiles
-        val jarsInLib =
-          filesInLib.filter(f =>
-            f.isFile && f.getName.endsWith(".jar"))
-
-        jarsInLib.mkString("", File.pathSeparator, "")
-      }
-
-    if (classpath == "")
-      extraClassPath + File.pathSeparator + "."
-    else
-      classpath + File.pathSeparator + extraClassPath
-  }
-
   def main(args: Array[String]) {
-    def error(str: String) = Console.println(str)
-    val command = new GenericRunnerCommand(args.toList, error)
+    def errorFn(str: String) = Console println str
+    def exitSuccess: Nothing = exit(0)
+    def exitFailure(msg: Any = null): Nothing = {
+      if (msg != null) errorFn(msg.toString)
+      exit(1)
+    }
+    def exitCond(b: Boolean): Nothing = if (b) exitSuccess else exitFailure(null)
 
-    val settings = command.settings
-    def sampleCompiler = new Global(settings)
+    val command = new GenericRunnerCommand(args.toList, errorFn _)
+    import command.settings
+    def sampleCompiler = new Global(settings)   // def so its not created unless needed
 
-    if (!command.ok) {
-      println(command.usageMsg)
-      println(sampleCompiler.pluginOptionsHelp)
-      return
+    if (!command.ok)                      return errorFn("%s\n%s".format(command.usageMsg, sampleCompiler.pluginOptionsHelp))
+    else if (settings.version.value)      return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
+    else if (command.shouldStopWithInfo)  return errorFn(command getInfoMessage sampleCompiler)
+
+    def isE   = !settings.execute.isDefault
+    def dashe = settings.execute.value
+
+    def isI   = !settings.loadfiles.isDefault
+    def dashi = settings.loadfiles.value
+
+    def combinedCode  = {
+      val files   = if (isI) dashi map (file => File(file).slurp()) else Nil
+      val str     = if (isE) List(dashe) else Nil
+
+      files ++ str mkString "\n\n"
     }
 
-    settings.classpath.value =
-      addClasspathExtras(settings.classpath.value)
+    val classpath: List[URL] = new PathResolver(settings) asURLs
 
-    settings.defines.applyToCurrentJVM
+    /** Was code given in a -e argument? */
+    if (isE) {
+      /** If a -i argument was also given, we want to execute the code after the
+       *  files have been included, so they are read into strings and prepended to
+       *  the code given in -e.  The -i option is documented to only make sense
+       *  interactively so this is a pretty reasonable assumption.
+       *
+       *  This all needs a rewrite though.
+       */
+      val fullArgs = command.thingToRun.toList ::: command.arguments
 
-    if (settings.version.value) {
-      Console.println(
-        "Scala code runner " +
-        Properties.versionString + " -- " +
-        Properties.copyrightString)
-      return
+      exitCond(ScriptRunner.runCommand(settings, combinedCode, fullArgs))
     }
-
-
-    if (settings.help.value ||settings.Xhelp.value) {
-      if (command.settings.help.value) {
-	println(command.usageMsg)
-	println(sampleCompiler.pluginOptionsHelp)
-      }
-
-      if (settings.Xhelp.value)
-	println(command.xusageMsg)
-
-      return
-    }
-
-
-    if (settings.showPhases.value) {
-      println(sampleCompiler.phaseDescriptions)
-      return
-    }
-
-    if (settings.showPlugins.value) {
-      println(sampleCompiler.pluginDescriptions)
-      return
-    }
-
-    def fileToURL(f: File): Option[URL] =
-      try { Some(f.toURL) }
-      catch { case e => Console.println(e); None }
-
-    def paths(str: String): List[URL] =
-      for (
-        file <- ClassPath.expandPath(str) map (new File(_)) if file.exists;
-        val url = fileToURL(file); if !url.isEmpty
-      ) yield url.get
-
-    def jars(dirs: String): List[URL] =
-      for (
-        libdir <- ClassPath.expandPath(dirs) map (new File(_)) if libdir.isDirectory;
-        jarfile <- libdir.listFiles if jarfile.isFile && jarfile.getName.endsWith(".jar");
-        val url = fileToURL(jarfile); if !url.isEmpty
-      ) yield url.get
-
-    def specToURL(spec: String): Option[URL] =
-      try { Some(new URL(spec)) }
-      catch { case e => Console.println(e); None }
-
-    def urls(specs: String): List[URL] =
-      if (specs == null || specs.length == 0) Nil
-      else for (
-        spec <- specs.split(" ").toList;
-        val url = specToURL(spec); if !url.isEmpty
-      ) yield url.get
-
-    val classpath: List[URL] =
-      paths(settings.bootclasspath.value) :::
-      paths(settings.classpath.value) :::
-      jars(settings.extdirs.value) :::
-      urls(settings.Xcodebase.value)
-
-    command.thingToRun match {
-      case _ if settings.execute.value != "" =>
-        val fullArgs =
-	  command.thingToRun.toList ::: command.arguments
-        ScriptRunner.runCommand(settings,
-				settings.execute.value,
-				fullArgs)
-
-      case None =>
-        (new InterpreterLoop).main(settings)
+    else command.thingToRun match {
+      case None             =>
+        // Questionably, we start the interpreter when there are no arguments.
+        new InterpreterLoop main settings
 
       case Some(thingToRun) =>
         val isObjectName =
           settings.howtorun.value match {
             case "object" => true
             case "script" => false
-            case "guess" =>
-              ObjectRunner.classExists(classpath, thingToRun)
+            case "guess"  => ScalaClassLoader.classExists(classpath, thingToRun)
           }
 
-        if (isObjectName) {
-
-          try {
-            ObjectRunner.run(classpath, thingToRun, command.arguments)
-          } catch {
-            case e: ClassNotFoundException =>
-              Console.println(e)
-              exit(1)
-            case e: NoSuchMethodException =>
-              Console.println(e)
-              exit(1)
+        if (isObjectName)
+          try ObjectRunner.run(classpath, thingToRun, command.arguments)
+          catch {
+            case e @ (_: ClassNotFoundException | _: NoSuchMethodException) => exitFailure(e)
             case e: InvocationTargetException =>
               e.getCause.printStackTrace
-              exit(1)
+              exitFailure()
           }
-
-        } else {
-          try {
-            ScriptRunner.runScript(settings, thingToRun, command.arguments)
-          } catch {
-            case e: SecurityException =>
-              Console.println(e)
-              exit(1)
+        else
+          try exitCond(ScriptRunner.runScript(settings, thingToRun, command.arguments))
+          catch {
+            case e: IOException       => exitFailure(e.getMessage)
+            case e: SecurityException => exitFailure(e)
           }
-        }
     }
   }
 }

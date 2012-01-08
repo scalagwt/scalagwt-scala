@@ -1,48 +1,60 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/tPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
 
-/** <code>History[A, B]</code> objects may subscribe to events of
- *  type <code>A</code> published by an object of type <code>B</code>.
+/** `History[A, B]` objects may subscribe to events of
+ *  type `A` published by an object of type `B`.
  *  The history subscriber object records all published events
- *  up to maximum number of <code>maxHistory</code> events.
+ *  up to maximum number of `maxHistory` events.
  *
  *  @author  Matthias Zenger
  *  @version 1.0, 08/07/2003
+ *  @since   1
+ *
+ *  @tparam Evt   Type of events.
+ *  @tparam Pub   Type of publishers.
  */
 @serializable
-class History[A, B] extends AnyRef with Subscriber[A, B] with Collection[(B, A)] {
-
-  protected val log: Queue[(B, A)] = new Queue[(B, A)]
-
+@SerialVersionUID(5219213543849892588L)
+class History[Evt, Pub] extends Subscriber[Evt, Pub] with Iterable[(Pub, Evt)]
+{
+  protected val log: Queue[(Pub, Evt)] = new Queue
   val maxHistory: Int = 1000
 
-  /**
-   *  @param pub   ...
-   *  @param event ...
+  /** Notifies this listener with an event by enqueuing it in the log.
+   *
+   *  @param pub   the publisher.
+   *  @param event the event.
    */
-  def notify(pub: B, event: A): Unit = {
-    if (log.length >= maxHistory) {
-      val old = log.dequeue;
-    }
+  def notify(pub: Pub, event: Evt) {
+    if (log.length >= maxHistory)
+      log.dequeue
+
     log.enqueue((pub, event))
   }
 
-  def elements: Iterator[(B, A)] = log.elements
-
-  def events: Iterator[A] = log.elements.map { case (_, e) => e }
-
   override def size: Int = log.length
+  def iterator: Iterator[(Pub, Evt)] = log.iterator
+  def events: Iterator[Evt] = log.iterator map (_._2)
 
-  def clear(): Unit = log.clear
+  def clear() { log.clear }
+
+  /** Checks if two history objects are structurally identical.
+   *
+   *  @return true, iff both history objects contain the same sequence of elements.
+   */
+  override def equals(obj: Any): Boolean = obj match {
+    case that: History[_, _] => this.log equals that.log
+    case _                   => false
+  }
 }

@@ -1,15 +1,20 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
 package scala.tools.nsc
 
 import java.io.File
+import File.pathSeparator
 
+import scala.concurrent.SyncVar
+
+import scala.tools.nsc.interactive.{ RefinedBuildManager, SimpleBuildManager }
+import scala.tools.nsc.io.AbstractFile
 import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
-import scala.tools.nsc.util.FakePos //{Position}
+import scala.tools.nsc.util.{ BatchSourceFile, FakePos } //{Position}
+import Properties.{ versionString, copyrightString, residentPromptString, msilLibPath }
 
 /** The main class for NSC, a compiler for the programming
  *  language Scala.
@@ -17,10 +22,10 @@ import scala.tools.nsc.util.FakePos //{Position}
 object Main extends AnyRef with EvalLoop {
 
   val versionMsg = "Scala compiler " +
-    Properties.versionString + " -- " +
-    Properties.copyrightString
+    versionString + " -- " +
+    copyrightString
 
-  val prompt = Properties.residentPromptString
+  val prompt = residentPromptString
 
   var reporter: ConsoleReporter = _
 
@@ -34,62 +39,81 @@ object Main extends AnyRef with EvalLoop {
 
   def resident(compiler: Global) {
     loop { line =>
-      val args = List.fromString(line, ' ')
-      val command = new CompilerCommand(args, new Settings(error), error, true)
-      (new compiler.Run) compile command.files
+      val args = line.split(' ').toList
+      val command = new CompilerCommand(args, new Settings(error))
+      compiler.reporter.reset
+      new compiler.Run() compile command.files
     }
   }
 
   def process(args: Array[String]) {
     val settings = new Settings(error)
     reporter = new ConsoleReporter(settings)
-    val command = new CompilerCommand(List.fromArray(args), settings, error, false)
+    val command = new CompilerCommand(args.toList, settings)
     if (command.settings.version.value)
       reporter.info(null, versionMsg, true)
-    else {
-      if (command.settings.target.value == "msil") {
-        val libpath = System.getProperty("msil.libpath")
-        if (libpath != null)
-          command.settings.assemrefs.value =
-            command.settings.assemrefs.value + File.pathSeparator + libpath
+    else if (command.settings.Yidedebug.value) {
+      command.settings.Xprintpos.value = true
+      command.settings.Yrangepos.value = true
+      val compiler = new interactive.Global(command.settings, reporter)
+      import compiler.{ reporter => _, _ }
+
+      val sfs = command.files.map(getSourceFile(_))
+      val reloaded = new SyncVar[Either[Unit, Throwable]]
+      askReload(sfs, reloaded)
+      reloaded.get.right.toOption match {
+        case Some(ex) => reporter.cancelled = true // Causes exit code to be non-0
+        case None => reporter.reset // Causes other compiler errors to be ignored
       }
+      askShutdown
+    } else if (command.settings.Ybuilderdebug.value != "none") {
+      def fileSet(files : List[String]) = Set.empty ++ (files map AbstractFile.getFile)
+
+      val buildManager = if (command.settings.Ybuilderdebug.value == "simple")
+        new SimpleBuildManager(settings)
+      else
+        new RefinedBuildManager(settings)
+
+      buildManager.addSourceFiles(fileSet(command.files))
+
+      // enter resident mode
+      loop { line =>
+        val args = line.split(' ').toList
+        val command = new CompilerCommand(args.toList, settings)
+        buildManager.update(fileSet(command.files), Set.empty)
+      }
+    } else {
+      if (command.settings.target.value == "msil")
+        msilLibPath foreach (x => command.settings.assemrefs.value += (pathSeparator + x))
+
       try {
-        object compiler extends Global(command.settings, reporter)
+        val compiler = if (command.settings.Yrangepos.value) new interactive.Global(command.settings, reporter)
+        else new Global(command.settings, reporter)
+
         if (reporter.hasErrors) {
           reporter.flush()
           return
         }
 
-        if (command.settings.help.value || command.settings.Xhelp.value || command.settings.Yhelp.value) {
-          if (command.settings.help.value) {
-              reporter.info(null, command.usageMsg, true)
-            reporter.info(null, compiler.pluginOptionsHelp, true)
-          }
-          if (command.settings.Xhelp.value)
-            reporter.info(null, command.xusageMsg, true)
-          if (command.settings.Yhelp.value)
-            reporter.info(null, command.yusageMsg, true)
-        } else if (command.settings.showPlugins.value)
-          reporter.info(null, compiler.pluginDescriptions, true)
-        else if (command.settings.showPhases.value)
-          reporter.info(null, compiler.phaseDescriptions, true)
-        else {
+        if (command.shouldStopWithInfo) {
+          reporter.info(null, command.getInfoMessage(compiler), true)
+        } else {
           if (command.settings.resident.value)
             resident(compiler)
           else if (command.files.isEmpty) {
-              reporter.info(null, command.usageMsg, true)
+            reporter.info(null, command.usageMsg, true)
             reporter.info(null, compiler.pluginOptionsHelp, true)
           } else {
-            val run = new compiler.Run
+            val run = new compiler.Run()
             run compile command.files
             reporter.printSummary()
           }
         }
       } catch {
         case ex @ FatalError(msg) =>
-          if (command.settings.debug.value)
+          if (true || command.settings.debug.value) // !!!
             ex.printStackTrace();
-        reporter.error(null, "fatal error: " + msg)
+          reporter.error(null, "fatal error: " + msg)
       }
     }
   }

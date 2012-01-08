@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.io
@@ -60,9 +59,6 @@ object Position {
   /** The first position in a source file */
   final val FIRSTPOS    = encode(1, 1)
 
-    //########################################################################
-    // Public Functions
-
   /** Encodes a position into a single integer. */
   final def encode(line: Int, column: Int): Int = {
     var line1, column1 = 0
@@ -73,17 +69,18 @@ object Position {
     if (column < 0)
       throw new IllegalArgumentException(line + "," + column + " not allowed")
 
-    {if (line >= LINE_MASK) {
+    if (line >= LINE_MASK) {
       line1 = LINE_MASK
       column1 = 0
-    } else {
+    }
+    else {
       line1 = line
       if (column > COLUMN_MASK)
         column1 = COLUMN_MASK
       else
         column1 = column
-    }}
-    {(line1 << COLUMN_BITS) | column1;}
+    }
+    (line1 << COLUMN_BITS) | column1
   }
 
   /** Returns the line number of the encoded position. */
@@ -96,10 +93,10 @@ object Position {
 
   /** Returns a string representation of the encoded position. */
   def toString(pos: Int): String = {
-    val sb = new StringBuilder()
-    sb.append(line(pos))
-    sb.append(':')
-    sb.append(column(pos))
+    val sb = new StringBuilder
+    sb append line(pos)
+    sb append ':'
+    sb append column(pos)
     sb.toString()
   }
 }

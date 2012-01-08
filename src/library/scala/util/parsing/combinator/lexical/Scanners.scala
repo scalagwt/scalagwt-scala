@@ -1,18 +1,19 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id: Scanners.scala 12407 2007-07-25 02:33:18Z emir $
 
 
-package scala.util.parsing.combinator.lexical
+package scala.util.parsing
+package combinator
+package lexical
 
-import scala.util.parsing.syntax._
-import scala.util.parsing.input._
+import token._
+import input._
 
 /** <p>
  *    This component provides core functionality for lexical parsers.
@@ -21,13 +22,6 @@ import scala.util.parsing.input._
  *    See its subclasses {@see Lexical} and -- most interestingly
  *    {@see StdLexical}, for more functionality.
  *  </p>
- *
- *  @requires token      a parser that produces a token (from a stream of characters)
- *  @requires whitespace a unit-parser for white-space
- *  @provides Scanner    essentially a parser that parses a stream of characters
- *                       to produce `Token's, which are typically passed to a
- *                       syntactical parser (which operates on `Token's, not on
- *                       individual characters).
  *
  *  @author Martin Odersky, Adriaan Moors
  */
@@ -66,8 +60,8 @@ trait Scanners extends Parsers {
     }
     private def skip(in: Reader[Char]) = if (in.atEnd) in else in.rest
 
-    def source: CharSequence = in.source
-    def offset: Int = in.offset
+    override def source: java.lang.CharSequence = in.source
+    override def offset: Int = in.offset
     def first = tok
     def rest = new Scanner(rest2)
     def pos = rest1.pos

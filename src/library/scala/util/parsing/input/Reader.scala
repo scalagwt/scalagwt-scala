@@ -1,15 +1,15 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.util.parsing.input
+
 
 /** An interface for streams of values that have positions.
  *
@@ -17,11 +17,14 @@ package scala.util.parsing.input
  */
 abstract class Reader[+T] {
 
-  /** The source character sequence for this reader */
-  def source: CharSequence
+  /** If this is a reader over character sequences, the underlying char sequence
+   *  If not, throws a <code>NoSuchMethodError</code> exception.
+   */
+  def source: java.lang.CharSequence =
+    throw new NoSuchMethodError("not a char sequence reader")
 
-  /** The current index into source */
-  def offset: Int
+  def offset: Int =
+    throw new NoSuchMethodError("not a char sequence reader")
 
    /** Returns the first element of the reader
     */
@@ -41,7 +44,9 @@ abstract class Reader[+T] {
   def drop(n: Int): Reader[T] = {
     var r: Reader[T] = this
     var cnt = n
-    while (cnt > 0) r = r.rest
+    while (cnt > 0) {
+      r = r.rest; cnt -= 1
+    }
     r
   }
 

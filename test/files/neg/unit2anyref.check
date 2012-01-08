@@ -1,0 +1,8 @@
+unit2anyref.scala:2: error: type mismatch;
+ found   : Unit
+ required: AnyRef
+Note: primitive types are not implicitly converted to AnyRef.
+You can safely force boxing by casting x.asInstanceOf[AnyRef].
+  val x: AnyRef = ()  // this should not succeed.
+                  ^
+one error found

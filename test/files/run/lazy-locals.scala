@@ -133,11 +133,64 @@ object Test extends Application {
     ()
   }
 
+  def testReturnInLazyVal: Boolean = {
+    lazy val go = { return false }
+    go
+  }
+
+  {
+    lazy val inCtor = "I am initialized when the constructor is run"
+    inCtor
+  }
+
+  class CtorBlock {
+    {
+      lazy val inCtor = {
+        println("I am initialized when the constructor is run")
+        42
+      }
+      inCtor
+    }
+  }
+
+  // ticket #1589, should not crash
+  class Test {
+    val x = {
+      lazy val t = "abc";
+      t
+    }
+  }
+
+  // see #1589
+  object NestedLazyVals extends Application {
+    lazy val x = {
+      lazy val y = { println("forcing y"); 42; }
+      println("forcing x")
+      y
+    }
+
+    val x1 = 5 + { lazy val y = 10 ; y }
+
+    println(x)
+    println(x1)
+  }
+
+  trait TNestedLazyVals {
+    lazy val x = { lazy val y = 42; y }
+  }
+
+  object ONestedLazyVals extends Application with TNestedLazyVals {
+    println(x)
+  }
+
   println(testLazy)
   testLazy32
   testLazy33
   println(testLazyRec(5))
   println(testLazyRecMany(5))
   testRecVal
-
+  new CtorBlock
+  println(testReturnInLazyVal)
+  NestedLazyVals
+  ONestedLazyVals
 }

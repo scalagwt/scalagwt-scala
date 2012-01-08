@@ -1,14 +1,14 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2005-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2005-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
-package scala.actors.remote
+package scala.actors
+package remote
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream,
                 ObjectInputStream, ObjectOutputStream, InputStream,
@@ -17,13 +17,22 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream,
 /**
  *  @author Guy Oliver
  */
-class CustomObjectInputStream(os: InputStream, cl: ClassLoader) extends ObjectInputStream(os) {
-  override def resolveClass(cd: ObjectStreamClass): Class[T] forSome { type T } =
+private[remote] class CustomObjectInputStream(in: InputStream, cl: ClassLoader)
+extends ObjectInputStream(in) {
+  override def resolveClass(cd: ObjectStreamClass): Class[_] =
     try {
       cl.loadClass(cd.getName())
     } catch {
       case cnf: ClassNotFoundException =>
         super.resolveClass(cd)
+    }
+  override def resolveProxyClass(interfaces: Array[String]): Class[_] =
+    try {
+      val ifaces = interfaces map { iface => cl.loadClass(iface) }
+      java.lang.reflect.Proxy.getProxyClass(cl, ifaces: _*)
+    } catch {
+      case e: ClassNotFoundException =>
+        super.resolveProxyClass(interfaces)
     }
 }
 

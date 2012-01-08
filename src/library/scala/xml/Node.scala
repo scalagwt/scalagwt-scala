@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -18,15 +16,13 @@ package scala.xml
  * @version 1.0
  */
 object Node {
-
   /** the constant empty attribute sequence */
   final def NoAttributes: MetaData = Null
 
   /** the empty namespace */
   val EmptyNamespace = ""
 
-  def unapplySeq(n: Node) = Some(Tuple3(n.label, n.attributes, n.child))
-
+  def unapplySeq(n: Node) = Some((n.label, n.attributes, n.child))
 }
 
 /**
@@ -46,7 +42,11 @@ abstract class Node extends NodeSeq {
 
   /** used internally. Atom/Molecule = -1 PI = -2 Comment = -3 EntityRef = -5
    */
-  def typeTag$: Int = 0
+  def isAtom = this.isInstanceOf[Atom[_]]
+
+  /** The logic formerly found in typeTag$, as best I could infer it. */
+  def doCollectNamespaces = true  // if (tag >= 0) DO collect namespaces
+  def doTransform         = true  // if (tag < 0) DO NOT transform
 
   /**
    *  method returning the namespace bindings of this node. by default, this
@@ -108,6 +108,10 @@ abstract class Node extends NodeSeq {
    */
   def child: Seq[Node]
 
+  /** Children which do not stringify to "" (needed for equality)
+   */
+  def nonEmptyChildren: Seq[Node] = child filterNot (_.toString == "")
+
   /**
    * Descendant axis (all descendants of this node, not including node itself)
    * includes all text nodes, element nodes, comments and processing instructions.
@@ -121,31 +125,23 @@ abstract class Node extends NodeSeq {
    */
   def descendant_or_self: List[Node] = this :: descendant
 
-  /**
-   * Returns true if x is structurally equal to this node. Compares prefix,
-   * label, attributes and children.
-   *
-   * @param x ...
-   * @return  <code>true</code> if ..
-   */
-  override def equals(x: Any): Boolean = x match {
-    case g:Group => false
-    case that: Node =>
-      ((that.prefix == this.prefix )
-       &&(that.label == this.label )
-       &&(that.attributes ==  this.attributes)
-       && that.child.sameElements(this.child)) // sameElements
-    case _ => false
+  override def canEqual(other: Any) = other match {
+    case x: Group   => false
+    case x: Node    => true
+    case _          => false
   }
-
-  /** <p>
-   *    Returns a hashcode. The default implementation here calls only
-   *    super.hashcode (which is the same as for objects). A more useful
-   *    implementation can be invoked by calling
-   *  <code>Utility.hashCode(pre, label, attributes.hashCode(), child)</code>.
-   *  </p>
-   */
-  override def hashCode(): Int = super.hashCode
+  override def basisForHashCode: Seq[Any] = prefix :: label :: attributes :: nonEmptyChildren.toList
+  override def strict_==(other: Equality) = other match {
+    case _: Group => false
+    case x: Node  =>
+      (prefix == x.prefix) &&
+      (label == x.label) &&
+      (attributes == x.attributes) &&
+      // (scope == x.scope)               // note - original code didn't compare scopes so I left it as is.
+      (nonEmptyChildren sameElements x.nonEmptyChildren)
+    case _        =>
+      false
+  }
 
   // implementations of NodeSeq methods
 
@@ -160,15 +156,15 @@ abstract class Node extends NodeSeq {
    * @param stripComment if true, strips comment nodes from result
    * @return ...
    */
-  def toString(stripComment: Boolean): String =
-    Utility.toXML(this, stripComment)
+  def buildString(stripComments: Boolean): String =
+    Utility.toXML(this, stripComments = stripComments).toString
 
   /**
    * Same as <code>toString(false)</code>.
    *
    * @see <code><a href="#toString">toString(Boolean)</a></code>
    */
-  override def toString(): String = toString(false)
+  override def toString(): String = buildString(false)
 
   /**
    * Appends qualified name of this node to <code>StringBuilder</code>.
@@ -196,9 +192,10 @@ abstract class Node extends NodeSeq {
    *  Martin to Burak: to do: if you make this method abstract, the compiler will now
    *  complain if there's no implementation in a subclass. Is this what we want? Note that
    *  this would break doc/DocGenator and doc/ModelToXML, with an error message like:
-doc\DocGenerator.scala:1219: error: object creation impossible, since there is a deferred declaration of method text in class Node of type => String which is not implemented in a subclass
-    new SpecialNode {
-    ^
-   */
+   * {{{
+   * doc\DocGenerator.scala:1219: error: object creation impossible, since there is a deferred declaration of method text in class Node of type => String which is not implemented in a subclass
+   * new SpecialNode {
+   * ^
+   * }}} */
   override def text: String = super.text
 }

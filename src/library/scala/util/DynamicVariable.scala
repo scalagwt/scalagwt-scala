@@ -1,18 +1,16 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id:$
 
 
 package scala.util
 
 
-import Predef._
 import java.lang.InheritableThreadLocal
 
 /** <p>
@@ -42,8 +40,8 @@ import java.lang.InheritableThreadLocal
  *  </pre></blockquote>
  *  <p>
  *    Each thread gets its own stack of bindings.  When a
- *    new thread is created, the fluid gets a copy of
- *    the stack of bindings from the parent thread, and
+ *    new thread is created, the DynamicVariable gets a copy
+ *    of the stack of bindings from the parent thread, and
  *    from then on the bindings for the new thread
  *    are independent of those for the original thread.
  *  </p>
@@ -63,7 +61,7 @@ class DynamicVariable[T](init: T) {
   /** Set the value of the variable while executing the specified
     * thunk.
     *
-    * @param newval The value to which to set the fluid
+    * @param newval The value to which to set the variable
     * @param thunk The code to evaluate under the new setting
     */
   def withValue[S](newval: T)(thunk: =>S): S = {

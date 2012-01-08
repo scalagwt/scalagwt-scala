@@ -1,12 +1,12 @@
 /* NSC -- new Scala compiler
- * Copyright 2002-2008 LAMP/EPFL
+ * Copyright 2002-2010 LAMP/EPFL
  * @author Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.reporters
+package scala.tools.nsc
+package reporters
 
-import scala.collection.mutable.HashSet
+import scala.collection.mutable.HashMap
 import scala.tools.nsc.Settings
 import scala.tools.nsc.util.Position
 
@@ -14,9 +14,9 @@ import scala.tools.nsc.util.Position
  * This reporter implements filtering.
  */
 abstract class AbstractReporter extends Reporter {
-  private val positions = new HashSet[Position]()
+  private val positions = new HashMap[Position, Severity]
 
-  override def reset = {
+  override def reset {
     super.reset
     positions.clear
   }
@@ -26,34 +26,39 @@ abstract class AbstractReporter extends Reporter {
   def display(pos: Position, msg: String, severity: Severity): Unit
   def displayPrompt: Unit
 
-  protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean) {
+  protected def info0(pos: Position, msg: String, _severity: Severity, force: Boolean) {
+    val severity =
+      if (settings.Xwarnfatal.value && _severity == WARNING) ERROR
+      else _severity
+
     severity match {
-      case INFO    =>
+      case INFO =>
         if (force || settings.verbose.value) display(pos, msg, severity)
       case WARNING =>
-        val hidden = testAndLog(pos)
+        val hidden = testAndLog(pos, severity)
         if (!settings.nowarnings.value) {
-	  if (!hidden || settings.prompt.value) display(pos, msg, severity)
-	  if (settings.prompt.value) displayPrompt
+          if (!hidden || settings.prompt.value) display(pos, msg, severity)
+          if (settings.prompt.value) displayPrompt
         }
       case ERROR =>
-        val hidden = testAndLog(pos)
+        val hidden = testAndLog(pos, severity)
         if (!hidden || settings.prompt.value) display(pos, msg, severity)
         if (settings.prompt.value) displayPrompt
     }
   }
 
   /** Logs a position and returns <code>true</code> if it was already logged.
+   *  @note  Two positions are considered identical for logging if they have the same point.
    *
    *  @param pos ...
    *  @return    <code>true</code> if <code>pos</code> was already logged.
    */
-  private def testAndLog(pos: Position): Boolean = {
-    if (pos eq null) return false
-    if (pos.offset.isEmpty) return false
-    if (positions contains pos) return true
-    positions += pos
-    false
-  }
-
+  private def testAndLog(pos: Position, severity: Severity): Boolean =
+    pos != null && pos.isDefined && {
+      val fpos = pos.focus
+      (positions get fpos) match {
+        case Some(level) if level >= severity => true
+        case _                                => positions += (fpos -> severity) ; false
+      }
+    }
 }

@@ -1,18 +1,18 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.xml.parsing
+package scala.xml
+package parsing
 
 
-/** default implemenation of markup handler always returns NodeSeq.Empty */
+/** default implementation of markup handler always returns NodeSeq.Empty */
 abstract class DefaultMarkupHandler extends MarkupHandler {
 
   def elem(pos: Int, pre: String, label: String, attrs: MetaData,

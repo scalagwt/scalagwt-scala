@@ -1,15 +1,15 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id:Factory.scala 6853 2006-03-20 16:58:47 +0100 (Mon, 20 Mar 2006) dubochet $
 
 
-package scala.dbc.datatype;
+package scala.dbc
+package datatype;
 
 
 import java.sql.Types._;
@@ -21,7 +21,7 @@ object Factory {
   final val java_lang_Integer_SIZE = 32;
   final val java_lang_Long_SIZE    = 64;
 
-  /** Returns a mullable property formated as a boolean option */
+  /** Returns a nullable property formatted as a boolean option */
   def isNullable (metadata:java.sql.ResultSetMetaData, index:Int): Option[scala.Boolean] =
     metadata.isNullable(index) match {
       case java.sql.ResultSetMetaData.columnNoNulls => Some(false);

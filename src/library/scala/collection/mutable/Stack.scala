@@ -1,60 +1,81 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
+import generic._
+import collection.immutable.{List, Nil}
+import collection.Iterator
+import annotation.migration
 
 /** A stack implements a data structure which allows to store and retrieve
  *  objects in a last-in-first-out (LIFO) fashion.
  *
+ *  @tparam A    type of the elements contained in this stack.
+ *
  *  @author  Matthias Zenger
- *  @version 1.1, 03/05/2004
+ *  @author  Martin Odersky
+ *  @version 2.8
+ *  @since   1
+ *  @define Coll Stack
+ *  @define coll stack
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
  */
 @serializable @cloneable
-class Stack[A] extends MutableList[A] with CloneableCollection {
+class Stack[A] private (var elems: List[A]) extends scala.collection.Seq[A] with Cloneable[Stack[A]] {
+
+  def this() = this(Nil)
 
   /** Checks if the stack is empty.
    *
    *  @return true, iff there is no element on the stack
    */
-  override def isEmpty: Boolean = (first0 eq null)
+  override def isEmpty: Boolean = elems.isEmpty
 
-  /** Pushes a single element on top of the stack.
-   *
-   *  @param  elem        the element to push onto the stack
-   */
-  def +=(elem: A): Unit = prependElem(elem)
+  /** The number of elements in the stack */
+  override def length = elems.length
 
-  /** Pushes all elements provided by an <code>Iterable</code> object
-   *  on top of the stack. The elements are pushed in the order they
-   *  are given out by the iterator.
-   *
-   *  @param  iter        an iterable object
-   */
-  def ++=(iter: Iterable[A]): Unit = this ++= iter.elements
+  /** Retrieve n'th element from stack, where top of stack has index 0 */
+  override def apply(index: Int) = elems(index)
 
-  /** Pushes all elements provided by an iterator
-   *  on top of the stack. The elements are pushed in the order they
-   *  are given out by the iterator.
+  /** Push an element on the stack.
    *
-   *  @param  iter        an iterator
+   *  @param   elem       the element to push on the stack.
+   *  @return the stack with the new element on top.
    */
-  def ++=(it: Iterator[A]): Unit = it foreach { e => prependElem(e) }
+  def push(elem: A): this.type = { elems = elem :: elems; this }
 
-  /** Pushes a sequence of elements on top of the stack. The first element
-   *  is pushed first, etc.
+  /** Push two or more elements onto the stack. The last element
+   *  of the sequence will be on top of the new stack.
    *
-   *  @param  elems       a sequence of elements
+   *  @param   elems      the element sequence.
+   *  @return the stack with the new elements on top.
    */
-  def push(elems: A*): Unit = (this ++= elems)
+  def push(elem1: A, elem2: A, elems: A*): this.type = this.push(elem1).push(elem2).pushAll(elems)
+
+  /** Push all elements in the given traversable object onto
+   *  the stack. The last element in the traversable object
+   *  will be on top of the new stack.
+   *
+   *  @param xs the traversable object.
+   *  @return the stack with the new elements on top.
+   */
+  def pushAll(xs: TraversableOnce[A]): this.type = { xs foreach push ; this }
+
+  @deprecated("use pushAll")
+  @migration(2, 8, "Stack ++= now pushes arguments on the stack from left to right.")
+  def ++=(xs: TraversableOnce[A]): this.type = pushAll(xs)
 
   /** Returns the top element of the stack. This method will not remove
    *  the element from the stack. An error is signaled if there is no
@@ -64,75 +85,54 @@ class Stack[A] extends MutableList[A] with CloneableCollection {
    *  @return the top element
    */
   def top: A =
-    if (first0 eq null) throw new NoSuchElementException("stack empty")
-    else first0.elem
+    elems.head
 
   /** Removes the top element from the stack.
    *
    *  @throws Predef.NoSuchElementException
    *  @return the top element
    */
-  def pop(): A =
-    if (first0 ne null) {
-      val res = first0.elem
-      first0 = first0.next
-      len = len - 1;
-      res
-    } else
-      throw new NoSuchElementException("stack empty")
+  def pop(): A = {
+    val res = elems.head
+    elems = elems.tail
+    res
+  }
 
   /**
    * Removes all elements from the stack. After this operation completed,
    * the stack will be empty.
    */
-  def clear(): Unit = reset
+  def clear(): Unit = elems = Nil
 
   /** Returns an iterator over all elements on the stack. This iterator
    *  is stable with respect to state changes in the stack object; i.e.
    *  such changes will not be reflected in the iterator. The iterator
-   *  issues elements in the order they were inserted into the stack
-   *  (FIFO order).
+   *  issues elements in the reversed order they were inserted into the stack
+   *  (LIFO order).
    *
    *  @return an iterator over all stack elements.
    */
-  override def elements: Iterator[A] = toList.elements
+  @migration(2, 8, "Stack iterator and foreach now traverse in FIFO order.")
+  override def iterator: Iterator[A] = elems.iterator
 
-  /** Creates a list of all stack elements in FIFO order.
+  /** Creates a list of all stack elements in LIFO order.
    *
    *  @return the created list.
    */
-  override def toList: List[A] = super[MutableList].toList.reverse
+  @migration(2, 8, "Stack iterator and foreach now traverse in FIFO order.")
+  override def toList: List[A] = elems
 
-  /** Checks if two stacks are structurally identical.
-   *
-   *  @return true, iff both stacks contain the same sequence of elements.
-   */
-  override def equals(obj: Any): Boolean = obj match {
-    case that: Stack[_] =>
-      (this.elements zip that.elements) forall {
-        case (thiselem, thatelem) => thiselem == thatelem
-      }
-    case _ =>
-      false
-  }
-
-  /** The hashCode method always yields an error, since it is not
-   *  safe to use mutable stacks as keys in hash tables.
-   *
-   *  @return never.
-   */
-  override def hashCode(): Int =
-    throw new UnsupportedOperationException("unsuitable as hash key")
+  @migration(2, 8, "Stack iterator and foreach now traverse in FIFO order.")
+  override def foreach[U](f: A => U): Unit = super.foreach(f)
 
   /** This method clones the stack.
    *
    *  @return  a stack with the same elements.
    */
-  override def clone(): Stack[A] = {
-    val res = new Stack[A]
-    res ++= this
-    res
-  }
+  override def clone(): Stack[A] = new Stack[A](elems)
+}
 
-  override protected def stringPrefix: String = "Stack"
+// !!! TODO - integrate
+object Stack {
+  def apply[A](xs: A*): Stack[A] = new Stack[A] ++= xs
 }

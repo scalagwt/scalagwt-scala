@@ -1,7 +1,6 @@
 //############################################################################
 // Test Java interaction with scala inner classes
 //############################################################################
-// $Id$
 
 import java.io.{BufferedReader, File, FileWriter, InputStreamReader}
 
@@ -33,7 +32,9 @@ class A {
     }
   }
 
-  class Impl2 extends Impl(1) with Itf#Itf2 {
+  val impl = new Impl(0)
+
+  class Impl2 extends Impl(1) with impl.Itf2 {
     def method2 = {
       println(abc)
     }
@@ -52,11 +53,18 @@ class A {
 }
 
 object Scalatest {
-  private val outputdir = System.getProperty("scalatest.output", "inner-jvm.obj")
-  private val scalalib  = System.getProperty("scalatest.lib", "")
+  private val outputdir = System.getProperty("partest.output", "inner.obj")
+  private val scalalib  = System.getProperty("partest.lib", "")
   private val classpath = outputdir + File.pathSeparator + scalalib
-  private val javacmd   = System.getProperty("javacmd", "java")
-  private val javac     = javacmd + "c"
+  private val javabin  = {
+    val jhome = new File(System.getProperty("java.home"))
+    if (jhome.getName == "jre")
+      new File(jhome.getParent, "bin").getAbsolutePath
+    else
+      new File(jhome, "bin").getAbsolutePath
+  }
+  private val javacmd   = javabin + File.separator + "java"
+  private val javac     = javabin + File.separator + "javac"
 
   def javac(src: String, fname: String) {
     val tmpfilename = outputdir + File.separator + fname

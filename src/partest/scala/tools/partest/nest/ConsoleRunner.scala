@@ -1,235 +1,208 @@
 /* NEST (New Scala Test)
- * Copyright 2007-2008 LAMP/EPFL
+ * Copyright 2007-2010 LAMP/EPFL
  * @author Philipp Haller
  */
 
-// $Id: $
+// $Id$
 
-package scala.tools.partest.nest
+package scala.tools.partest
+package nest
 
 import java.io.{File, PrintStream, FileOutputStream, BufferedReader,
                 InputStreamReader, StringWriter, PrintWriter}
-import java.util.StringTokenizer
-
-import scala.actors.Actor._
+import utils.Properties._
+import RunnerUtils._
+import scala.tools.nsc.Properties.{ versionMsg, setProp }
+import scala.tools.nsc.util.CommandLineParser
+import scala.tools.nsc.io
+import io.{ Path, Process }
 
 class ConsoleRunner extends DirectRunner {
+  import PathSettings.{ srcDir, testRoot }
 
-  val fileManager: ConsoleFileManager = new ConsoleFileManager
+  case class TestSet(kind: String, filter: Path => Boolean, msg: String)
 
-  private val version = System.getProperty("java.version", "")
-  private val isJava5 = version matches "1.[5|6|7].*"
+  val testSets = {
+    val pathFilter: Path => Boolean = _ hasExtension "scala"
 
-  private var posCheck = false
-  private var negCheck = false
-  private var runCheck = false
-  private var jvmCheck = false
-  private var jvm5Check = false
-  private var resCheck = false
-  private var shootoutCheck = false
-  private var scriptCheck = false
-
-  private var runAll = false
-
-  private var testFiles: List[File] = List()
-  private val con = new PrintStream(Console.out)
-  private var out = con
-
-  private val errors =
-    Integer.parseInt(System.getProperty("scalatest.errors", "0"))
-
-  def denotesTestSet(arg: String) =
-    arg match {
-      case "--pos"      => true
-      case "--neg"      => true
-      case "--run"      => true
-      case "--jvm"      => true
-      case "--jvm5"     => true
-      case "--res"      => true
-      case "--shootout" => true
-      case "--script"   => true
-      case _            => false
-    }
-
-  def main(argstr: String) {
-    // tokenize args
-    var args: List[String] = List()
-    val st = new StringTokenizer(argstr)
-    while (st.hasMoreTokens) {
-      args = args ::: List(st.nextToken())
-    }
-
-    if (args.length == 0)
-      NestUI.usage()
-    else {
-      if (!args.exists(denotesTestSet(_)) && !args.exists(_.endsWith(".scala"))) runAll = true
-      for (arg <- args) {
-        arg match {
-          case "--all"          => runAll = true
-
-          case "--pos"          => posCheck = true
-          case "--neg"          => negCheck = true
-          case "--run"          => runCheck = true
-          case "--jvm"          => jvmCheck = true
-          case "--jvm5"         => jvm5Check = true
-          case "--res"          => resCheck = true
-          case "--shootout"     => shootoutCheck = true
-          case "--script"       => scriptCheck = true
-
-          case "--verbose"      => NestUI._verbose = true
-          case "--show-diff"    => fileManager.showDiff = true
-          case "--show-log"     => fileManager.showLog = true
-          case "--failed"       => fileManager.failed = true
-          case "--version"      => //todo: printVersion
-          case "--ansi"         => NestUI.initialize(NestUI.MANY)
-          case _ =>
-            if (arg endsWith ".scala") {
-              val file = new File(arg)
-              if (file.isFile) {
-                NestUI.verbose("adding test file "+file)
-                testFiles = file :: testFiles
-              } else {
-                NestUI.failure("File \"" + arg + "\" not found\n")
-                System.exit(1)
-              }
-            } else if (out eq con) {
-              val file = new File(arg)
-              if (file.isFile || file.createNewFile)
-                out = new PrintStream(new FileOutputStream(file))
-              else {
-                NestUI.failure("Result file \"" + arg + "\" not found\n")
-                System.exit(1)
-              }
-            } else
-              NestUI.usage()
-        }
-      }
-
-      NestUI.outline("Source directory is : "+fileManager.srcDir.getAbsolutePath+"\n")
-      NestUI.outline("Scala binaries in   : "+fileManager.BIN_DIR+"\n")
-
-      val scalaVersion = "Scala compiler "+
-        scala.tools.nsc.Properties.versionString+
-        " -- "+
-        scala.tools.nsc.Properties.copyrightString
-
-      NestUI.outline("Scala version is    : "+scalaVersion+"\n")
-      NestUI.outline("Scalac options are  : "+fileManager.SCALAC_OPTS+"\n")
-
-      val vmBin  = System.getProperty("java.home", "")+File.separator+"bin"
-      val vmName = System.getProperty("java.vm.name", "")+" (build "+
-                   System.getProperty("java.vm.version", "")+", "+
-                   System.getProperty("java.vm.info", "")+")"
-      val vmOpts = System.getProperty("scalatest.java_options", "?")
-      NestUI.outline("Java binaries in    : "+vmBin+"\n")
-      NestUI.outline("Java runtime is     : "+vmName+"\n")
-      NestUI.outline("Java options are    : "+vmOpts+"\n")
-
-      val start = System.currentTimeMillis
-
-      val (successes, failures) = testCheckAll()
-
-      val end = System.currentTimeMillis
-      val total = successes + failures
-
-      val elapsedSecs = (end - start)/1000
-      val elapsedMins = elapsedSecs/60
-      val elapsedHrs  = elapsedMins/60
-      val dispMins = elapsedMins - elapsedHrs  * 60
-      val dispSecs = elapsedSecs - elapsedMins * 60
-      val dispElapsed = {
-        def form(num: Long) = if (num < 10) "0"+num else ""+num
-        form(elapsedHrs)+":"+form(dispMins)+":"+form(dispSecs)
-      }
-
-      println
-      if (failures == 0)
-        NestUI.success("All of "+total+" tests were successful (elapsed time: "+dispElapsed+")\n")
-      else
-        NestUI.failure(failures+" of "+total+" tests failed (elapsed time: "+dispElapsed+")\n")
-
-      if (failures == errors)
-        System.exit(0)
-      else
-        System.exit(1)
-    }
+    List(
+      TestSet("pos", pathFilter, "Testing compiler (on files whose compilation should succeed)"),
+      TestSet("neg", pathFilter, "Testing compiler (on files whose compilation should fail)"),
+      TestSet("run", pathFilter, "Testing JVM backend"),
+      TestSet("jvm", pathFilter, "Testing JVM backend"),
+      TestSet("res", x => x.isFile && (x hasExtension "res"), "Testing resident compiler"),
+      TestSet("buildmanager", _.isDirectory, "Testing Build Manager"),
+      TestSet("shootout", pathFilter, "Testing shootout tests"),
+      TestSet("script", pathFilter, "Testing script tests"),
+      TestSet("scalacheck", pathFilter, "Testing ScalaCheck tests"),
+      TestSet("scalap", _.isDirectory, "Run scalap decompiler tests")
+    )
   }
 
-  def runTests(kind: String, check: Boolean, msg: String): (Int, Int) = {
-    if (check) {
-      val kindFiles = if (kind == "res") //TODO: is there a nicer way?
-        fileManager.getFiles(kind, check, ".res")
-      else
-        fileManager.getFiles(kind, check)
-      if (!kindFiles.isEmpty) {
-        NestUI.outline("\n"+msg+"\n")
-        runTestsForFiles(kindFiles, kind)
-      } else {
-        NestUI.failure("test dir empty\n")
-        (0, 0)
+  var fileManager: ConsoleFileManager = _
+
+  private var testFiles: List[File] = List()
+  private val errors = PartestDefaults.errorCount
+  private val testSetKinds  = testSets map (_.kind)
+  private val testSetArgs   = testSets map ("--" + _.kind)
+  private val testSetArgMap = testSetArgs zip testSets toMap
+
+  def denotesTestSet(arg: String) = testSetArgs contains arg
+  def denotesTestFile(arg: String) = (arg endsWith ".scala") || (arg endsWith ".res")
+  def denotesTestDir(arg: String) = Path(arg).isDirectory
+  def denotesTestPath(arg: String) = denotesTestDir(arg) || denotesTestFile(arg)
+
+  private def printVersion { NestUI outline (versionMsg + "\n") }
+
+  private val unaryArgs = List(
+    "--pack", "--all", "--verbose", "--show-diff", "--show-log",
+    "--failed", "--version", "--ansi", "--debug"
+  ) ::: testSetArgs
+
+  private val binaryArgs = List(
+    "--grep", "--srcpath", "--buildpath", "--classpath"
+  )
+
+  def main(argstr: String) {
+    val parsed = CommandLineParser(argstr) withUnaryArgs unaryArgs withBinaryArgs binaryArgs
+    val args = parsed.residualArgs
+
+    /** Early return on no args, version, or invalid args */
+    if (argstr == "") return NestUI.usage()
+    if (parsed isSet "--version") return printVersion
+    if (args exists (x => !denotesTestPath(x))) {
+      val invalid = (args filterNot denotesTestPath).head
+      NestUI.failure("Invalid argument '%s'\n" format invalid)
+      return NestUI.usage()
+    }
+
+    parsed get "--srcpath" foreach (x => setProp("partest.srcdir", x))
+
+    fileManager =
+      if (parsed isSet "--buildpath") new ConsoleFileManager(parsed("--buildpath"))
+      else if (parsed isSet "--classpath") new ConsoleFileManager(parsed("--classpath"), true)
+      else if (parsed isSet "--pack") new ConsoleFileManager("build/pack")
+      else new ConsoleFileManager  // auto detection, see ConsoleFileManager.findLatest
+
+    def argNarrowsTests(x: String) = denotesTestSet(x) || denotesTestFile(x) || denotesTestDir(x)
+
+    NestUI._verbose       = parsed isSet "--verbose"
+    fileManager.showDiff  = parsed isSet "--show-diff"
+    fileManager.showLog   = parsed isSet "--show-log"
+    fileManager.failed    = parsed isSet "--failed"
+
+    if (parsed isSet "--ansi") NestUI initialize NestUI.MANY
+    if (parsed isSet "--timeout") fileManager.timeout = parsed("--timeout")
+    if (parsed isSet "--debug") setProp("partest.debug", "true")
+
+    def addTestFile(file: File) = {
+      if (!file.exists)
+        NestUI.failure("Test file '%s' not found, skipping.\n" format file)
+      else {
+        NestUI.verbose("adding test file " + file)
+        testFiles +:= file
       }
-    } else (0, 0)
+    }
+
+    // If --grep is given we suck in every file it matches.
+    parsed get "--grep" foreach { expr =>
+      val allFiles = srcDir.deepList() filter (_ hasExtension "scala") map (_.toFile) toList
+      val files = allFiles filter (_.slurp() contains expr)
+
+      if (files.isEmpty) NestUI.failure("--grep string '%s' matched no files." format expr)
+      else NestUI.verbose("--grep string '%s' matched %d file(s)".format(expr, files.size))
+
+      files foreach (x => addTestFile(x.jfile))
+    }
+    args foreach (x => addTestFile(new File(x)))
+
+    // If no file arguments were given, we assume --all
+    val enabledTestSets: List[TestSet] = {
+      val enabledArgs = testSetArgs filter parsed.isSet
+
+      if (args.isEmpty && !(parsed isSet "--grep") && (enabledArgs.isEmpty || (parsed isSet "--all"))) testSets
+      else enabledArgs map testSetArgMap
+    }
+
+    val dir =
+      if (fileManager.testClasses.isDefined) fileManager.testClassesDir
+      else fileManager.testBuildFile getOrElse {
+        fileManager.latestCompFile.getParentFile.getParentFile.getCanonicalFile
+      }
+
+    val vmBin  = javaHome + File.separator + "bin"
+    val vmName = "%s (build %s, %s)".format(javaVmName, javaVmVersion, javaVmInfo)
+    val vmOpts = fileManager.JAVA_OPTS
+
+    NestUI.verbose("enabled test sets: " + (enabledTestSets map (_.kind) mkString " "))
+
+    List(
+      "Scala compiler classes in: " + dir,
+      "Scala version is:          " + versionMsg,
+      "Scalac options are:        " + fileManager.SCALAC_OPTS,
+      "Java binaries in:          " + vmBin,
+      "Java runtime is:           " + vmName,
+      "Java options are:          " + vmOpts,
+      "Source directory is:       " + srcDir,
+      ""
+    ) foreach (x => NestUI outline (x + "\n"))
+
+    val start = System.currentTimeMillis
+    val (successes, failures) = testCheckAll(enabledTestSets)
+    val end = System.currentTimeMillis
+
+    val total = successes + failures
+
+    val elapsedSecs = (end - start)/1000
+    val elapsedMins = elapsedSecs/60
+    val elapsedHrs  = elapsedMins/60
+    val dispMins = elapsedMins - elapsedHrs  * 60
+    val dispSecs = elapsedSecs - elapsedMins * 60
+
+    val dispElapsed = {
+      def form(num: Long) = if (num < 10) "0"+num else ""+num
+      form(elapsedHrs)+":"+form(dispMins)+":"+form(dispSecs)
+    }
+
+    println
+    if (failures == 0)
+      NestUI.success("All of "+total+" tests were successful (elapsed time: "+dispElapsed+")\n")
+    else
+      NestUI.failure(failures+" of "+total+" tests failed (elapsed time: "+dispElapsed+")\n")
+
+    System exit ( if (failures == errors) 0 else 1 )
+  }
+
+  def runTests(testSet: TestSet): (Int, Int) = {
+    val TestSet(kind, filter, msg) = testSet
+
+    fileManager.getFiles(kind, filter) match {
+      case Nil    => NestUI.verbose("test dir empty\n") ; (0, 0)
+      case files  =>
+        NestUI.verbose("test files: "+files)
+        NestUI.outline("\n"+msg+"\n")
+        resultsToStatistics(runTestsForFiles(files, kind))
+    }
   }
 
   /**
    * @return (success count, failure count)
    */
-  def testCheckAll(): (Int, Int) = {
-    def runTestsFiles = if (!testFiles.isEmpty) {
-      def absName(f: File): String = f.getAbsoluteFile.getCanonicalPath
+  def testCheckAll(enabledSets: List[TestSet]): (Int, Int) = {
+    def kindOf(f: File) = (srcDir relativize Path(f).normalize).segments.head
 
-      def kindOf(f: File): String = {
-        val firstName = absName(f)
-        val filesPos = firstName.indexOf("files")
-        if (filesPos == -1) {
-          NestUI.failure("invalid test file: "+firstName+"\n")
-          Predef.exit(1)
-        } else {
-          val k = firstName.substring(filesPos+6, filesPos+6+3)
-          val short = if (k == "jvm") {
-            if (firstName.substring(filesPos+6, filesPos+6+4) == "jvm5") "jvm5"
-            else k
-          } else k
-          val shortKinds = List("pos", "neg", "run", "jvm", "jvm5", "res")
-          if (shortKinds contains short) short
-          else short match {
-            case "sho" => "shootout"
-            case "scr" => "script"
-          }
-        }
-      }
+    val (valid, invalid) = testFiles partition (x => testSetKinds contains kindOf(x))
+    invalid foreach (x => NestUI.failure("Invalid test file '%s', skipping.\n" format x))
 
-      val fstKind = kindOf(testFiles.head)
-      NestUI.verbose("all test files expected to have kind "+fstKind)
-      if (!testFiles.forall(kindOf(_) equals fstKind)) {
-        NestUI.failure("test files have different kinds\n")
-        Predef.exit(1)
-      } else {
+    val runTestsFileLists =
+      for ((kind, files) <- valid groupBy kindOf toList) yield {
         NestUI.outline("\nTesting individual files\n")
-        runTestsForFiles(testFiles, fstKind)
+        resultsToStatistics(runTestsForFiles(files, kind))
       }
-    } else (0, 0)
 
-    if (runAll) { // run all tests
-      posCheck = true
-      negCheck = true
-      runCheck = true
-      jvmCheck = true
-      jvm5Check = true
-      resCheck = true
-      shootoutCheck = true
-      scriptCheck = true
-    }
-    val results = List(runTestsFiles,
-                       runTests("pos", posCheck, "Testing compiler (on files whose compilation should succeed)"),
-                       runTests("neg", negCheck, "Testing compiler (on files whose compilation should fail)"),
-                       runTests("run", runCheck, "Testing JVM backend"),
-                       runTests("jvm", jvmCheck, "Testing JVM backend"),
-                       runTests("jvm5", jvm5Check, "Testing JVM backend"),
-                       runTests("res", resCheck, "Testing resident compiler"),
-                       runTests("shootout", shootoutCheck, "Testing shootout tests"),
-                       runTests("script", scriptCheck, "Testing script tests"))
-    results reduceLeft { (p: (Int, Int), q: (Int, Int)) =>
-      (p._1+q._1, p._2+q._2) }
+    NestUI.verbose("Run sets: "+enabledSets)
+    val results = runTestsFileLists ::: (enabledSets map runTests)
+
+    (results map (_._1) sum, results map (_._2) sum)
   }
 }

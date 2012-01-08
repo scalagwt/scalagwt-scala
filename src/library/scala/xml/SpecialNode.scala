@@ -1,12 +1,10 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-
-// $Id$
 
 
 package scala.xml
@@ -21,8 +19,8 @@ package scala.xml
  *
  *  @author Burak Emir
  */
-abstract class SpecialNode extends Node with pull.XMLEvent {
-
+abstract class SpecialNode extends Node with pull.XMLEvent
+{
   /** always empty */
   final override def attributes = Null
 
@@ -33,6 +31,5 @@ abstract class SpecialNode extends Node with pull.XMLEvent {
   final def child = Nil
 
   /** append string representation to the given stringbuffer */
-  def toString(sb: StringBuilder): StringBuilder
-
+  def buildString(sb: StringBuilder): StringBuilder
 }

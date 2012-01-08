@@ -1,7 +1,6 @@
 //############################################################################
 // Arrays
 //############################################################################
-// $Id$
 
 //############################################################################
 
@@ -10,10 +9,10 @@ object Test {
   //##########################################################################
   // Types
 
-  type Strings = List[String];
-  type Map     = scala.collection.Map[Int, Any];
-  type HashMap = scala.collection.mutable.HashMap[Int, Any];
-  type TreeMap = scala.collection.immutable.TreeMap[Int, Any];
+  type Strings = List[String]
+  type Map     = scala.collection.Map[Int, Any]
+  type HashMap = scala.collection.mutable.HashMap[Int, Any]
+  type TreeMap = scala.collection.immutable.TreeMap[Int, Any]
 
   //##########################################################################
   // Identity Functions
@@ -142,21 +141,27 @@ object Test {
   }
 
   def check_Tm[T <: Map    ](xs: Array[T], l: Int, x0: T, c: Check[T]) {
-    check(xs.length == l, xs.length, l);
-    check(xs(0) == x0, xs(0), x0);
-    check_Ta(xs, l, x0, c);
-    check_Tr(xs, l, x0, c);
-    check_To(xs, l, x0, c);
-    c(xs);
+    check(xs.length == l, xs.length, l)
+    check(xs(0) == x0, xs(0), x0)
+    check_Ta(xs, l, x0, c)
+    check_Tr(xs, l, x0, c)
+    check_To(xs, l, x0, c)
+    c(xs)
   }
 
   def check_Tn[T <: Strings](xs: Array[T], l: Int, x0: T, c: Check[T]) {
-    check(xs.length == l, xs.length, l);
-    check(xs(0) == x0, xs(0), x0);
-    check_Ta(xs, l, x0, c);
-    check_Tr(xs, l, x0, c);
-    check_To(xs, l, x0, c);
-    c(xs);
+    check(xs.length == l, xs.length, l)
+    check(xs(0) == x0, xs(0), x0)
+    check_Ta(xs, l, x0, c)
+    check_Tr(xs, l, x0, c)
+    check_To(xs, l, x0, c)
+    c(xs)
+  }
+
+  def checkT2368() {
+    val arr = Array(1, 2, 3)
+    arr(0) += 1
+    assert(arr(0) == 2)
   }
 
   //##########################################################################
@@ -328,19 +333,26 @@ object Test {
     check(xs(2) == m2, xs(2), m2);
   }
 
-  def ncheck(xs: Array[Strings]): Unit = {
-    check(xs.length == 3, xs.length, 3);
-    check(xs(0) == n0, xs(0), n0);
-    check(xs(1) == n1, xs(1), n1);
-    check(xs(2) == n2, xs(2), n2);
+  def ncheck(xs: Array[Strings]) {
+    check(xs.length == 3, xs.length, 3)
+    check(xs(0) == n0, xs(0), n0)
+    check(xs(1) == n1, xs(1), n1)
+    check(xs(2) == n2, xs(2), n2)
   }
 
   //##########################################################################
   // Miscellaneous checks
-  def checkZip(): Unit = {
+
+  def checkZip {
     val zipped = Array("a", "b", "c").zip(Array(1, 2))
     val expected = Array(("a",1), ("b",2))
     check(zipped sameElements expected, zipped.toList, expected.toList)
+  }
+
+  def checkConcat { // ticket #713
+    val x1 = Array.concat(Array(1, 2), Array(3, 4))
+    val y1 = Array(1, 2, 3, 4)
+    check(x1 sameElements y1, x1.toList, y1.toList)
   }
 
   //##########################################################################
@@ -911,7 +923,9 @@ object Test {
 
     //######################################################################
 
-    checkZip()
+    checkZip
+    checkConcat
+    checkT2368()
 
     //######################################################################
 
@@ -922,3 +936,4 @@ object Test {
 
   //##########################################################################
 }
+

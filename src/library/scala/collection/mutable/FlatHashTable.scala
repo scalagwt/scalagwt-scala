@@ -1,17 +1,25 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id: $
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
-import Predef._
 
+/** An implementation class backing a `HashSet`.
+ *
+ *  This trait is used internally. It can be mixed in with various collections relying on
+ *  hash table as an implementation.
+ *
+ *  @since 2.3
+ *
+ *  @tparam A   the type of the elements contained in the flat hash table.
+ */
 trait FlatHashTable[A] {
 
   /** The load factor for the hash table; must be < 500 (0.5)
@@ -25,23 +33,65 @@ trait FlatHashTable[A] {
 
   private final val tableDebug = false
 
+  @transient private[collection] var _loadFactor = loadFactor
+
   /** The actual hash table.
    */
-  protected var table: Array[AnyRef] =
-    if (initialSize == 0) null else new Array(initialSize)
+  @transient protected var table: Array[AnyRef] = new Array(initialCapacity)
 
   /** The number of mappings contained in this hash table.
    */
-  protected var tableSize = 0
+  @transient protected var tableSize = 0
 
   /** The next size value at which to resize (capacity * load factor).
    */
-  protected var threshold: Int = newThreshold(initialSize)
+  @transient protected var threshold: Int = newThreshold(initialCapacity)
 
-  /** Returns the number of entires in this hash table.
+  import HashTable.powerOfTwo
+  private def capacity(expectedSize: Int) = if (expectedSize == 0) 1 else powerOfTwo(expectedSize)
+  private def initialCapacity = capacity(initialSize)
+
+  /**
+   * Initializes the collection from the input stream. `f` will be called for each element
+   * read from the input stream in the order determined by the stream. This is useful for
+   * structures where iteration order is important (e.g. LinkedHashSet).
+   *
+   * The serialization format expected is the one produced by `serializeTo`.
    */
-  def size: Int = tableSize
+  private[collection] def init(in: java.io.ObjectInputStream, f: A => Unit) {
+    in.defaultReadObject
 
+    _loadFactor = in.readInt
+    assert(_loadFactor > 0)
+
+    val size = in.readInt
+    assert(size >= 0)
+
+    table = new Array(capacity(size * loadFactorDenum / _loadFactor))
+    threshold = newThreshold(table.size)
+
+    var index = 0
+    while (index < size) {
+      val elem = in.readObject.asInstanceOf[A]
+      f(elem)
+      addEntry(elem)
+      index += 1
+    }
+  }
+
+  /**
+   * Serializes the collection to the output stream by saving the load factor, collection
+   * size and collection elements. `foreach` determines the order in which the elements are saved
+   * to the stream. To deserialize, `init` should be used.
+   */
+  private[collection] def serializeTo(out: java.io.ObjectOutputStream) {
+    out.defaultWriteObject
+    out.writeInt(_loadFactor)
+    out.writeInt(tableSize)
+    iterator.foreach(out.writeObject)
+  }
+
+  /** Finds an entry in the hash table if such an element exists. */
   def findEntry(elem: A): Option[A] = {
     var h = index(elemHashCode(elem))
     var entry = table(h)
@@ -52,6 +102,7 @@ trait FlatHashTable[A] {
     if (null == entry) None else Some(entry.asInstanceOf[A])
   }
 
+  /** Checks whether an element is contained in the hash table. */
   def containsEntry(elem: A): Boolean = {
     var h = index(elemHashCode(elem))
     var entry = table(h)
@@ -62,6 +113,9 @@ trait FlatHashTable[A] {
     null != entry
   }
 
+  /** Add entry if not yet in table.
+   *  @return Returns `true` if a new entry was added, `false` otherwise.
+   */
   def addEntry(elem: A) : Boolean = {
     var h = index(elemHashCode(elem))
     var entry = table(h)
@@ -76,6 +130,7 @@ trait FlatHashTable[A] {
     true
   }
 
+  /** Removes an entry from the hash table, returning an option value with the element, or `None` if it didn't exist. */
   def removeEntry(elem: A) : Option[A] = {
     if (tableDebug) checkConsistent()
     def precedes(i: Int, j: Int) = {
@@ -110,10 +165,10 @@ trait FlatHashTable[A] {
     None
   }
 
-  def elements = new Iterator[A] {
+  def iterator = new Iterator[A] {
     private var i = 0
     def hasNext: Boolean = {
-      while (i < table.length && (null == table(i))) i += 1;
+      while (i < table.length && (null == table(i))) i += 1
       i < table.length
     }
     def next(): A =
@@ -138,10 +193,10 @@ trait FlatHashTable[A] {
   private def checkConsistent() {
     for (i <- 0 until table.length)
       if (table(i) != null && !containsEntry(table(i).asInstanceOf[A]))
-        assert(false, i+" "+table(i)+" "+table.toString)
+        assert(false, i+" "+table(i)+" "+table.mkString)
   }
 
-  protected def elemHashCode(elem: A) = elem.hashCode()
+  protected def elemHashCode(elem: A) = if (elem == null) 0 else elem.hashCode()
 
   protected final def improve(hcode: Int) = {
     var h: Int = hcode + ~(hcode << 9)
@@ -153,12 +208,12 @@ trait FlatHashTable[A] {
   protected final def index(hcode: Int) = improve(hcode) & (table.length - 1)
 
   private def newThreshold(size: Int) = {
-    val lf = loadFactor
+    val lf = _loadFactor
     assert(lf < (loadFactorDenum / 2), "loadFactor too large; must be < 0.5")
     (size.toLong * lf / loadFactorDenum ).toInt
   }
 
-  protected def clear() {
+  protected def clearTable() {
     var i = table.length - 1
     while (i >= 0) { table(i) = null; i -= 1 }
     tableSize = 0

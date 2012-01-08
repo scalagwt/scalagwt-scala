@@ -5,7 +5,8 @@
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-package scala.tools.nsc.backend.jvm
+package scala.tools.nsc
+package backend.jvm
 
 import scala.collection.mutable.ListBuffer
 import scala.tools.nsc.transform.Transform
@@ -24,10 +25,10 @@ with JavaSourceAnalysis
   import definitions._
 
   override val phaseName = "nothingexps"
-  
+
   override protected def newTransformer(unit: CompilationUnit): Transformer =
     new Trans(unit)
-  
+
   /**
    * Rewrite a tree to be a sequence of statements followed by a single expression.
    */
@@ -50,7 +51,7 @@ with JavaSourceAnalysis
           } else {
             tree
           }
-          
+
         case Block(stats, expr) =>
           val nothingIndex = stats findIndexOf isNothing
           if (nothingIndex >= 0) {
@@ -65,7 +66,7 @@ with JavaSourceAnalysis
             lhs
           } else if (isNothing(rhs)) {
             (Block(List(lhs), rhs)
-              copyAttrs tree setType definitions.AllClass.tpe)
+              copyAttrs tree setType definitions.NothingClass.tpe)
           } else {
             tree
           }
@@ -81,9 +82,9 @@ with JavaSourceAnalysis
 
         case Match(selector, cases) =>
           if (isNothing(selector))  selector else tree
-  
+
         case Return(expr) =>
-          if (isNothing(expr)) expr else tree  
+          if (isNothing(expr)) expr else tree
 
         case Throw(expr) =>
           if (isNothing(expr)) expr else tree

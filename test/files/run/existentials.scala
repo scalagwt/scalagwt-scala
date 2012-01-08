@@ -29,7 +29,7 @@ case class C[T](x: T)
 object LUB {
   def x = C(1)
   def y = C("abc")
-  var coinflip: boolean = _
+  var coinflip: Boolean = _
   def z = if (coinflip) x else y
   def zz: C[_1] forSome { type _1 >: Int with java.lang.String } = z
   def zzs: C[_ >: Int with java.lang.String] = z
@@ -52,7 +52,7 @@ object Bug1189 {
 
 object Test extends Application {
 
-  val x = { class I[T]; (new C(new I[String]), new C(new I[Int])) }
+  val x = { class I; class J; (new C(new I), new C(new J)) }
   val y: (C[X], C[Y]) forSome { type X; type Y } = x
 
    def foo(x : Counter[T] { def name : String } forSome { type T }) = x match {
@@ -62,7 +62,7 @@ object Test extends Application {
      case _ =>
    }
 
-   def fooW(x : Counter[_] { def name : String }) = x match {
+   def fooW(x : Counter[T] { def name : String } forSome { type T }) = x match {
      case ctr: Counter[t] =>
        val c = ctr.newCounter
        println(ctr.name+" "+ctr.get(ctr.inc(ctr.inc(c))))
@@ -99,4 +99,14 @@ object Test extends Application {
    new foo.Line
    val fooW = new FooW
    new fooW.Line
+}
+
+trait FooBar[ A <: Option[_]] { def foo: A }
+trait SubFooBar[B <: Option[_]] extends FooBar[B]
+
+object Test1 {
+
+  var pc: List[Product with (Counter[T] forSome { type T })] = List()
+  def f() = pc
+  pc = f()
 }

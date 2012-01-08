@@ -1,4 +1,5 @@
-package test
+
+package scala.util.parsing.combinator.testing
 
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._

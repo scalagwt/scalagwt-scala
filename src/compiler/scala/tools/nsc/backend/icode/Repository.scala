@@ -1,11 +1,12 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode
+package scala.tools.nsc
+package backend
+package icode
 
 import scala.collection._
 
@@ -34,6 +35,7 @@ trait Repository {
   def icode(sym: Symbol, force: Boolean): IClass =
     if (available(sym)) icode(sym).get
     else {
+      log("loading " + sym)
       load(sym)
       assert(available(sym))
       loaded(sym)

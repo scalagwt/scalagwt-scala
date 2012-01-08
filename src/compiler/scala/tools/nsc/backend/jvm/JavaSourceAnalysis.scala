@@ -7,8 +7,9 @@
 \*                                                                      */
 
 // $Id$
-package scala.tools.nsc.backend.jvm
-import nsc.symtab.SymbolTable
+package scala.tools.nsc
+package backend.jvm
+import symtab.SymbolTable
 import scala.collection.mutable
 
 /**
@@ -17,10 +18,10 @@ import scala.collection.mutable
 trait JavaSourceAnalysis {
   val global: SymbolTable
   import global._
-  
+
   private lazy val remoteClass = definitions.getClass("scala.remote")
   private lazy val remoteExceptionClass = definitions.getClass("java.rmi.RemoteException")
-  
+
   /**
    * Return whether the argument, which must be a valid Scala expression, can
    * be used as a Java statement.
@@ -35,7 +36,7 @@ trait JavaSourceAnalysis {
       case _:Literal => false
       case _ => true
     }
-  
+
   /**
    * Return whether the given expression can ever complete and fall through
    * to an expression that follows it in a block.
@@ -45,7 +46,7 @@ trait JavaSourceAnalysis {
   /**
    * Analyze an expression and return the classes of the exceptions
    * it can throw.
-   * 
+   *
    * TODO(spoon): this is currently very sloppy.  It needs to deal with
    * catch expressions, and it needs to combine expressions that overlap,
    * and it needs to deal with declared Java exceptions.
@@ -54,34 +55,34 @@ trait JavaSourceAnalysis {
     val exceptions = mutable.Set.empty[Symbol]
     for (e <- exp)
       e match {
-        case Throw(exc) => 	
+        case Throw(exc) =>
           val sym = exc.tpe.typeSymbol
           if (sym != NoSymbol && sym.isClass)
             exceptions += sym
-          
+
         case Apply(fun, args) =>
-          if (fun.symbol.hasAttribute(remoteClass))
+          if (fun.symbol.hasAnnotation(remoteClass))
             exceptions += remoteExceptionClass
-          
+
         case _ =>
       }
-    
+
     return exceptions.toList
   }
-  
-  
+
+
   def isConstructor(defDef: DefDef) = defDef.name == nme.CONSTRUCTOR
-    
+
   def isNothing(tpe: Type): Boolean =
-    (tpe != null) && (tpe =:= definitions.AllClass.tpe)
-  
+    (tpe != null) && (tpe =:= definitions.NothingClass.tpe)
+
   def isNothing(tree: Tree): Boolean = isNothing(tree.tpe)
-  
+
   def isUnit(tpe: Type): Boolean =
     (tpe != null) && (tpe =:= definitions.UnitClass.tpe)
-  
+
   def isUnit(tree: Tree): Boolean = isUnit(tree.tpe)
-  
+
   def isUnitOrNothing(tree: Tree) = isUnit(tree) || isNothing(tree)
 
   def typeReturnable(tpe: Type) = !isUnit(tpe) && !isNothing(tpe)

@@ -1,7 +1,6 @@
 //############################################################################
 // Tail Calls
 //############################################################################
-// $Id$
 
 //############################################################################
 // Calibration
@@ -158,11 +157,6 @@ class TailCall[S](s: S) {
     if (n == 0) v else f2[T](n - 1, v - 1);
   final def f3[T](n: Int, v: Int, ls: List[T]): Int =
     if (n == 0) v else f3(n - 1, v - 1, ls);
-  final def f4(n: Int, v: Int): Int = try {
-    if (n == 0) v else f4(n - 1, v - 1);
-  } catch {
-    case e: Throwable => throw e
-  }
 
   final def g1(x: Int, y: Int): Int = {
     def aux(n: Int, v: Int): Int =
@@ -199,6 +193,15 @@ object FancyTailCalls {
   val f2 = new FancyTailCalls
 }
 
+object PolyObject extends Application {
+  def tramp[A](x: Int): Int =
+    if (x > 0)
+      tramp[A](x - 1)
+    else
+      0
+}
+
+
 class FancyTailCalls {
 
   def tcTryLocal(x: Int, v: Int): Int = {
@@ -209,15 +212,6 @@ class FancyTailCalls {
       loop(x)
     } finally {}
   }
-
-  final def tcTryCatch(x: Int, v: Int): Int =
-    try {
-      if (x == 0) v
-      else throw new RuntimeException("")
-    } catch {
-      case _: RuntimeException =>
-        tcTryCatch(x - 1, v)
-    }
 
   import FancyTailCalls._
   final def differentInstance(n: Int, v: Int): Int = {
@@ -368,7 +362,6 @@ object Test {
     check_success("TailCall.f1", TailCall.f1(max, max     ), 0)
     check_success("TailCall.f2", TailCall.f2(max, max     ), 0)
     check_success("TailCall.f3", TailCall.f3(max, max, Nil), 0)
-    check_success("TailCall.f4", TailCall.f4(max, max     ), 0)
     check_success("TailCall.g1", TailCall.g1(max, max     ), 0)
     check_success("TailCall.g2", TailCall.g2(max, max     ), 0)
     check_success("TailCall.g3", TailCall.g3(max, max, Nil), 0)
@@ -384,9 +377,22 @@ object Test {
 
     val FancyTailCalls = new FancyTailCalls;
     check_success("FancyTailCalls.tcTryLocal",   FancyTailCalls.tcTryLocal(max, max), max)
-    check_success("FancyTailCalls.tcTryCatch",   FancyTailCalls.tcTryCatch(max, max), max)
     check_success("FancyTailCalls.differentInstance",   FancyTailCalls.differentInstance(max, 42), 42)
+    check_success("PolyObject.tramp", PolyObject.tramp[Int](max), 0)
   }
+
+  // testing explicit tailcalls.
+
+  import scala.util.control.TailCalls._
+
+  def isEven(xs: List[Int]): TailRec[Boolean] =
+    if (xs.isEmpty) done(true) else tailcall(isOdd(xs.tail))
+
+  def isOdd(xs: List[Int]): TailRec[Boolean] =
+    if (xs.isEmpty) done(false) else tailcall(isEven(xs.tail))
+
+  assert(isEven((1 to 100000).toList).result)
+
 }
 
 //############################################################################

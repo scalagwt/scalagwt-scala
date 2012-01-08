@@ -1,12 +1,11 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 package scala.util.parsing.input
 
@@ -16,7 +15,6 @@ package scala.util.parsing.input
  */
 object CharArrayReader {
   final val EofCh = '\032'
-  final val CR = '\015'
 }
 
 /** A character array reader reads a stream of characters (keeping track of their positions)
@@ -30,7 +28,7 @@ object CharArrayReader {
  * @author Martin Odersky, Adriaan Moors
  */
 class CharArrayReader(chars: Array[Char], index: Int)
-extends CharSequenceReader(new CharArraySequence(chars), index) {
+extends CharSequenceReader(chars, index) {
 
   def this(chars: Array[Char]) = this(chars, 0)
 

@@ -1,8 +1,7 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Stephane Micheloud
  */
-//$Id$
 
 package scala.man1
 
@@ -160,6 +159,10 @@ object scala extends Command {
         "for running the Scala code.  Arguments may be specified " &
         "as part of the environment variable; spaces, quotation marks, " &
         "etc., will be passed directly to the shell for expansion."),
+      Definition(
+        MBold("JAVA_HOME"),
+        "Specify JDK/JRE home directory. This directory is used to locate " &
+        "the " & MBold("java") & " command unless " & MBold("JAVACMD") & " variable set."),
       Definition(
         MBold("JAVA_OPTS"),
         SeqPara(

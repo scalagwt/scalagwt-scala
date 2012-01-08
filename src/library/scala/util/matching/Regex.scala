@@ -1,82 +1,44 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id:$
 
 
 package scala.util.matching
 
 import java.util.regex.{Pattern, Matcher}
+import collection.immutable.List
+import collection.{Iterator, Seq}
 
 /** This class provides methods for creating and using regular expressions.
  *  It is based on the regular expressions of the JDK since 1.4.
  *
+ *  <p>
+ *  You can use special pattern syntax construct <code>(?idmsux-idmsux)</code> to switch
+ *  various regex compilation options like <code>CASE_INSENSITIVE</code> or <code>UNICODE_CASE</code>.
+ *  See <code>java.util.regex.Pattern</code> javadoc for details.
+ *  </p>
+ *
  *  @author  Thibaud Hottelier
  *  @author  Philipp Haller
+ *  @author  Martin Odersky
  *  @version 1.1, 29/01/2008
  *
  *  @param regex      A string representing a regular expression
  *  @param groupNames A mapping from names to indices in capture groups
  */
-class Regex(val regex: String, private var groupNames: Map[String, Int]) {
-  private def buildMap(res: Map[String, Int], groupNames: Seq[String], i: Int): Map[String, Int] =
-    if (i > groupNames.size)
-      res
-    else {
-      val p = (groupNames(i - 1), i)
-      buildMap(res + p, groupNames, i + 1)
-    }
+@serializable
+@SerialVersionUID(-2094783597747625537L)
+class Regex(regex: String, groupNames: String*) {
 
-  /** Create a <code>Regex</code> from a string.
-   *
-   *  @param s The regular expression
-   *  @return  A new <code>Regex</code> instance
-   */
-  def this(s: String) = this(s, null: Map[String, Int])
+  import Regex._
 
-  /** Create a <code>Regex</code> from a string and
-   *  a sequence of group names.
-   *
-   *  @param s      The regular expression
-   *  @param groups The list of group names in the same order
-   *                as the capture groups in the regular expression
-   *  @return       A new <code>Regex</code> instance
-   */
-  def this(s: String, groups: String*) = {
-    this(s)
-    groupNames = buildMap(Map[String, Int](), groups, 1)
-  }
-
-  /* Stores the compiled pattern at instantiation time */
+  /** The compiled pattern */
   val pattern = Pattern.compile(regex)
-
-  /* Builds a MatchData[String] from a Matcher */
-  private def buildSeq(l: List[String], m: Matcher, i: Int): MatchData[String] =
-    if (i == -1)
-      new MatchData(l, groupNames)
-    else
-      buildSeq(m.group(i) :: l, m, i - 1)
-
-  /* Builds a List[MatchData[String]] from a Matcher */
-  private def doMatchAll(res: List[MatchData[String]], m: Matcher): List[MatchData[String]] =
-    if (m.find())
-      doMatchAll(res ::: List(buildSeq(Nil, m, m.groupCount())), m)
-    else
-      res
-
-  /* Builds a List[String] from a Matcher */
-  private def unapplySeq0(target: String): Option[List[String]] = {
-    val m = pattern.matcher(target)
-    if (m.matches())
-      Some(buildSeq(Nil, m, m.groupCount()).getGroups.tail)
-    else
-      None
-  }
 
   /** Tries to match target (whole match) and returns
    *  the matches.
@@ -84,43 +46,53 @@ class Regex(val regex: String, private var groupNames: Map[String, Int]) {
    *  @param target The string to match
    *  @return       The matches
    */
-  def unapplySeq(target: Any): Option[List[String]] =
-    if (target.isInstanceOf[String])
-      unapplySeq0(target.asInstanceOf[String])
-    else if (target.isInstanceOf[MatchData[_]])
-      unapplySeq0(target.asInstanceOf[MatchData[String]]())
-    else
+  def unapplySeq(target: Any): Option[List[String]] = target match {
+    case s: java.lang.CharSequence =>
+      val m = pattern.matcher(s)
+      if (m.matches) Some((1 to m.groupCount).toList map m.group)
+      else None
+    case Match(s) =>
+      unapplySeq(s)
+    case _ =>
       None
-
-  /** Creates a <code>MatchData[String]</code> from a string.
-   *  This is used in for-comprehensions to iterate over matches.
-   *
-   *  @param s The string to match
-   *  @return  The MatchData[String] instance
-   */
-  def ~~(s: String) = matchAll(s)
-
-  /** Returns all matches of target string.
-   *
-   *  @param target The string to match
-   *  @return       All matches in a list of <code>MatchData[String]</code>
-   */
-  def matchAll(target: String): List[MatchData[String]] = {
-    val m = pattern.matcher(target)
-    doMatchAll(Nil, m)
   }
 
-  /** Returns the first match of target string.
-   *
-   *  @param target The string to match
-   *  @return       The first match as <code>MatchData[String]</code>
+  /** Return all matches of this regexp in given character sequence as an iterator
    */
-  def matchFirst(target: String): Option[MatchData[String]] = {
-    val m = pattern.matcher(target)
-    if (!m.find())
-      None
-    else
-      Some(buildSeq(Nil, m, m.groupCount()))
+  def findAllIn(source: java.lang.CharSequence) = new Regex.MatchIterator(source, this, groupNames)
+
+  /** Return optionally first matching string of this regexp in given character sequence,
+   *  None if it does not exist.
+   */
+  def findFirstIn(source: java.lang.CharSequence): Option[String] = {
+    val m = pattern.matcher(source)
+    if (m.find) Some(m.group) else None
+  }
+
+  /** Return optionally first match of this regexp in given character sequence,
+   *  None if it does not exist.
+   */
+  def findFirstMatchIn(source: java.lang.CharSequence): Option[Match] = {
+    val m = pattern.matcher(source)
+    if (m.find) Some(new Match(source, m, groupNames)) else None
+  }
+
+  /** Return optionally match of this regexp at the beginning of the
+   *  given character sequence, or None if regexp matches no prefix
+   *  of the character sequence.
+   */
+  def findPrefixOf(source: java.lang.CharSequence): Option[String] = {
+    val m = pattern.matcher(source)
+    if (m.lookingAt) Some(m.group) else None
+  }
+
+  /** Return optionally match of this regexp at the beginning of the
+   *  given character sequence, or None if regexp matches no prefix
+   *  of the character sequence.
+   */
+  def findPrefixMatchOf(source: java.lang.CharSequence): Option[Match] = {
+    val m = pattern.matcher(source)
+    if (m.lookingAt) Some(new Match(source, m, groupNames)) else None
   }
 
   /** Replaces all matches by a string.
@@ -129,9 +101,35 @@ class Regex(val regex: String, private var groupNames: Map[String, Int]) {
    *  @param replacement The string that will replace each match
    *  @return            The resulting string
    */
-  def replaceAll(target: String, replacement: String): String = {
+  def replaceAllIn(target: java.lang.CharSequence, replacement: String): String = {
     val m = pattern.matcher(target)
     m.replaceAll(replacement)
+  }
+
+  /**
+   * Replaces all matches using a replacer function.
+   *
+   * @param target      The string to match.
+   * @param replacer    The function which maps a match to another string.
+   * @return            The target string after replacements.
+   */
+  def replaceAllIn(target: java.lang.CharSequence, replacer: Match => String): String = {
+    val it = new Regex.MatchIterator(target, this, groupNames).replacementData
+    while (it.hasNext) {
+      val matchdata = it.next
+      it.replace(replacer(matchdata))
+    }
+    it.replaced
+  }
+
+  def replaceSomeIn(target: java.lang.CharSequence, replacer: Match => Option[String]): String = {
+    val it = new Regex.MatchIterator(target, this, groupNames).replacementData
+    while (it.hasNext) {
+      val matchdata = it.next
+      val replaceopt = replacer(matchdata)
+      if (replaceopt != None) it.replace(replaceopt.get)
+    }
+    it.replaced
   }
 
   /** Replaces the first match by a string.
@@ -140,43 +138,232 @@ class Regex(val regex: String, private var groupNames: Map[String, Int]) {
    *  @param replacement The string that will replace the match
    *  @return            The resulting string
    */
-  def replaceFirst(target: String, replacement: String): String = {
+  def replaceFirstIn(target: java.lang.CharSequence, replacement: String): String = {
     val m = pattern.matcher(target)
     m.replaceFirst(replacement)
   }
 
-  /** Returns true if the whole string matches.
+  /** Splits the provided character sequence around matches of this
+   *  regexp.
    *
-   *  @param target The string to match
-   *  @return       <code>true</code> iff the whole string matches
+   *  @param toSplit The character sequence to split
+   *  @return        The array of strings computed by splitting the
+   *                 input around matches of this regexp
    */
-  def matchesAll(target: String): Boolean = {
-    val m = pattern.matcher(target)
-    m.find()
-  }
+  def split(toSplit: java.lang.CharSequence): Array[String] =
+    pattern.split(toSplit)
 
-  /** Returns <code>true</code> iff the string or one of its substrings match.
-   *
-   *  @param target The string to match
-   *  @return       <code>true</code> iff the string matches
-   */
-  def matches(target: String): Boolean = {
-    val m = pattern.matcher(target)
-    m.matches()
-  }
-
-  override def toString = """regex"""+".r"
+  /** The string defining the regular expression */
+  override def toString = regex
 }
 
-/** Provides implicit conversions for regular expressions.
+/** This object defines inner classes that describe
+ *  regex matches. The class hierarchy is as follows.
+ *
+ *            MatchData
+ *              |      \
+ *      MatchIterator  Match
  */
 object Regex {
-  /** Promotes a string to <code>MatchableString</code> so that <code>=~</code> can be used */
-  implicit def stringToMatchableString(s: String) = new MatchableString(s)
 
-  /** Allows treating an <code>Option</code> as a Boolean. */
-  implicit def optionToBoolean(o: Option[MatchData[String]]) = o.isDefined
+  /** This class provides methods to access
+   *  the details of a match.
+   */
+  trait MatchData {
 
-  /** Promotes a string to a <code>Regex</code>. */
-  implicit def stringToRegex(s: String) = new Regex(s)
+    /** The source from where the match originated */
+    val source: java.lang.CharSequence
+
+    /** The names of the groups, or some empty sequence if one defined */
+    val groupNames: Seq[String]
+
+    /** The number of subgroups in the pattern (not all of these need to match!) */
+    def groupCount: Int
+
+    /** The index of the first matched character, or -1 if nothing was matched */
+    def start: Int
+
+    /** The index of the first matched character in group <code>i</code>,
+     *  or -1 if nothing was matched for that group */
+    def start(i: Int): Int
+
+    /** The index of the last matched character, or -1 if nothing was matched */
+    def end: Int
+
+    /** The index following the last matched character in group <code>i</code>,
+     *  or -1 if nothing was matched for that group */
+    def end(i: Int): Int
+
+    /** The matched string,
+     *  of <code>null</code> if nothing was matched */
+    def matched: String =
+      if (start >= 0) source.subSequence(start, end).toString
+      else null
+
+    /** The matched string in group <code>i</code>,
+     *  or <code>null</code> if nothing was matched */
+    def group(i: Int): String =
+      if (start(i) >= 0) source.subSequence(start(i), end(i)).toString
+      else null
+
+    /** All matched subgroups, i.e. not including group(0) */
+    def subgroups: List[String] = (1 to groupCount).toList map group
+
+    /** The char sequence before first character of match,
+     *  or <code>null</code> if nothing was matched */
+    def before: java.lang.CharSequence =
+      if (start >= 0) source.subSequence(0, start)
+      else null
+
+    /** The char sequence before first character of match in group <code>i</code>,
+     *  or <code>null</code> if nothing was matched for that group  */
+    def before(i: Int): java.lang.CharSequence =
+      if (start(i) >= 0) source.subSequence(0, start(i))
+      else null
+
+    /** Returns char sequence after last character of match,
+     *  or <code>null</code> if nothing was matched */
+    def after: java.lang.CharSequence =
+      if (end >= 0) source.subSequence(end, source.length)
+      else null
+
+    /** The char sequence after last character of match in group <code>i</code>,
+     *  or <code>null</code> if nothing was matched for that group  */
+    def after(i: Int): java.lang.CharSequence =
+      if (end(i) >= 0) source.subSequence(end(i), source.length)
+      else null
+
+    private lazy val nameToIndex: Map[String, Int] = Map[String, Int]() ++ ("" :: groupNames.toList).zipWithIndex
+
+    /** Returns the group with given name
+     *
+     *  @param id The group name
+     *  @return   The requested group
+     *  @throws   <code>NoSuchElementException</code> if the requested
+     *            group name is not defined
+     */
+    def group(id: String): String = nameToIndex.get(id) match {
+      case None => throw new NoSuchElementException("group name "+id+" not defined")
+      case Some(index) => group(index)
+    }
+
+    /** The matched string; equivalent to <code>matched.toString</code> */
+    override def toString = matched
+
+  }
+
+  /** A case class for a successful match.
+   */
+  class Match(val source: java.lang.CharSequence,
+              matcher: Matcher,
+              val groupNames: Seq[String]) extends MatchData {
+
+    /** The index of the first matched character */
+    val start = matcher.start
+
+    /** The index following the last matched character */
+    val end = matcher.end
+
+    /** The number of subgroups */
+    def groupCount = matcher.groupCount
+
+    private lazy val starts: Array[Int] =
+      ((0 to groupCount) map matcher.start).toArray
+    private lazy val ends: Array[Int] =
+      ((0 to groupCount) map matcher.end).toArray
+
+    /** The index of the first matched character in group <code>i</code> */
+    def start(i: Int) = starts(i)
+
+    /** The index following the last matched character in group <code>i</code> */
+    def end(i: Int) = ends(i)
+
+    /** The match itself with matcher-dependent lazy vals forced,
+     *  so that match is valid even once matcher is advanced
+     */
+    def force: this.type = { starts; ends; this }
+  }
+
+  /** An extractor object for Matches, yielding the matched string */
+  object Match {
+    def unapply(m: Match): Some[String] = Some(m.matched)
+  }
+
+  /** An extractor object that yields groups in the match. */
+  object Groups {
+    def unapplySeq(m: Match): Option[Seq[String]] = if (m.groupCount > 0) Some(1 to m.groupCount map m.group) else None
+  }
+
+  /** A class to step through a sequence of regex matches
+   */
+  class MatchIterator(val source: java.lang.CharSequence, val regex: Regex, val groupNames: Seq[String])
+  extends Iterator[String] with MatchData { self =>
+
+    protected val matcher = regex.pattern.matcher(source)
+    private var nextSeen = false
+
+    /** Is there another match? */
+    def hasNext: Boolean = {
+      if (!nextSeen) nextSeen = matcher.find()
+      nextSeen
+    }
+
+    /** The next matched substring of `source' */
+    def next: String = {
+      if (!hasNext) throw new NoSuchElementException
+      nextSeen = false
+      matcher.group
+    }
+
+    override def toString = super[Iterator].toString
+
+    /** The index of the first matched character */
+    def start: Int = matcher.start
+
+    /** The index of the first matched character in group <code>i</code> */
+    def start(i: Int): Int = matcher.start(i)
+
+    /** The index of the last matched character */
+    def end: Int = matcher.end
+
+    /** The index following the last matched character in group <code>i</code> */
+    def end(i: Int): Int = matcher.end(i)
+
+    /** The number of subgroups */
+    def groupCount = matcher.groupCount
+
+    /** Convert to an iterator that yields MatchData elements instead of Strings */
+    def matchData = new Iterator[Match] {
+      def hasNext = self.hasNext
+      def next = { self.next; new Match(source, matcher, groupNames).force }
+    }
+
+    /** Convert to an iterator that yields MatchData elements instead of Strings and has replacement support */
+    private[matching] def replacementData = new Iterator[Match] with Replacement {
+      def matcher = self.matcher
+      def hasNext = self.hasNext
+      def next = { self.next; new Match(source, matcher, groupNames).force }
+    }
+  }
+
+  /**
+   * A trait able to build a string with replacements assuming it has a matcher.
+   * Meant to be mixed in with iterators.
+   */
+  private[matching] trait Replacement {
+    protected def matcher: Matcher
+
+    private var sb = new java.lang.StringBuffer
+
+    def replaced = {
+      val newsb = new java.lang.StringBuffer(sb)
+      matcher.appendTail(newsb)
+      newsb.toString
+    }
+
+    def replace(rs: String) = matcher.appendReplacement(sb, rs)
+  }
 }
+
+
+

@@ -1,32 +1,37 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2008 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author  Martin Odersky
  */
-// $Id$
 
-package scala.tools.nsc.symtab
-import nsc.ast.Trees
+package scala.tools.nsc
+package symtab
+
+import ast.{Trees, TreePrinters, DocComments}
 
 import util._
 
-abstract class SymbolTable extends Names
+abstract class SymbolTable extends reflect.generic.Universe
+                              with Names
                               with Symbols
                               with Types
                               with Scopes
                               with Definitions
-                              with Constants
+                              with reflect.generic.Constants
+                              with BaseTypeSeqs
                               with InfoTransformers
                               with StdNames
                               with AnnotationInfos
                               with AnnotationCheckers
                               with Trees
+                              with TreePrinters
+                              with Positions
+                              with DocComments
 {
   def settings: Settings
   def rootLoader: LazyType
   def log(msg: AnyRef)
-
-  /** Are we compiling for the J2ME CLDC platform ? */
-  def forCLDC: Boolean
+  def abort(msg: String) = throw new Error(msg)
+  def abort() = throw new Error()
 
   /** Are we compiling for Java SE ? */
   def forJVM: Boolean
@@ -34,8 +39,6 @@ abstract class SymbolTable extends Names
   /** Are we compiling for .NET ? */
   def forMSIL: Boolean
 
-  /** are we in a lampion presentation compiler? cannot get inIDE flag from global */
-  def inIDE : Boolean = false
   protected def trackTypeIDE(sym : Symbol) : Boolean = true
   def compare(sym : Symbol, name : Name) = sym.name == name
   def verifyAndPrioritize[T](g : Symbol => Symbol)(pt : Type)(f : => T) = f
@@ -44,12 +47,6 @@ abstract class SymbolTable extends Names
   }
   def notifyImport(what : Name, container : Type, from : Name, to : Name) : Unit = {}
   def sanitize(tree : Tree) : Tree = tree
-  def attachSource(symbol : ClassSymbol, file : io.AbstractFile) : Unit = {
-    assert(symbol != null)
-  }
-  def prepareReset(symbol : Symbol, tpe : LazyType) : Unit = {
-    assert(symbol != null)
-  }
 
   /** A period is an ordinal number for a phase in a run.
    *  Phases in later runs have higher periods than phases in earlier runs.
@@ -101,11 +98,18 @@ abstract class SymbolTable extends Names
   /** Perform given operation at given phase */
   final def atPhase[T](ph: Phase)(op: => T): T = {
     val current = phase
-    phase = ph
-    val result = op
-    phase = current
-    result
+    try {
+      phase = ph
+      op
+    } finally {
+      phase = current
+    }
   }
+
+  /** Break into repl debugger if assertion is true */
+  // def breakIf(assertion: => Boolean, args: Any*): Unit =
+  //   if (assertion)
+  //     Interpreter.break(args.toList)
 
   /** The set of all installed infotransformers */
   var infoTransformers = new InfoTransformer {

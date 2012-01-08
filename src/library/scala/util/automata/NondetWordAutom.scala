@@ -1,18 +1,17 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
 package scala.util.automata
 
-
-import scala.collection.{immutable, mutable, Set, Map}
+import scala.collection.{ immutable, mutable, Set, Seq, Map }
+import immutable.{ BitSet }
 
 /** A nondeterministic automaton. States are integers, where
  *  0 is always the only initial state. Transitions are represented
@@ -21,14 +20,14 @@ import scala.collection.{immutable, mutable, Set, Map}
  *  All states are reachable. Accepting states are those for which
  *  the partial function 'finals' is defined.
  */
-abstract class NondetWordAutom[T <: AnyRef] {
-
+abstract class NondetWordAutom[T <: AnyRef]
+{
   val nstates: Int
   val labels: Seq[T]
 
   val finals: Array[Int] // 0 means not final
-  val delta: Array[Map[T, immutable.BitSet]]
-  val default: Array[immutable.BitSet]
+  val delta: Array[Map[T, BitSet]]
+  val default: Array[BitSet]
 
   /** returns true if the state is final */
   final def isFinal(state: Int) = finals(state) > 0
@@ -37,76 +36,28 @@ abstract class NondetWordAutom[T <: AnyRef] {
   final def finalTag(state: Int) = finals(state)
 
   /** returns true if the set of states contains at least one final state */
-  final def containsFinal(Q: immutable.BitSet): Boolean = {
-    val it = Q.elements
-    while (it.hasNext)
-      if (isFinal(it.next))
-        return true
-    return false
-  }
+  final def containsFinal(Q: BitSet): Boolean = Q exists isFinal
 
   /** returns true if there are no accepting states */
-  final def isEmpty = {
-    var r = true
-    var j = 0; while(r && (j < nstates)) {
-      if (isFinal(j))
-        r = false
-    }
-    r
-  }
+  final def isEmpty = (0 until nstates) forall (x => !isFinal(x))
 
   /** returns a bitset with the next states for given state and label */
-  def next(q: Int, a: T): immutable.BitSet = {
-    delta(q).get(a) match {
-      case Some(bs) => bs
-      case _        => default(q)
-    }
-  }
+  def next(q: Int, a: T): BitSet = delta(q).getOrElse(a, default(q))
 
   /** returns a bitset with the next states for given state and label */
-  def next(Q: immutable.BitSet, a: T): immutable.BitSet = {
-    val x = new mutable.BitSet(nstates)
-    for (q <- Q) {
-      for (i <- next(q,a)) {
-        x += i
-      }
-    }
-    x.toImmutable
-  }
+  def next(Q: BitSet, a: T): BitSet = next(Q, next(_, a))
+  def nextDefault(Q: BitSet): BitSet = next(Q, default)
 
+  private def next(Q: BitSet, f: (Int) => BitSet): BitSet =
+    (Q map f).foldLeft(BitSet.empty)(_ ++ _)
 
-  def nextDefault(Q: immutable.BitSet): immutable.BitSet = {
-    val x = new mutable.BitSet(nstates)
-    for (q <- Q) {
-      for (i <- default(q)) { //@todo: OR
-        x += i
-      }
-    }
-    x.toImmutable
-  }
-
+  private def finalStates = 0 until nstates filter isFinal
   override def toString = {
-    val sb = new StringBuilder("[NondetWordAutom  nstates=")
-    sb.append(nstates)
-    sb.append("  finals=")
-    var map = new scala.collection.immutable.ListMap[Int,Int]
-    var j = 0; while (j < nstates) {
-      if (isFinal(j))
-        map = map.update(j, finals(j));
-      j += 1
-    }
-    sb.append(map.toString)
-    sb.append("  delta=\n")
-    for (i <- 0 until nstates) {
-      sb.append("    ")
-      sb.append( i )
-      sb.append("->")
-      sb.append(delta(i).toString)
-      sb.append("\n    ")
-      sb.append(" _>")
-      sb.append(default(i).toString)
-      sb.append('\n')
-    }
-    sb.toString()
+
+    val finalString = Map(finalStates map (j => j -> finals(j)) : _*).toString
+    val deltaString = (0 until nstates) .
+      map (i => "   %d->%s\n    _>%s\n".format(i, delta(i), default(i))) mkString
+
+    "[NondetWordAutom  nstates=%d  finals=%s  delta=\n%s".format(nstates, finalString, deltaString)
   }
 }

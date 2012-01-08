@@ -1,8 +1,12 @@
 /* NEST (New Scala Test)
+ * Copyright 2007-2010 LAMP/EPFL
  * @author Philipp Haller
  */
 
-package scala.tools.partest.nest
+// $Id$
+
+package scala.tools.partest
+package nest
 
 import java.io.PrintWriter
 
@@ -61,25 +65,43 @@ object NestUI {
 
   def usage() {
     println("Usage: NestRunner [<options>] [<testfile> ..] [<resfile>]")
-    println("version Mar13")
-    println("    --all          run all tests")
-    println("    --pos          next files test a compilation success")
-    println("    --neg          next files test a compilation failure")
-    println("    --run          next files test the interpreter and all backends")
-    println("    --jvm          next files test the JVM backend")
-    println("    --jvm5         next files test the JVM backend")
-    println("    --res          next files test the resident compiler")
-    println("    --shootout     next files are shootout tests")
-    println("    --script       next files test the script runner")
-    println("    --verbose      display progress information")
-    //println("    --version      display version information")
+    println("  <testfile>: list of files ending in '.scala'")
+    println("  <resfile>: a file not ending in '.scala'")
+    println("  <options>:")
     println
-    println("Send bugs to <scala@listes.epfl.ch>")
+    println("  Test categories:")
+    println("    --all           run all tests")
+    println("    --pos           run compilation tests (success)")
+    println("    --neg           run compilation tests (failure)")
+    println("    --run           run interpreter and backend tests")
+    println("    --jvm           run JVM backend tests")
+    println("    --res           run resident compiler tests")
+    println("    --buildmanager  run Build Manager tests")
+    println("    --scalacheck    run ScalaCheck tests")
+    println("    --script        run script runner tests")
+    println("    --shootout      run shootout tests")
+    println("    --grep <expr>    run all tests whose source file contains <expr>")
+    println
+    println("  Other options:")
+    println("    --pack       pick compiler/library in build/pack, and run all tests")
+    println("    --show-log   show log")
+    println("    --show-diff  show diff between log and check file")
+    println("    --failed     run only those tests that failed during the last run")
+    println("    --verbose    show progress information")
+    println("    --buildpath  set (relative) path to build jars")
+    println("                 ex.: --buildpath build/pack")
+    println("    --classpath  set (absolute) path to build classes")
+    println("    --srcpath    set (relative) path to test source files")
+    println("                 ex.: --srcpath pending")
+    println("    --debug      enable debugging output")
+    println
+    println(utils.Properties.versionString)
+    println("maintained by Philipp Haller (EPFL)")
     exit(1)
   }
 
-
   var _verbose = false
+  var _debug = false
 
   def verbose(msg: String) {
     if (_verbose) {
@@ -87,5 +109,10 @@ object NestUI {
       println(msg)
     }
   }
-
+  def debug(msg: String) {
+    if (isPartestDebug) {
+      outline("debug: ")
+      println(msg)
+    }
+  }
 }

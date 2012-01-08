@@ -1,24 +1,30 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
+package scala.collection
+package mutable
 
-package scala.collection.mutable
+import script._
 
-
-/** This class should be used as a mixin. It synchronizes the <code>Set</code>
+/** This class should be used as a mixin. It synchronizes the `Set`
  *  functions of the class into which it is mixed in.
+ *
+ *  @tparam A    type of the elements contained in this synchronized set.
  *
  *  @author  Matthias Zenger
  *  @version 1.0, 08/07/2003
+ *  @since   1
+ *  @define Coll SynchronizedSet
+ *  @define coll synchronized set
  */
 trait SynchronizedSet[A] extends Set[A] {
+  import scala.collection.Traversable
 
   abstract override def size: Int = synchronized {
     super.size
@@ -32,43 +38,35 @@ trait SynchronizedSet[A] extends Set[A] {
     super.contains(elem)
   }
 
-  abstract override def update(elem: A, included: Boolean): Unit = synchronized {
-    super.update(elem, included)
-  }
-
-  abstract override def +=(elem: A): Unit = synchronized {
+  abstract override def +=(elem: A): this.type = synchronized[this.type] {
     super.+=(elem)
   }
 
-  override def ++=(that: Iterable[A]) = synchronized {
-    super.++=(that)
+  override def ++=(xs: TraversableOnce[A]): this.type = synchronized[this.type] {
+    super.++=(xs)
   }
 
-  override def ++=(it: Iterator[A]) = synchronized {
-    super.++=(it)
-  }
-
-  override def incl(elems: A*): Unit = synchronized {
-    super.++=(elems)
-  }
-
-  abstract override def -=(elem: A): Unit = synchronized {
+  abstract override def -=(elem: A): this.type = synchronized[this.type] {
     super.-=(elem)
   }
 
-  override def --=(that: Iterable[A]) = synchronized {
-    super.--=(that)
+  override def --=(xs: TraversableOnce[A]): this.type = synchronized[this.type] {
+    super.--=(xs)
   }
 
-  override def --=(it: Iterator[A]) = synchronized {
-    super.--=(it)
+  override def update(elem: A, included: Boolean): Unit = synchronized {
+    super.update(elem, included)
   }
 
-  override def excl(elems: A*): Unit = synchronized {
-    super.--=(elems)
+  override def add(elem: A): Boolean = synchronized {
+    super.add(elem)
   }
 
-  override def intersect(that: Set[A]) = synchronized {
+  override def remove(elem: A): Boolean = synchronized {
+    super.remove(elem)
+  }
+
+  override def intersect(that: scala.collection.Set[A]) = synchronized {
     super.intersect(that)
   }
 
@@ -80,7 +78,7 @@ trait SynchronizedSet[A] extends Set[A] {
     super.subsetOf(that)
   }
 
-  override def foreach(f: A => Unit) = synchronized {
+  override def foreach[U](f: A =>  U) = synchronized {
     super.foreach(f)
   }
 
@@ -100,7 +98,7 @@ trait SynchronizedSet[A] extends Set[A] {
     super.<<(cmd)
   }
 
-  override def clone(): Set[A] = synchronized {
+  override def clone(): Self = synchronized {
     super.clone()
   }
 }

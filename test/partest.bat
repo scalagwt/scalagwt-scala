@@ -3,7 +3,7 @@
 rem ##########################################################################
 rem # Scala code runner 2.7.0-final
 rem ##########################################################################
-rem # (c) 2002-2008 LAMP/EPFL
+rem # (c) 2002-2010 LAMP/EPFL
 rem #
 rem # This is free software; see the distribution for copying conditions.
 rem # There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
@@ -45,15 +45,15 @@ if "%_EXTENSION_CLASSPATH%"=="" (
     if "%OS%"=="Windows_NT" (
       for /d %%f in ("%_SCALA_HOME%\lib\*") do call :add_cpath "%%f"
     )
-  ) else if exist "%_SCALA_HOME%\build\quick\lib\partest" (
-    for %%f in ("%_SCALA_HOME%\build\quick\lib\*") do call :add_cpath "%%f"
+  ) else if exist "%_SCALA_HOME%\build\pack\lib\scala-partest.jar" (
+    for %%f in ("%_SCALA_HOME%\build\pack\lib\*") do call :add_cpath "%%f"
     if "%OS%"=="Windows_NT" (
-      for /d %%f in ("%_SCALA_HOME%\build\quick\lib\*") do call :add_cpath "%%f"
+      for /d %%f in ("%_SCALA_HOME%\build\pack\lib\*") do call :add_cpath "%%f"
     )  
   )
 )
 
-set _PROPS=-Dscala.home="%_SCALA_HOME%" -Dscalatest.javacmd="%_JAVACMD%" -Dscalatest.java_options="%_JAVA_OPTS%" -Dscalatest.scalac_options="%_SCALAC_OPTS%"
+set _PROPS=-Dscala.home="%_SCALA_HOME%" -Dpartest.javacmd="%_JAVACMD%" -Dpartest.java_options="%_JAVA_OPTS%" -Dpartest.scalac_options="%_SCALAC_OPTS%" -Dpartest.javac_cmd="%JAVA_HOME%\bin\javac"
 
 rem echo %_JAVACMD% %_JAVA_OPTS% %_PROPS% -cp "%_EXTENSION_CLASSPATH%" scala.tools.partest.nest.NestRunner %_ARGS%
 %_JAVACMD% %_JAVA_OPTS% %_PROPS% -cp "%_EXTENSION_CLASSPATH%" scala.tools.partest.nest.NestRunner %_ARGS%

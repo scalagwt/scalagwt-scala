@@ -1,25 +1,29 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2006, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |                                         **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.mutable
+package scala.collection
+package mutable
 
-
-/** This class implements synchronized priority queues using a heap.
- *  The elements of the queue have to be ordered in terms of the
- *  <code>Ordered[T]</code> class.
+/** This class implements synchronized priority queues using a binary heap.
+ *  The elements of the queue have to be ordered in terms of the `Ordered[T]` class.
+ *
+ *  @tparam A    type of the elements contained in this synchronized priority queue
+ *  @param ord   implicit ordering used to compared elements of type `A`
  *
  *  @author  Matthias Zenger
  *  @version 1.0, 03/05/2004
+ *  @since   1
+ *  @define Coll SynchronizedPriorityQueue
+ *  @define coll synchronized priority queue
  */
-class SynchronizedPriorityQueue[A <% Ordered[A]] extends PriorityQueue[A] {
+class SynchronizedPriorityQueue[A](implicit ord: Ordering[A]) extends PriorityQueue[A] {
 
   /** Checks if the queue is empty.
    *
@@ -31,20 +35,23 @@ class SynchronizedPriorityQueue[A <% Ordered[A]] extends PriorityQueue[A] {
    *
    *  @param  elem        the element to insert
    */
-  override def +=(elem: A): Unit = synchronized { super.+=(elem) }
+  override def +=(elem: A): this.type = {
+    synchronized {
+      super.+=(elem)
+    }
+    this
+  }
 
-  /** Adds all elements provided by an <code>Iterable</code> object
-   *  into the priority queue.
+  /** Adds all elements of a traversable object into the priority queue.
    *
-   *  @param  iter        an iterable object
+   *  @param  xs        a traversable object
    */
-  override def ++=(iter: Iterable[A]): Unit = synchronized { super.++=(iter) }
-
-  /** Adds all elements provided by an iterator into the priority queue.
-   *
-   *  @param  it        an iterator
-   */
-  override def ++=(it: Iterator[A]): Unit = synchronized { super.++=(it) }
+  override def ++=(xs: TraversableOnce[A]): this.type = {
+    synchronized {
+      super.++=(xs)
+    }
+    this
+  }
 
   /** Adds all elements to the queue.
    *
@@ -71,25 +78,18 @@ class SynchronizedPriorityQueue[A <% Ordered[A]] extends PriorityQueue[A] {
    */
   override def clear(): Unit = synchronized { super.clear }
 
-  /** Returns an iterator which yiels all the elements of the priority
+  /** Returns an iterator which yield all the elements of the priority
    *  queue in descending priority order.
    *
    *  @return  an iterator over all elements sorted in descending order.
    */
-  override def elements: Iterator[A] = synchronized { super.elements }
+  override def iterator: Iterator[A] = synchronized { super.iterator }
 
   /** Checks if two queues are structurally identical.
    *
    *  @return true, iff both queues contain the same sequence of elements.
    */
   override def equals(that: Any): Boolean = synchronized { super.equals(that) }
-
-  /** The hashCode method always yields an error, since it is not
-   *  safe to use mutable queues as keys in hash tables.
-   *
-   *  @return never.
-   */
-  override def hashCode(): Int = synchronized { super.hashCode() }
 
   /** Returns a textual representation of a queue as a string.
    *

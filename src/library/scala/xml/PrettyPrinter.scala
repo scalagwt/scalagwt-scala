@@ -1,29 +1,28 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
-
 
 package scala.xml
 
-import scala.collection.Map
+import Utility.sbToString
 
 /** Class for pretty printing. After instantiating, you can use the
- *  toPrettyXML methods to convert XML to a formatted string. The class
- *  can be reused to pretty print any number of XML nodes.
+ *  format() and formatNode() methods to convert XML to a formatted
+ *  string. The class can be reused to pretty print any number of
+ *  XML nodes.
  *
  *  @author  Burak Emir
  *  @version 1.0
  *
  *  @param width the width to fit the output into
- *  @step  indentation
+ *  @param step  indentation
  */
-class PrettyPrinter( width:Int, step:Int ) {
+class PrettyPrinter(width: Int, step: Int) {
 
   class BrokenException() extends java.lang.Exception
 
@@ -37,7 +36,6 @@ class PrettyPrinter( width:Int, step:Int ) {
   protected var items: List[Item] = Nil
 
   protected var cur = 0
-  //protected var pmap:Map[String,String] = _
 
   protected def reset() = {
     cur = 0
@@ -52,7 +50,7 @@ class PrettyPrinter( width:Int, step:Int ) {
    */
   protected def cut(s: String, ind: Int): List[Item] = {
     val tmp = width - cur
-    if (s.length < tmp)
+    if (s.length <= tmp)
       return List(Box(ind, s))
     val sb = new StringBuilder()
     var i = s.indexOf(' ')
@@ -82,19 +80,13 @@ class PrettyPrinter( width:Int, step:Int ) {
    *  @param s   ...
    *  @return    ...
    */
-  protected def makeBox(ind: Int, s: String) = {
-    if (cur < ind)
-      cur == ind
+  protected def makeBox(ind: Int, s: String) =
     if (cur + s.length > width) {            // fits in this line
-      items = Box(ind, s) :: items
+      items ::= Box(ind, s)
       cur += s.length
-    } else try {
-      for (b <- cut(s, ind).elements)  // break it up
-        items = b :: items
-    } catch {
-      case _:BrokenException => makePara(ind, s) // give up, para
     }
-  }
+    else try cut(s, ind) foreach (items ::= _)            // break it up
+    catch { case _: BrokenException => makePara(ind, s) } // give up, para
 
   // dont respect indent in para, but afterwards
   protected def makePara(ind: Int, s: String) = {
@@ -113,45 +105,50 @@ class PrettyPrinter( width:Int, step:Int ) {
    *  @return  ...
    */
   protected def leafTag(n: Node) = {
-    val sb = new StringBuilder("<")
-    n.nameToString(sb)
-    //Utility.appendPrefixedName( n.prefix, n.label, pmap, sb );
-    n.attributes.toString(sb)
-    //Utility.attr2xml( n.scope, n.attributes, pmap, sb );
-    sb.append("/>")
-    sb.toString()
+    def mkLeaf(sb: StringBuilder) {
+      sb append '<'
+      n nameToString sb
+      n.attributes buildString sb
+      sb append "/>"
+    }
+    sbToString(mkLeaf)
   }
 
   protected def startTag(n: Node, pscope: NamespaceBinding): (String, Int) = {
-    val sb = new StringBuilder("<")
-    n.nameToString(sb) //Utility.appendPrefixedName( n.prefix, n.label, pmap, sb );
-    val i = sb.length + 1
-    n.attributes.toString(sb)
-    n.scope.toString(sb, pscope)
-    sb.append('>')
-    (sb.toString(), i)
+    var i = 0
+    def mkStart(sb: StringBuilder) {
+      sb append '<'
+      n nameToString sb
+      i = sb.length + 1
+      n.attributes buildString sb
+      n.scope.buildString(sb, pscope)
+      sb append '>'
+    }
+    (sbToString(mkStart), i)
   }
 
   protected def endTag(n: Node) = {
-    val sb = new StringBuilder("</")
-    n.nameToString(sb) //Utility.appendPrefixedName( n.prefix, n.label, pmap, sb );
-    sb.append('>')
-    sb.toString()
+    def mkEnd(sb: StringBuilder) {
+      sb append "</"
+      n nameToString sb
+      sb append '>'
+    }
+    sbToString(mkEnd)
   }
 
   protected def childrenAreLeaves(n: Node): Boolean = {
-    val it = n.child.elements
-    while (it.hasNext)
-      it.next match {
-        case _:Atom[_] | _:Comment | _:EntityRef | _:ProcInstr =>
-        case _:Node =>
-          return false
-      }
-    true
+    def isLeaf(l: Node) = l match {
+      case _:Atom[_] | _:Comment | _:EntityRef | _:ProcInstr  => true
+      case _                                                  => false
+    }
+    n.child forall isLeaf
   }
 
   protected def fits(test: String) =
     test.length < width - cur
+
+  private def doPreserve(node: Node) =
+    node.attribute(XML.namespace, XML.space).map(_.toString == XML.preserve) getOrElse false
 
   /** @param tail: what we'd like to sqeeze in */
   protected def traverse(node: Node, pscope: NamespaceBinding, ind: Int): Unit =  node match {
@@ -160,14 +157,14 @@ class PrettyPrinter( width:Int, step:Int ) {
         ;
       case _:Atom[_] | _:Comment | _:EntityRef | _:ProcInstr =>
         makeBox( ind, node.toString().trim() )
+      case g @ Group(xs) =>
+        traverse(xs.iterator, pscope, ind)
       case _ =>
         val test = {
           val sb = new StringBuilder()
           Utility.toXML(node, pscope, sb, false)
-          if (node.attribute("http://www.w3.org/XML/1998/namespace", "space") == "preserve")
-            sb.toString()
-          else
-            TextBuffer.fromString(sb.toString()).toText(0)._data
+          if (doPreserve(node)) sb.toString
+          else TextBuffer.fromString(sb.toString()).toText(0).data
         }
         if (childrenAreLeaves(node) && fits(test)) {
           makeBox(ind, test)
@@ -177,7 +174,7 @@ class PrettyPrinter( width:Int, step:Int ) {
           if (stg.length < width - cur) { // start tag fits
             makeBox(ind, stg)
             makeBreak()
-            traverse(node.child.elements, node.scope, ind + step)
+            traverse(node.child.iterator, node.scope, ind + step)
             makeBox(ind, etg)
           } else if (len2 < width - cur) {
             // <start label + attrs + tag + content + end tag
@@ -185,7 +182,7 @@ class PrettyPrinter( width:Int, step:Int ) {
             makeBreak() // todo: break the rest in pieces
             /*{ //@todo
              val sq:Seq[String] = stg.split(" ");
-             val it = sq.elements;
+             val it = sq.iterator;
              it.next;
              for (c <- it) {
                makeBox(ind+len2-2, c)
@@ -194,7 +191,7 @@ class PrettyPrinter( width:Int, step:Int ) {
              }*/
             makeBox(ind, stg.substring(len2, stg.length))
             makeBreak()
-            traverse(node.child.elements, node.scope, ind + step)
+            traverse(node.child.iterator, node.scope, ind + step)
             makeBox(cur, etg)
             makeBreak()
           } else { // give up
@@ -250,14 +247,6 @@ class PrettyPrinter( width:Int, step:Int ) {
 
   // public convenience methods
 
-  /** returns a formatted string containing well-formed XML with
-   *  default namespace prefix mapping
-   *
-   *  @param n the node to be serialized
-   *  @return  ...
-   */
-  def format(n: Node): String = format(n, null) //Utility.defaultPrefixes(n))
-
   /** Returns a formatted string containing well-formed XML with
    *  given namespace to prefix mapping.
    *
@@ -265,42 +254,24 @@ class PrettyPrinter( width:Int, step:Int ) {
    *  @param pmap the namespace to prefix mapping
    *  @return     ...
    */
-  def format(n: Node, pscope: NamespaceBinding): String = {
-    val sb = new StringBuilder()
-    format(n, pscope, sb)
-    sb.toString()
-  }
-
-  /** Returns a formatted string containing well-formed XML nodes with
-   *  default namespace prefix mapping.
-   *
-   *  @param nodes ...
-   *  @return      ...
-   */
-  def formatNodes(nodes: Seq[Node]): String =
-    formatNodes(nodes, null)
+  def format(n: Node, pscope: NamespaceBinding = null): String =
+    sbToString(format(n, pscope, _))
 
   /** Returns a formatted string containing well-formed XML.
    *
-   *  @param nodes the sequence of nodes to be serialized
-   *  @param pmap  the namespace to prefix mapping
+   *  @param nodes  the sequence of nodes to be serialized
+   *  @param pscope the namespace to prefix mapping
    */
-  def formatNodes(nodes: Seq[Node], pscope: NamespaceBinding): String = {
-    var sb = new StringBuilder()
-    formatNodes(nodes, pscope, sb)
-    sb.toString()
-  }
+  def formatNodes(nodes: Seq[Node], pscope: NamespaceBinding = null): String =
+    sbToString(formatNodes(nodes, pscope, _))
 
   /** Appends a formatted string containing well-formed XML with
    *  the given namespace to prefix mapping to the given stringbuffer.
    *
-   *  @param n    the node to be serialized
-   *  @param pmap the namespace to prefix mapping
-   *  @param sb   the string buffer to which to append to
+   *  @param nodes  the nodes to be serialized
+   *  @param pscope the namespace to prefix mapping
+   *  @param sb     the string buffer to which to append to
    */
   def formatNodes(nodes: Seq[Node], pscope: NamespaceBinding, sb: StringBuilder): Unit =
-    for (n <- nodes.elements) {
-      sb.append(format(n, pscope))
-    }
-
+    nodes foreach (n => sb append format(n, pscope))
 }

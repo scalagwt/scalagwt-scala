@@ -1,58 +1,57 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2010, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
 
 
-package scala.collection.immutable
+package scala.collection
+package immutable
 
+import generic._
 
-//import Predef.NoSuchElementException
-
-/** The canonical factory of <a href="ListSet.html">ListSet</a>'s */
-object ListSet {
-
-  /** constructs an empty ListSet
-   *  @deprecated   use <code>empty</code> instead
-   */
-  @deprecated
-  def Empty[A] = new ListSet[A]
-
-  /** The empty set of this type.
-   */
-  def empty[A] = new ListSet[A]
-
-  /** The canonical factory for this type
-   */
-  def apply[A, B](elems: A*) = empty[A] ++ elems
+/** $factoryInfo
+ *  @define Coll immutable.ListSet
+ *  @define coll immutable list set
+ *  @since 1
+ */
+object ListSet extends ImmutableSetFactory[ListSet] {
+  /** setCanBuildFromInfo */
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, ListSet[A]] = setCanBuildFrom[A]
+  override def empty[A] = new ListSet[A]
 }
 
 
 /** This class implements immutable sets using a list-based data
- *  structure. Instances of <code>ListSet</code> represent
+ *  structure. Instances of `ListSet` represent
  *  empty sets; they can be either created by calling the constructor
- *  directly, or by applying the function <code>ListSet.empty</code>.
+ *  directly, or by applying the function `ListSet.empty`.
+ *
+ *  @tparam A    the type of the elements contained in this list set.
  *
  *  @author  Matthias Zenger
  *  @version 1.0, 09/07/2003
+ *  @since   1
+ *  @define Coll immutable.ListSet
+ *  @define coll immutable list set
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
  */
 @serializable
-class ListSet[A] extends AnyRef with Set[A] {
+class ListSet[A] extends Set[A]
+                    with GenericSetTemplate[A, ListSet]
+                    with SetLike[A, ListSet[A]] { self =>
+  override def companion: GenericCompanion[ListSet] = ListSet
 
   /** Returns the number of elements in this set.
    *
    *  @return number of set elements.
    */
-  def size: Int = 0
-
+  override def size: Int = 0
   override def isEmpty: Boolean = true;
-
-  def empty[B] = ListSet.empty[B]
 
   /** Checks if this set contains element <code>elem</code>.
    *
@@ -63,35 +62,24 @@ class ListSet[A] extends AnyRef with Set[A] {
 
   /** This method creates a new set with an additional element.
    */
-  def +(elem: A): ListSet[A] = new Node(elem)
+  def + (elem: A): ListSet[A] = new Node(elem)
 
   /** <code>-</code> can be used to remove a single element from
    *  a set.
    */
-  def -(elem: A): ListSet[A] = this
+  def - (elem: A): ListSet[A] = this
 
   /** Creates a new iterator over all elements contained in this set.
    *
    *  @throws Predef.NoSuchElementException
    *  @return the new iterator
    */
-  def elements: Iterator[A] = new Iterator[A] {
-    var that: ListSet[A] = ListSet.this;
+  def iterator: Iterator[A] = new Iterator[A] {
+    var that: ListSet[A] = self;
     def hasNext = !that.isEmpty;
     def next: A =
       if (!hasNext) throw new NoSuchElementException("next on empty iterator")
       else { val res = that.elem; that = that.next; res }
-  }
-
-  /** Compares two sets for equality.
-   *   Two set are equal iff they contain the same elements.
-   */
-  override def equals(obj: Any): Boolean = obj match {
-    case _: scala.collection.Set[_] =>
-      val that = obj.asInstanceOf[scala.collection.Set[A]]
-      (size == that.size) && (toList forall that.contains)
-    case _ =>
-      false
   }
 
   /**
@@ -104,13 +92,16 @@ class ListSet[A] extends AnyRef with Set[A] {
    */
   protected def next: ListSet[A] = throw new NoSuchElementException("Next of an empty set");
 
+  /** Represents an entry in the `ListSet`.
+   */
   @serializable
   protected class Node(override protected val elem: A) extends ListSet[A] {
+
     /** Returns the number of elements in this set.
      *
      *  @return number of set elements.
      */
-    override def size = ListSet.this.size + 1
+    override def size = self.size + 1
 
     /** Checks if this set is empty.
      *
@@ -123,7 +114,7 @@ class ListSet[A] extends AnyRef with Set[A] {
      *  @param  elem    the element to check for membership.
      *  @return true, iff <code>elem</code> is contained in this set.
      */
-    override def contains(e: A) = (e == elem) || ListSet.this.contains(e)
+    override def contains(e: A) = (e == elem) || self.contains(e)
 
     /** This method creates a new set with an additional element.
      */
@@ -132,11 +123,11 @@ class ListSet[A] extends AnyRef with Set[A] {
     /** <code>-</code> can be used to remove a single element from
      *  a set.
      */
-    override def -(e: A): ListSet[A] = if (e == elem) ListSet.this else {
-      val tail = ListSet.this - e; new tail.Node(elem)
+    override def -(e: A): ListSet[A] = if (e == elem) self else {
+      val tail = self - e; new tail.Node(elem)
     }
 
-    override protected def next: ListSet[A] = ListSet.this
+    override protected def next: ListSet[A] = self
 
     override def stringPrefix = "Set"
   }

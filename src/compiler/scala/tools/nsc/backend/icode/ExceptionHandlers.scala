@@ -3,12 +3,12 @@
  * @author  Martin Odersky
  */
 
-// $Id$
 
-package scala.tools.nsc.backend.icode;
+package scala.tools.nsc
+package backend
+package icode;
 
-import scala.collection.mutable.HashMap;
-import scala.collection.mutable.HashSet;
+import scala.collection._
 
 /**
  * Exception handlers are pieces of code that `handle' exceptions on
@@ -29,20 +29,20 @@ trait ExceptionHandlers { self: ICodes =>
 
     def setStartBlock(b: BasicBlock) = {
       _startBlock = b;
-      b.exceptionHandlerHeader = true
+      b.exceptionHandlerStart = true
     }
     def startBlock = _startBlock;
 
     /** The list of blocks that are covered by this exception handler */
-    var covered: List[BasicBlock] = Nil;
+    var covered: immutable.Set[BasicBlock] = immutable.HashSet.empty[BasicBlock]
 
     def addCoveredBlock(b: BasicBlock): ExceptionHandler = {
-      covered = b :: covered;
+      covered = covered + b
       this
     }
 
     /** Is `b' covered by this exception handler? */
-    def covers(b: BasicBlock): Boolean = covered.contains(b);
+    def covers(b: BasicBlock): Boolean = covered(b);
 
     /** The body of this exception handler. May contain 'dead' blocks (which will not
       * make it into generated code because linearizers may not include them) */

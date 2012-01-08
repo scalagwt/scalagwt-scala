@@ -1,8 +1,7 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2007 LAMP/EPFL
+ * Copyright 2005-2010 LAMP/EPFL
  * @author Stephane Micheloud
  */
-//$Id$
 
 package scala.man1
 
@@ -18,7 +17,7 @@ object scalap extends Command {
 
   val synopsis = Section("SYNOPSIS",
 
-    CmdLine(" [ " & Argument("options") & " ] " & Argument("source file")))
+    CmdLine(" [ " & Argument("options") & " ] " & Argument("class name")))
 
   val parameters = Section("PARAMETERS",
 
@@ -28,8 +27,8 @@ object scalap extends Command {
         "Command line options. See " & Link(Bold("OPTIONS"), "#options") &
         " below."),
       Definition(
-        Mono(Argument("source file")),
-        "One class file to be decoded (such as " &
+        Mono(Argument("class name")),
+        "Full-qualified name of a class to be decoded (such as " &
         Mono("hello.HelloWorld") & ").")))
 
   val description = Section("DESCRIPTION",
@@ -78,7 +77,7 @@ object scalap extends Command {
 
   override val authors = Section("AUTHOR",
 
-    "Written by Matthias Zenger.")
+    "Written by Ilya Sergey.")
 
   val seeAlso = Section("SEE ALSO",
 

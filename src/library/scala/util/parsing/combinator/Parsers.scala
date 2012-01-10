@@ -89,14 +89,14 @@ trait Parsers {
   sealed abstract class ParseResult[+T] {
     /** Functional composition of ParseResults.
      *
-     * @param `f` the function to be lifted over this result
+     * @param f the function to be lifted over this result
      * @return `f` applied to the result of this `ParseResult`, packaged up as a new `ParseResult`
      */
     def map[U](f: T => U): ParseResult[U]
 
     /** Partial functional composition of ParseResults.
      *
-     * @param `f` the partial function to be lifted over this result
+     * @param f the partial function to be lifted over this result
      * @param error a function that takes the same argument as `f` and
      *        produces an error message to explain why `f` wasn't applicable
      *        (it is called when this is the case)
@@ -107,6 +107,8 @@ trait Parsers {
     def mapPartial[U](f: PartialFunction[T, U], error: T => String): ParseResult[U]
 
     def flatMapWithNext[U](f: T => Input => ParseResult[U]): ParseResult[U]
+
+    def filterWithError(p: T => Boolean, error: T => String, position: Input): ParseResult[T]
 
     def append[U >: T](a: => ParseResult[U]): ParseResult[U]
 
@@ -137,6 +139,10 @@ trait Parsers {
     def flatMapWithNext[U](f: T => Input => ParseResult[U]): ParseResult[U]
       = f(result)(next)
 
+    def filterWithError(p: T => Boolean, error: T => String, position: Input): ParseResult[T] =
+      if (p(result)) this
+      else Failure(error(result), position)
+
     def append[U >: T](a: => ParseResult[U]): ParseResult[U] = this
 
     def get: T = result
@@ -160,6 +166,8 @@ trait Parsers {
 
     def flatMapWithNext[U](f: Nothing => Input => ParseResult[U]): ParseResult[U]
       = this
+
+    def filterWithError(p: Nothing => Boolean, error: Nothing => String, position: Input): ParseResult[Nothing] = this
 
     def get: Nothing = sys.error("No result when parsing failed")
   }
@@ -224,9 +232,15 @@ trait Parsers {
     def map[U](f: T => U): Parser[U] //= flatMap{x => success(f(x))}
       = Parser{ in => this(in) map(f)}
 
+    def filter(p: T => Boolean): Parser[T]
+      = withFilter(p)
+
+    def withFilter(p: T => Boolean): Parser[T]
+      = Parser{ in => this(in) filterWithError(p, "Input doesn't match filter: "+_, in)}
+
     // no filter yet, dealing with zero is tricky!
 
-    @migration(2, 9, "As of 2.9, the call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+    @migration("The call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
     def append[U >: T](p0: => Parser[U]): Parser[U] = { lazy val p = p0 // lazy argument
       Parser{ in => this(in) append p(in)}
     }
@@ -245,7 +259,7 @@ trait Parsers {
      *         but easier to pattern match on) that contains the result of `p` and
      *         that of `q`. The resulting parser fails if either `p` or `q` fails.
      */
-    @migration(2, 9, "As of 2.9, the call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+    @migration("The call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
     def ~ [U](q: => Parser[U]): Parser[~[T, U]] = { lazy val p = q // lazy argument
       (for(a <- this; b <- p) yield new ~(a,b)).named("~")
     }
@@ -258,7 +272,7 @@ trait Parsers {
      *        succeeds -- evaluated at most once, and only when necessary.
      * @return a `Parser` that -- on success -- returns the result of `q`.
      */
-    @migration(2, 9, "As of 2.9, the call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+    @migration("The call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
     def ~> [U](q: => Parser[U]): Parser[U] = { lazy val p = q // lazy argument
       (for(a <- this; b <- p) yield b).named("~>")
     }
@@ -273,7 +287,7 @@ trait Parsers {
      * @param q a parser that will be executed after `p` (this parser) succeeds -- evaluated at most once, and only when necessary
      * @return a `Parser` that -- on success -- returns the result of `p`.
      */
-    @migration(2, 9, "As of 2.9, the call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+    @migration("The call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
     def <~ [U](q: => Parser[U]): Parser[T] = { lazy val p = q // lazy argument
       (for(a <- this; b <- p) yield a).named("<~")
     }
@@ -288,7 +302,7 @@ trait Parsers {
      *  `p ~! q` succeeds if `p` succeeds and `q` succeeds on the input left over by `p`.
      *   In case of failure, no back-tracking is performed (in an earlier parser produced by the `|` combinator).
      *
-     * @param q a parser that will be executed after `p` (this parser) succeeds
+     * @param p a parser that will be executed after `p` (this parser) succeeds
      * @return a `Parser` that -- on success -- returns a `~` (like a Pair, but easier to pattern match on)
      *         that contains the result of `p` and that of `q`.
      *         The resulting parser fails if either `p` or `q` fails, this failure is fatal.
@@ -318,7 +332,7 @@ trait Parsers {
      * @param q0 a parser that accepts if p consumes less characters. -- evaluated at most once, and only when necessary
      * @return a `Parser` that returns the result of the parser consuming the most characters (out of `p` and `q`).
      */
-    @migration(2, 9, "As of 2.9, the call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+    @migration("The call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
     def ||| [U >: T](q0: => Parser[U]): Parser[U] = new Parser[U] {
       lazy val q = q0 // lazy argument
       def apply(in: Input) = {
@@ -353,7 +367,7 @@ trait Parsers {
      * @param v The new result for the parser, evaluated at most once (if `p` succeeds), not evaluated at all if `p` fails.
      * @return a parser that has the same behaviour as the current parser, but whose successful result is `v`
      */
-    @migration(2, 9, "As of 2.9, the call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+    @migration("The call-by-name argument is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
     def ^^^ [U](v: => U): Parser[U] =  new Parser[U] {
       lazy val v0 = v // lazy argument
       def apply(in: Input) = Parser.this(in) map (x => v0)
@@ -443,6 +457,62 @@ trait Parsers {
      *  @return opt(this)
      */
     def ? = opt(this)
+
+    /** Changes the failure message produced by a parser.
+     *
+     *  This doesn't change the behavior of a parser on neither
+     *  success nor error, just on failure. The semantics are
+     *  slightly different than those obtained by doing `| failure(msg)`,
+     *  in that the message produced by this method will always
+     *  replace the message produced, which is not guaranteed
+     *  by that idiom.
+     *
+     *  For example, parser `p` below will always produce the
+     *  designated failure message, while `q` will not produce
+     *  it if `sign` is parsed but `number` is not.
+     *
+     *  {{{
+     *  def p = sign.? ~ number withFailureMessage  "Number expected!"
+     *  def q = sign.? ~ number | failure("Number expected!")
+     *  }}}
+     *
+     *  @param msg The message that will replace the default failure message.
+     *  @return    A parser with the same properties and different failure message.
+     */
+    def withFailureMessage(msg: String) = Parser{ in =>
+      this(in) match {
+        case Failure(_, next) => Failure(msg, next)
+        case other            => other
+      }
+    }
+
+    /** Changes the error message produced by a parser.
+     * 
+     *  This doesn't change the behavior of a parser on neither
+     *  success nor failure, just on error. The semantics are
+     *  slightly different than those obtained by doing `| error(msg)`,
+     *  in that the message produced by this method will always
+     *  replace the message produced, which is not guaranteed
+     *  by that idiom.
+     *
+     *  For example, parser `p` below will always produce the
+     *  designated error message, while `q` will not produce
+     *  it if `sign` is parsed but `number` is not.
+     *
+     *  {{{
+     *  def p = sign.? ~ number withErrorMessage  "Number expected!"
+     *  def q = sign.? ~ number | error("Number expected!")
+     *  }}}
+     *
+     *  @param msg The message that will replace the default error message.
+     *  @return    A parser with the same properties and different error message.
+     */
+    def withErrorMessage(msg: String) = Parser{ in =>
+      this(in) match {
+        case Error(_, next) => Error(msg, next)
+        case other          => other
+      }
+    }
   }
 
   /** Wrap a parser so that its failures become errors (the `|` combinator
@@ -636,7 +706,7 @@ trait Parsers {
    * @return A parser that returns a list of results produced by first applying `f` and then
    *         repeatedly `p` to the input (it only succeeds if `f` matches).
    */
-  @migration(2, 9, "As of 2.9, the p0 call-by-name arguments is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.")
+  @migration("The `p0` call-by-name arguments is evaluated at most once per constructed Parser object, instead of on every need that arises during parsing.", "2.9.0")
   def rep1[T](first: => Parser[T], p0: => Parser[T]): Parser[List[T]] = Parser { in =>
     lazy val p = p0 // lazy argument
     val elems = new ListBuffer[T]
@@ -663,9 +733,9 @@ trait Parsers {
    *  `repN(n, p)` uses `p` exactly `n` time to parse the input
    *  (the result is a `List` of the `n` consecutive results of `p`).
    *
-   * @param p a `Parser` that is to be applied successively to the input
-   * @param n the exact number of times `p` must succeed
-   * @return A parser that returns a list of results produced by repeatedly applying `p` to the input
+   * @param p   a `Parser` that is to be applied successively to the input
+   * @param num the exact number of times `p` must succeed
+   * @return    A parser that returns a list of results produced by repeatedly applying `p` to the input
    *        (and that only succeeds if `p` matches exactly `n` times).
    */
   def repN[T](num: Int, p: => Parser[T]): Parser[List[T]] =

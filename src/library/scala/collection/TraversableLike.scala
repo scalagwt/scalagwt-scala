@@ -159,8 +159,10 @@ trait TraversableLike[+A, +Repr] extends HasNewBuilder[A, Repr]
 
   /** As with `++`, returns a new collection containing the elements from the left operand followed by the
    *  elements from the right operand.
+   *
    *  It differs from `++` in that the right operand determines the type of
    *  the resulting collection rather than the left one.
+   *  Mnemonic: the COLon is on the side of the new COLlection type.
    *
    *  Example:
    *  {{{
@@ -195,8 +197,10 @@ trait TraversableLike[+A, +Repr] extends HasNewBuilder[A, Repr]
 
   /** As with `++`, returns a new collection containing the elements from the
    *  left operand followed by the elements from the right operand.
+   *
    *  It differs from `++` in that the right operand determines the type of
    *  the resulting collection rather than the left one.
+   *  Mnemonic: the COLon is on the side of the new COLlection type.
    *
    *  Example:
    *  {{{
@@ -386,10 +390,7 @@ trait TraversableLike[+A, +Repr] extends HasNewBuilder[A, Repr]
     b.result
   }
 
-  @migration(2, 9,
-    "This scanRight definition has changed in 2.9.\n" +
-    "The previous behavior can be reproduced with scanRight.reverse."
-  )
+  @migration("The behavior of `scanRight` has changed. The previous behavior can be reproduced with scanRight.reverse.", "2.9.0")
   def scanRight[B, That](z: B)(op: (A, B) => B)(implicit bf: CanBuildFrom[Repr, B, That]): That = {
     var scanned = List(z)
     var acc = z

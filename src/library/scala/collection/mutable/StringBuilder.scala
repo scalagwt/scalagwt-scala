@@ -21,10 +21,13 @@ import immutable.StringLike
  *  @author Martin Odersky
  *  @version 2.8
  *  @since   2.7
+ *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-mutable-collection-classes.html# "Scala's Collection Library overview"]]
+ *  section on `StringBuilders` for more information.
  */
 @SerialVersionUID(0 - 8525408645367278351L)
 final class StringBuilder(private val underlying: JavaStringBuilder)
-      extends java.lang.CharSequence
+      extends AbstractSeq[Char]
+         with java.lang.CharSequence
          with IndexedSeq[Char]
          with StringLike[StringBuilder]
          with Builder[Char, String]
@@ -400,7 +403,7 @@ final class StringBuilder(private val underlying: JavaStringBuilder)
    *
    *  @return   the reversed StringBuilder
    */
-  @migration(2, 8, "Since 2.8 reverse returns a new instance.  Use 'reverseContents' to update in place.")
+  @migration("`reverse` returns a new instance.  Use `reverseContents` to update in place and return that StringBuilder itself.", "2.8.0")
   override def reverse: StringBuilder = new StringBuilder(new JavaStringBuilder(underlying) reverse)
 
   override def clone(): StringBuilder = new StringBuilder(new JavaStringBuilder(underlying))

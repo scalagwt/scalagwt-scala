@@ -69,7 +69,7 @@ abstract class Duplicators extends Analyzer {
    *  tree, except for TypeTrees, are erased prior to type checking. TypeTrees
    *  are fixed by substituting invalid symbols for the new ones.
    */
-  class BodyDuplicator(context: Context) extends Typer(context: Context) {
+  class BodyDuplicator(_context: Context) extends Typer(_context) {
 
     class FixInvalidSyms extends TypeMap {
 
@@ -248,7 +248,7 @@ abstract class Duplicators extends Analyzer {
 
         case vdef @ ValDef(mods, name, tpt, rhs) =>
           // log("vdef fixing tpe: " + tree.tpe + " with sym: " + tree.tpe.typeSymbol + " and " + invalidSyms)
-          if (mods.hasFlag(Flags.LAZY)) vdef.symbol.resetFlag(Flags.MUTABLE)
+          //if (mods.hasFlag(Flags.LAZY)) vdef.symbol.resetFlag(Flags.MUTABLE) // Martin to Iulian: lazy vars can now appear because they are no longer boxed; Please check that deleting this statement is OK.
           vdef.tpt.tpe = fixType(vdef.tpt.tpe)
           vdef.tpe = null
           super.typed(vdef, mode, pt)
@@ -327,7 +327,7 @@ abstract class Duplicators extends Analyzer {
           tree
 
         case _ =>
-          log("default: " + tree + " - " + (if (tree.symbol ne null) tree.symbol.isLazy else ""))
+          log("default: " + tree)
           if (tree.hasSymbol && tree.symbol != NoSymbol && (tree.symbol.owner == definitions.AnyClass)) {
             tree.symbol = NoSymbol // maybe we can find a more specific member in a subclass of Any (see AnyVal members, like ==)
           }

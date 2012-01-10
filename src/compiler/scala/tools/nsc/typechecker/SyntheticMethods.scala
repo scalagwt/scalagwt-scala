@@ -39,10 +39,6 @@ trait SyntheticMethods extends ast.TreeDSL {
   private object util {
     private type CM[T] = ClassManifest[T]
 
-    lazy val IteratorModule = getModule("scala.collection.Iterator")
-    lazy val Iterator_apply = getMember(IteratorModule, nme.apply)
-    def iteratorOfType(tp: Type) = appliedType(IteratorClass.typeConstructor, List(tp))
-
     def ValOrDefDef(sym: Symbol, body: Tree) =
       if (sym.isLazy) ValDef(sym, body)
       else DefDef(sym, body)
@@ -50,14 +46,13 @@ trait SyntheticMethods extends ast.TreeDSL {
     /** To avoid unchecked warnings on polymorphic classes.
      */
     def clazzTypeToTest(clazz: Symbol) = clazz.tpe.normalize match {
-      case TypeRef(_, sym, args) if args.nonEmpty => ExistentialType(sym.typeParams, clazz.tpe)
+      case TypeRef(_, sym, args) if args.nonEmpty => newExistentialType(sym.typeParams, clazz.tpe)
       case tp                                     => tp
     }
 
-    def makeMethodPublic(method: Symbol): Symbol = {
-      method.privateWithin = NoSymbol
-      method resetFlag AccessFlags
-    }
+    def makeMethodPublic(method: Symbol): Symbol = (
+      method setPrivateWithin NoSymbol resetFlag AccessFlags
+    )
 
     def methodArg(method: Symbol, idx: Int): Tree = Ident(method.paramss.head(idx))
 
@@ -77,11 +72,11 @@ trait SyntheticMethods extends ast.TreeDSL {
     }
 
     def manifestToSymbol(m: CM[_]): Symbol = m match {
-      case x: scala.reflect.AnyValManifest[_] => definitions.getClass("scala." + x)
+      case x: scala.reflect.AnyValManifest[_] => getMember(ScalaPackageClass, newTermName("" + x))
       case _                                  => getClassIfDefined(m.erasure.getName)
     }
     def companionType[T](implicit m: CM[T]) =
-      getModule(m.erasure.getName).tpe
+      getRequiredModule(m.erasure.getName).tpe
 
     // Use these like `applyType[List, Int]` or `applyType[Map, Int, String]`
     def applyType[M](implicit m1: CM[M]): Type =
@@ -203,7 +198,7 @@ trait SyntheticMethods extends ast.TreeDSL {
     // in the original order.
     def accessors = clazz.caseFieldAccessors sortBy { acc =>
       originalAccessors indexWhere { orig =>
-        (acc.name == orig.name) || (acc.name startsWith (orig.name + "$").toTermName)
+        (acc.name == orig.name) || (acc.name startsWith (orig.name append "$"))
       }
     }
     val arity = accessors.size
@@ -226,7 +221,7 @@ trait SyntheticMethods extends ast.TreeDSL {
     )
 
     def forwardToRuntime(method: Symbol): Tree =
-      forwardMethod(method, getMember(ScalaRunTimeModule, "_" + method.name toTermName))(This(clazz) :: _)
+      forwardMethod(method, getMember(ScalaRunTimeModule, method.name prepend "_"))(This(clazz) :: _)
 
     // Any member, including private
     def hasConcreteImpl(name: Name) =
@@ -239,14 +234,14 @@ trait SyntheticMethods extends ast.TreeDSL {
       }
     }
     def readConstantValue[T](name: String, default: T = null.asInstanceOf[T]): T = {
-      clazzMember(name.toTermName).info match {
+      clazzMember(newTermName(name)).info match {
         case NullaryMethodType(ConstantType(Constant(value))) => value.asInstanceOf[T]
         case _                                                => default
       }
     }
     def productIteratorMethod = {
       createMethod(nme.productIterator, iteratorOfType(accessorLub))(_ =>
-        gen.mkMethodCall(ScalaRunTimeModule, "typedProductIterator", List(accessorLub), List(This(clazz)))
+        gen.mkMethodCall(ScalaRunTimeModule, nme.typedProductIterator, List(accessorLub), List(This(clazz)))
       )
     }
     def projectionMethod(accessor: Symbol, num: Int) = {
@@ -283,7 +278,7 @@ trait SyntheticMethods extends ast.TreeDSL {
     def equalsClassMethod: Tree = createMethod(nme.equals_, List(AnyClass.tpe), BooleanClass.tpe) { m =>
       val arg0      = methodArg(m, 0)
       val thatTest  = gen.mkIsInstanceOf(arg0, clazzTypeToTest(clazz), true, false)
-      val thatCast  = arg0 AS_ATTR clazz.tpe
+      val thatCast  = gen.mkCast(arg0, clazz.tpe)
 
       def argsBody: Tree = {
         val otherName = context.unit.freshTermName(clazz.name + "$")

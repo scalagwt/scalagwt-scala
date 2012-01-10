@@ -64,13 +64,13 @@ abstract class FactoryManifestsTransform extends PluginComponent with Transform 
    */
   private class Trans(cunit: CompilationUnit) extends TypingTransformer(cunit) {
 
-    lazy val ClassManifestModule = definitions.getModule("scala.reflect.ClassManifest")
-    lazy val ManifestModule = definitions.getModule("scala.reflect.Manifest")
+    lazy val ClassManifestModule = definitions.getRequiredModule("scala.reflect.ClassManifest")
+    lazy val ManifestModule = definitions.getRequiredModule("scala.reflect.Manifest")
     
-    lazy val FactoryClassManifestModule = definitions.getModule("scala.reflect.FactoryClassManifest")
-    lazy val FactoryManifestModule = definitions.getModule("scala.reflect.FactoryManifest")
+    lazy val FactoryClassManifestModule = definitions.getRequiredModule("scala.reflect.FactoryClassManifest")
+    lazy val FactoryManifestModule = definitions.getRequiredModule("scala.reflect.FactoryManifest")
     
-    lazy val factoryTrait = definitions.getClass("scala.reflect.FactoryClassManifest.Factory")
+    lazy val factoryTrait = definitions.getRequiredClass("scala.reflect.FactoryClassManifest.Factory")
     
     def isClassManifestDef(x: Symbol) = 
        x.isMethod && x.isPublic && x.owner == ClassManifestModule.moduleClass
@@ -174,7 +174,7 @@ abstract class FactoryManifestsTransform extends PluginComponent with Transform 
         val name = newTermName("newInstance")
         val s = owner.newMethod(name)
         val len = {
-          val ss = s.newValueParameter(NoPosition, "len") setInfo definitions.IntClass.tpe
+          val ss = s.newValueParameter(NoPosition, newTermName("len")) setInfo definitions.IntClass.tpe
           ValDef(ss) setType ss.tpe
         }
         s setInfo MethodType(s newSyntheticValueParams List(len.tpe), arrayTpe)

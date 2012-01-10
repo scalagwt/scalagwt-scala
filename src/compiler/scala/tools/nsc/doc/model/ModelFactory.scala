@@ -100,11 +100,15 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
       if (inTpl == null) None else thisFactory.comment(sym, inTpl)
     override def inTemplate = inTpl
     override def toRoot: List[MemberImpl] = this :: inTpl.toRoot
-    def inDefinitionTemplates =
-      if (inTpl == null)
-        makeRootPackage.toList
-      else
-        makeTemplate(sym.owner) :: (sym.allOverriddenSymbols map { inhSym => makeTemplate(inhSym.owner) })
+    def inDefinitionTemplates = this match {
+        case mb: NonTemplateMemberEntity if (mb.useCaseOf.isDefined) =>
+          mb.useCaseOf.get.inDefinitionTemplates
+        case _ =>
+          if (inTpl == null) 
+            makeRootPackage.toList
+          else
+            makeTemplate(sym.owner) :: (sym.allOverriddenSymbols map { inhSym => makeTemplate(inhSym.owner) })
+      }
     def visibility = {
       if (sym.isPrivateLocal) PrivateInInstance()
       else if (sym.isProtectedLocal) ProtectedInInstance()
@@ -119,14 +123,14 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
         else Public()
       }
     }
-    def flags = {
+    def flags = { 
       val fgs = mutable.ListBuffer.empty[Paragraph]
       if (sym.isImplicit) fgs += Paragraph(Text("implicit"))
       if (sym.isSealed) fgs += Paragraph(Text("sealed"))
       if (!sym.isTrait && (sym hasFlag Flags.ABSTRACT)) fgs += Paragraph(Text("abstract"))
       if (!sym.isTrait && (sym hasFlag Flags.DEFERRED)) fgs += Paragraph(Text("abstract"))
       if (!sym.isModule && (sym hasFlag Flags.FINAL)) fgs += Paragraph(Text("final"))
-      fgs.toList
+      fgs.toList    	
     }
     def deprecation =
       if (sym.isDeprecated)
@@ -453,16 +457,18 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
   /** */
   def makeMember(aSym: Symbol, inTpl: => DocTemplateImpl): List[MemberImpl] = {
 
-    def makeMember0(bSym: Symbol): Option[MemberImpl] = {
+    def makeMember0(bSym: Symbol, _useCaseOf: Option[MemberImpl]): Option[MemberImpl] = {
       if (bSym.isGetter && bSym.isLazy)
           Some(new NonTemplateMemberImpl(bSym, inTpl) with Val {
             override lazy val comment = // The analyser does not duplicate the lazy val's DocDef when it introduces its accessor.
               thisFactory.comment(bSym.accessed, inTpl) // This hack should be removed after analyser is fixed.
             override def isLazyVal = true
+            override def useCaseOf = _useCaseOf
           })
       else if (bSym.isGetter && bSym.accessed.isMutable)
         Some(new NonTemplateMemberImpl(bSym, inTpl) with Val {
           override def isVar = true
+          override def useCaseOf = _useCaseOf
         })
       else if (bSym.isMethod && !bSym.hasAccessorFlag && !bSym.isConstructor && !bSym.isModule) {
         val cSym = { // This unsightly hack closes issue #4086.
@@ -478,25 +484,30 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
         }
         Some(new NonTemplateParamMemberImpl(cSym, inTpl) with HigherKindedImpl with Def {
           override def isDef = true
+          override def useCaseOf = _useCaseOf
         })
       }
       else if (bSym.isConstructor)
         Some(new NonTemplateParamMemberImpl(bSym, inTpl) with Constructor {
           override def isConstructor = true
           def isPrimary = sym.isPrimaryConstructor
+          override def useCaseOf = _useCaseOf
         })
       else if (bSym.isGetter) // Scala field accessor or Java field
         Some(new NonTemplateMemberImpl(bSym, inTpl) with Val {
           override def isVal = true
+          override def useCaseOf = _useCaseOf
         })
       else if (bSym.isAbstractType)
         Some(new NonTemplateMemberImpl(bSym, inTpl) with TypeBoundsImpl with HigherKindedImpl with AbstractType {
           override def isAbstractType = true
+          override def useCaseOf = _useCaseOf
         })
       else if (bSym.isAliasType)
         Some(new NonTemplateMemberImpl(bSym, inTpl) with HigherKindedImpl with AliasType {
           override def isAliasType = true
           def alias = makeTypeInTemplateContext(sym.tpe.dealias, inTpl, sym)
+          override def useCaseOf = _useCaseOf
         })
       else if (bSym.isPackage)
         inTpl match { case inPkg: PackageImpl =>  makePackage(bSym, inPkg) }
@@ -510,9 +521,16 @@ class ModelFactory(val global: Global, val settings: doc.Settings) {
       Nil
     else {
       val allSyms = useCases(aSym, inTpl.sym) map { case (bSym, bComment, bPos) =>
-        addCommentBody(bSym, inTpl, bComment, bPos)
+      	docComments.put(bSym, DocComment(bComment, bPos)) // put the comment in the list, don't parse it yet, closes SI-4898
+        bSym
       }
-      (allSyms :+ aSym) flatMap { makeMember0(_) }
+
+      val member = makeMember0(aSym, None)
+  		if (allSyms.isEmpty)
+  			member.toList
+    	else
+    		// Use cases replace the original definitions - SI-5054
+    		allSyms flatMap { makeMember0(_, member) }
     }
 
   }

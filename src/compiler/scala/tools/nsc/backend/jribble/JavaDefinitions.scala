@@ -21,7 +21,7 @@ trait JavaDefinitions {
 
   object javaDefinitions {
     import definitions.{getMember, getModule}
-    lazy val BoxesRuntimeModule = getModule("scala.runtime.BoxesRunTime")
+    lazy val BoxesRuntimeModule = getModule(newTermName("scala.runtime.BoxesRunTime"))
 
     /**
      * A map from symbols of primitive types to the static method
@@ -39,7 +39,7 @@ trait JavaDefinitions {
            + (definitions.LongClass -> "boxToLong")
            + (definitions.ShortClass -> "boxToShort"))
       (Map.empty[Symbol, Symbol] /: boxNames.keys) ((map,prim) =>
-        map + (prim -> getMember(BoxesRuntimeModule, boxNames(prim))))
+        map + (prim -> getMember(BoxesRuntimeModule, newTermName(boxNames(prim)))))
     }
 
     /**
@@ -58,23 +58,23 @@ trait JavaDefinitions {
            + (definitions.LongClass -> "unboxToLong")
            + (definitions.ShortClass -> "unboxToShort"))
       (Map.empty[Symbol, Symbol] /: unboxNames.keys) ((map,prim) =>
-        map + (prim -> getMember(BoxesRuntimeModule, unboxNames(prim))))
+        map + (prim -> getMember(BoxesRuntimeModule, newTermName(unboxNames(prim)))))
     }
     
     /** Helper symbols for referring static fields of java.lang.Float class */
     object Float {
       private val sym = definitions.BoxedFloatClass.companionSymbol 
-      val NaN         = getMember(sym, "NaN")
-      val PosInfinity = getMember(sym, "POSITIVE_INFINITY")
-      val NegInfinity = getMember(sym, "NEGATIVE_INFINITY")
+      val NaN         = getMember(sym, newTermName("NaN"))
+      val PosInfinity = getMember(sym, newTermName("POSITIVE_INFINITY"))
+      val NegInfinity = getMember(sym, newTermName("NEGATIVE_INFINITY"))
     }
     
     /** Helper symbols for referring static fields of java.lang.Double class */
     object Double {
       private val sym = definitions.BoxedDoubleClass.companionSymbol 
-      val NaN         = getMember(sym, "NaN")
-      val PosInfinity = getMember(sym, "POSITIVE_INFINITY")
-      val NegInfinity = getMember(sym, "NEGATIVE_INFINITY")
+      val NaN         = getMember(sym, newTermName("NaN"))
+      val PosInfinity = getMember(sym, newTermName("POSITIVE_INFINITY"))
+      val NegInfinity = getMember(sym, newTermName("NEGATIVE_INFINITY"))
     }
   }
 }

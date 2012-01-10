@@ -1,12 +1,11 @@
-package scala.reflect.runtime
+package scala.reflect
+package runtime
 
-trait TreeBuildUtil extends Universe {
+trait TreeBuildUtil extends Universe with api.TreeBuildUtil {
 
-  def staticClass(name: String): Symbol = definitions.getClass(newTypeName(name))
-  def staticModule(name: String): Symbol = definitions.getModule(newTermName(name))
-
-  def thisModuleType(name: String) =
-    definitions.getModule(name).moduleClass.thisType
+  def staticClass(fullname: String): Symbol = definitions.getRequiredClass(fullname)
+  def staticModule(fullname: String): Symbol = definitions.getRequiredModule(fullname)
+  def thisModuleType(fullname: String) = staticModule(fullname).moduleClass.thisType
 
  /** Selects type symbol with given name from the defined members of prefix type
    */
@@ -40,9 +39,9 @@ trait TreeBuildUtil extends Universe {
     selectIn(owner.info, idx)
   }
 
+  def freeVar(name: String, info: Type, value: Any) = new FreeVar(newTermName(name), info, value)
 
-  def freeVar(name: String, info: Type, value: Any) = new FreeVar(name, info, value)
-
-  def newScopeWith(decls: List[Symbol]) = new Scope(decls)
+  def modifiersFromInternalFlags(flags: Long, privateWithin: Name, annotations: List[Tree]): Modifiers =
+    Modifiers(flags, privateWithin, annotations)
 
 }

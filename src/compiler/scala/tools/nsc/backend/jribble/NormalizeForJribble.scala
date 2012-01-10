@@ -104,7 +104,7 @@ with JribbleNormalization
     def allocLocal(tpe: Type, pos: scala.tools.nsc.util.Position): Symbol = {
       assert (tpe != UnitClass.tpe) // don't create a unit variable
       assert (tpe != null)
-      val newLocal = currentMethodSym.newValue(pos, cunit.fresh.newName())
+      val newLocal = currentMethodSym.newValue(pos, newTermName(cunit.fresh.newName()))
       newLocal.setInfo(tpe)
       newLocal
     }

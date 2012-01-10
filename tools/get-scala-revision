@@ -1,19 +1,24 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # Usage: get-scala-revision [dir]
-# Figures out current scala revision of an svn checkout or
-# a git-svn mirror (or a git clone.)
+# Figures out current scala revision of a git clone.
 #
 # If no dir is given, current working dir is used.
 
-DIR=""
-if [ $# -eq 0 ]; then
-  DIR=`pwd`
-else
-  DIR=$1
-fi
+# not like releases come out so often that we are duty-bound
+# to recalculate this every time.
+# git merge-base v2.8.2 v2.9.1 master
+devbase="df13e31bbb"
 
-cd $DIR
+# reimplementing git describe hopefully in a way which works
+# without any particular tags, branches, or recent versions of git.
+# this is supposed to generate
+#     dev-NNNN-g<sha>
+# where NNNN is the number of commits since devbase, which
+# is the merge-base of the most recent release and master.
+# Presently hardcoded to reduce uncertainty, v2.8.2/v2.9.1/master.
+commits=$(git --no-pager log --pretty=oneline $devbase..HEAD | wc -l)
+sha=$(git rev-list -n 1 HEAD)
+datestr=$(date "+%Y-%m-%d")
 
-#scalagwt uses git
-git describe --always
+printf "rdev-%s-%s-g%s\n" $commits $datestr ${sha:0:7}

@@ -1,7 +1,7 @@
 package scala.reflect
 package runtime
 
-import java.lang.{ Class => jClass, Package => jPackage }
+import java.lang.{ Class => jClass, Package => jPackage, ClassLoader => JClassLoader }
 import java.io.IOException
 import java.lang.reflect.{
   Method => jMethod,
@@ -26,16 +26,6 @@ import internal.Flags._
 import scala.tools.nsc.util.ScalaClassLoader
 import scala.tools.nsc.util.ScalaClassLoader._
 
-class MultiCL(parent: ScalaClassLoader, others: ScalaClassLoader*) extends java.lang.ClassLoader(parent) {
-  override def findClass(name: String): jClass[_] = {
-    for (cl <- others) {
-      try   { return cl.findClass(name) }
-      catch { case _: ClassNotFoundException => () }
-    }
-    super.findClass(name)
-  }
-}
-
 trait JavaToScala extends ConversionUtil { self: SymbolTable =>
 
   import definitions._
@@ -44,11 +34,18 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
     val global: JavaToScala.this.type = self
   }
 
+  protected def defaultReflectiveClassLoader(): JClassLoader = {
+    val cl = Thread.currentThread.getContextClassLoader
+    if (cl == null) getClass.getClassLoader else cl
+  }
+
   /** Paul: It seems the default class loader does not pick up root classes, whereas the system classloader does.
    *  Can you check with your newly acquired classloader fu whether this implementation makes sense?
    */
   def javaClass(path: String): jClass[_] =
-    jClass.forName(path, false, new MultiCL(getClass.getClassLoader, java.lang.ClassLoader.getSystemClassLoader))
+    javaClass(path, defaultReflectiveClassLoader())
+  def javaClass(path: String, classLoader: JClassLoader): jClass[_] =
+    classLoader.loadClass(path)
 
   /** Does `path` correspond to a Java class with that fully qualified name? */
   def isJavaClass(path: String): Boolean =
@@ -56,7 +53,7 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
       javaClass(path)
       true
     } catch {
-      case (_: ClassNotFoundException) | (_: NoClassDefFoundError) =>
+      case (_: ClassNotFoundException) | (_: NoClassDefFoundError) | (_: IncompatibleClassChangeError) =>
       false
     }
 
@@ -69,7 +66,7 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
    *                   ScalaSignature or ScalaLongSignature annotation.
    */
   def unpickleClass(clazz: Symbol, module: Symbol, jclazz: jClass[_]): Unit = {
-    def markAbsent(tpe: Type) = List(clazz, module, module.moduleClass) foreach (_ setInfo tpe)
+    def markAbsent(tpe: Type) = setAllInfos(clazz, module, tpe)
     def handleError(ex: Exception) = {
       markAbsent(ErrorType)
       if (settings.debug.value) ex.printStackTrace()
@@ -131,7 +128,7 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
   private class TypeParamCompleter(jtvar: jTypeVariable[_ <: GenericDeclaration]) extends LazyType {
     override def load(sym: Symbol) = complete(sym)
     override def complete(sym: Symbol) = {
-      sym setInfo TypeBounds(NothingClass.tpe, glb(jtvar.getBounds.toList map typeToScala map objToAny))
+      sym setInfo TypeBounds.upper(glb(jtvar.getBounds.toList map typeToScala map objToAny))
     }
   }
 
@@ -275,7 +272,7 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
    */
   private def approximateMatch(sym: Symbol, jstr: String): Boolean =
     (sym.name.toString == jstr) ||
-      sym.isPrivate && nme.expandedName(sym.name, sym.owner).toString == jstr
+      sym.isPrivate && nme.expandedName(sym.name.toTermName, sym.owner).toString == jstr
 
   /**
    * Find declarations or definition in class `clazz` that maps to a Java
@@ -356,31 +353,28 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
    *          not available, wrapped from the Java reflection info.
    */
   def classToScala(jclazz: jClass[_]): Symbol = classCache.toScala(jclazz) {
-    if (jclazz.isMemberClass) {
-      val sym = sOwner(jclazz).info.decl(newTypeName(jclazz.getSimpleName))
+    val jname = javaTypeName(jclazz)
+    def lookup = sOwner(jclazz).info.decl(newTypeName(jclazz.getSimpleName))
+    
+    if (jclazz.isMemberClass && !nme.isImplClassName(jname)) {
+      val sym = lookup
       assert(sym.isType, sym+"/"+jclazz+"/"+sOwner(jclazz)+"/"+jclazz.getSimpleName)
       sym.asInstanceOf[ClassSymbol]
-    } else if (jclazz.isLocalClass) { // local classes not preserved by unpickling - treat as Java
+    }
+    else if (jclazz.isLocalClass || invalidClassName(jname)) {
+      // local classes and implementation classes not preserved by unpickling - treat as Java
       jclassAsScala(jclazz)
-    } else if (jclazz.isArray) {
+    }
+    else if (jclazz.isArray) {
       ArrayClass
-    } else jclazz match {
-      case java.lang.Void.TYPE      => UnitClass
-      case java.lang.Byte.TYPE      => ByteClass
-      case java.lang.Character.TYPE => CharClass
-      case java.lang.Short.TYPE     => ShortClass
-      case java.lang.Integer.TYPE   => IntClass
-      case java.lang.Long.TYPE      => LongClass
-      case java.lang.Float.TYPE     => FloatClass
-      case java.lang.Double.TYPE    => DoubleClass
-      case java.lang.Boolean.TYPE   => BooleanClass
-      case _ =>
-        // jclazz is top-level - get signature
-        sOwner(jclazz).info decl newTypeName(jclazz.getSimpleName)
-//        val (clazz, module) = createClassModule(
-//          sOwner(jclazz), newTypeName(jclazz.getSimpleName), new TopClassCompleter(_, _))
-//        classCache enter (jclazz, clazz)
-//        clazz
+    }
+    else javaTypeToValueClass(jclazz) orElse {
+      // jclazz is top-level - get signature
+      lookup
+      //        val (clazz, module) = createClassModule(
+      //          sOwner(jclazz), newTypeName(jclazz.getSimpleName), new TopClassCompleter(_, _))
+      //        classCache enter (jclazz, clazz)
+      //        clazz
     }
   }
 
@@ -460,9 +454,11 @@ trait JavaToScala extends ConversionUtil { self: SymbolTable =>
   private def jclassAsScala(jclazz: jClass[_]): Symbol = jclassAsScala(jclazz, sOwner(jclazz))
 
   private def jclassAsScala(jclazz: jClass[_], owner: Symbol): Symbol = {
-    val clazz = owner.newClass(NoPosition, newTypeName(jclazz.getSimpleName))
+    val name = newTypeName(jclazz.getSimpleName)
+    val completer = (clazz: Symbol, module: Symbol) => new FromJavaClassCompleter(clazz, module, jclazz)
+    val (clazz, module) = createClassModule(owner, name, completer)
     classCache enter (jclazz, clazz)
-    clazz setInfo new FromJavaClassCompleter(clazz, NoSymbol, jclazz)
+    clazz
   }
 
   /**

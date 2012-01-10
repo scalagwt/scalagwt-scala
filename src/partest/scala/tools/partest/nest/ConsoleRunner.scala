@@ -21,7 +21,8 @@ class ConsoleRunner extends DirectRunner {
   import PathSettings.{ srcDir, testRoot }
 
   case class TestSet(kind: String, filter: Path => Boolean, msg: String)
-  def stdFilter(p: Path) = p.isDirectory || (p hasExtension "scala")
+  private def stdFilter(p: Path) = p.isDirectory || (p hasExtension "scala")
+  private def antFilter(p: Path) = p.isFile && (p endsWith "build.xml")
 
   val testSets = {
     val pathFilter: Path => Boolean = x => x.isDirectory || (x hasExtension "scala")
@@ -39,7 +40,8 @@ class ConsoleRunner extends DirectRunner {
       TestSet("scalap", _.isDirectory, "Run scalap decompiler tests"),
       TestSet("specialized", stdFilter, "Testing specialized tests"),
       TestSet("presentation", _.isDirectory, "Testing presentation compiler tests."),
-      TestSet("jribble", x => x.isFile && (x hasExtension "scala"), "Testing jribble tests")
+      TestSet("jribble", x => x.isFile && (x hasExtension "scala"), "Testing jribble tests"),
+      TestSet("ant", antFilter, "Run Ant task tests.")
     )
   }
 

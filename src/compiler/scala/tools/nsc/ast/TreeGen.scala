@@ -47,6 +47,18 @@ abstract class TreeGen extends reflect.internal.TreeGen {
     case _                      => tree
   }
 
+  def withDefaultCase(matchExpr: Tree, defaultAction: Tree/*scrutinee*/ => Tree): Tree = matchExpr match {
+    case Match(scrutinee, cases) =>
+      if (cases exists treeInfo.isDefaultCase) matchExpr
+      else {
+        val defaultCase = CaseDef(Ident(nme.WILDCARD), EmptyTree, defaultAction(scrutinee))
+        Match(scrutinee, cases :+ defaultCase)
+      }
+    case _ =>
+      matchExpr
+    // [Martin] Adriaan: please fill in virtpatmat transformation here
+  }
+
   def mkCached(cvar: Symbol, expr: Tree): Tree = {
     val cvarRef = mkUnattributedRef(cvar)
     Block(
@@ -116,7 +128,7 @@ abstract class TreeGen extends reflect.internal.TreeGen {
   def mkManifestFactoryCall(full: Boolean, constructor: String, tparg: Type, args: List[Tree]): Tree =
     mkMethodCall(
       if (full) FullManifestModule else PartialManifestModule,
-      constructor,
+      newTermName(constructor),
       List(tparg),
       args
     )
@@ -149,16 +161,10 @@ abstract class TreeGen extends reflect.internal.TreeGen {
    *  apply the element type directly.
    */
   def mkWrapArray(tree: Tree, elemtp: Type) = {
-    val sym = elemtp.typeSymbol
-    val meth: Name =
-      if (isValueClass(sym)) "wrap"+sym.name+"Array"
-      else if ((elemtp <:< AnyRefClass.tpe) && !isPhantomClass(sym)) "wrapRefArray"
-      else "genericWrapArray"
-
     mkMethodCall(
       PredefModule,
-      meth,
-      if (isValueClass(sym)) Nil else List(elemtp),
+      wrapArrayMethodName(elemtp),
+      if (isScalaValueType(elemtp)) Nil else List(elemtp),
       List(tree)
     )
   }
@@ -167,8 +173,8 @@ abstract class TreeGen extends reflect.internal.TreeGen {
    *  elem type elemtp to expected type pt.
    */
   def mkCastArray(tree: Tree, elemtp: Type, pt: Type) =
-    if (elemtp.typeSymbol == AnyClass && isValueClass(tree.tpe.typeArgs.head.typeSymbol))
-      mkCast(mkRuntimeCall("toObjectArray", List(tree)), pt)
+    if (elemtp.typeSymbol == AnyClass && isScalaValueType(tree.tpe.typeArgs.head))
+      mkCast(mkRuntimeCall(nme.toObjectArray, List(tree)), pt)
     else
       mkCast(tree, pt)
 

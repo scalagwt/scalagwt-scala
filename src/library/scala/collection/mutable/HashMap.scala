@@ -15,6 +15,8 @@ import scala.collection.parallel.mutable.ParHashMap
 /** This class implements mutable maps using a hashtable.
  *
  *  @since 1
+ *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-mutable-collection-classes.html#hash_tables "Scala's Collection Library overview"]]
+ *  section on `Hash Tables` for more information.
  *
  *  @tparam A    the type of the keys contained in this hash map.
  *  @tparam B    the type of the values assigned to keys in this hash map.
@@ -35,7 +37,8 @@ import scala.collection.parallel.mutable.ParHashMap
  */
 @SerialVersionUID(1L)
 class HashMap[A, B] private[collection] (contents: HashTable.Contents[A, DefaultEntry[A, B]])
-extends Map[A, B]
+extends AbstractMap[A, B]
+   with Map[A, B]
    with MapLike[A, B, HashMap[A, B]]
    with HashTable[A, DefaultEntry[A, B]]
    with CustomParallelizable[(A, B), ParHashMap[A, B]]
@@ -105,14 +108,14 @@ extends Map[A, B]
   }
 
   /* Override to avoid tuple allocation */
-  override def keysIterator: Iterator[A] = new Iterator[A] {
+  override def keysIterator: Iterator[A] = new AbstractIterator[A] {
     val iter    = entriesIterator
     def hasNext = iter.hasNext
     def next()  = iter.next.key
   }
 
   /* Override to avoid tuple allocation */
-  override def valuesIterator: Iterator[B] = new Iterator[B] {
+  override def valuesIterator: Iterator[B] = new AbstractIterator[B] {
     val iter    = entriesIterator
     def hasNext = iter.hasNext
     def next()  = iter.next.value

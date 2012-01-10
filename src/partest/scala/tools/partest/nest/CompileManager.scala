@@ -3,6 +3,8 @@
  * @author Philipp Haller
  */
 
+// $Id$
+
 package scala.tools.partest
 package nest
 
@@ -73,10 +75,11 @@ class DirectCompiler(val fileManager: FileManager) extends SimpleCompiler {
     val logWriter = new FileWriter(log)
 
     // check whether there is a ".flags" file
-    val flagsFileName = "%s.flags" format (basename(log.getName) dropRight 4) // 4 is "-run" or similar
+    val logFile = basename(log.getName)
+    val flagsFileName = "%s.flags" format (logFile.substring(0, logFile.lastIndexOf("-")))
     val argString = (io.File(log).parent / flagsFileName) ifFile (x => updatePluginPath(x.slurp())) getOrElse ""
-    val allOpts = fileManager.SCALAC_OPTS+" "+argString
-    val args = (allOpts split "\\s").toList
+    val allOpts = fileManager.SCALAC_OPTS.toList ::: argString.split(' ').toList.filter(_.length > 0)
+    val args = allOpts.toList
 
     NestUI.verbose("scalac options: "+allOpts)
 
@@ -95,6 +98,7 @@ class DirectCompiler(val fileManager: FileManager) extends SimpleCompiler {
       case "specialized"  => SpecializedTestFile.apply
       case "presentation" => PresentationTestFile.apply
       case "jribble"      => JribbleTestFile.apply
+      case "ant"          => AntTestFile.apply
     }
     val test: TestFile = testFileFn(files.head, fileManager)
     if (!test.defineSettings(command.settings, out.isEmpty)) {
@@ -107,7 +111,7 @@ class DirectCompiler(val fileManager: FileManager) extends SimpleCompiler {
     val toCompile = files map (_.getPath)
 
     try {
-      NestUI.verbose("compiling "+toCompile.mkString(" "))
+      NestUI.verbose("compiling "+toCompile)
       try new global.Run compile toCompile
       catch {
         case FatalError(msg) =>

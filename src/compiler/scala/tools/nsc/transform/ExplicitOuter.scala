@@ -68,6 +68,8 @@ abstract class ExplicitOuter extends InfoTransform
 
     result
   }
+  
+  private val innerClassConstructorParamName: TermName = newTermName("arg" + nme.OUTER)
 
   class RemoveBindingsTransformer(toRemove: Set[Symbol]) extends Transformer {
     override def transform(tree: Tree) = tree match {
@@ -134,7 +136,7 @@ abstract class ExplicitOuter extends InfoTransform
       }
       if (sym.owner.isTrait) sym setNotFlag PROTECTED // 6
       if (sym.isClassConstructor && isInner(sym.owner)) { // 1
-        val p = sym.newValueParameter(sym.pos, "arg" + nme.OUTER)
+        val p = sym.newValueParameter(sym.pos, innerClassConstructorParamName)
                    .setInfo(sym.owner.outerClass.thisType)
         MethodType(p :: params, restpe)
       } else if (restpe ne restpe1)
@@ -359,7 +361,7 @@ abstract class ExplicitOuter extends InfoTransform
       localTyper typed {
         (DEF(outerAcc) withPos currentClass.pos) === {
           // Need to cast for nested outer refs in presence of self-types. See ticket #3274.
-          transformer.transform(path) AS_ANY outerAcc.info.resultType
+          gen.mkCast(transformer.transform(path), outerAcc.info.resultType)
         }
       }
     }

@@ -54,92 +54,83 @@ trait FactoryManifest[T] extends Manifest[T] with FactoryClassManifest[T] {
 object FactoryManifest {
   private def ObjectClass = classOf[java.lang.Object]
   
-  trait AnyValManifest[T] extends scala.reflect.AnyValManifest[T] with FactoryManifest[T]
+  abstract class AnyValManifest[T <: AnyVal](override val toString: String) extends scala.reflect.AnyValManifest[T](toString) with FactoryManifest[T]
 
-  val Byte: AnyValManifest[Byte] = new AnyValManifest[scala.Byte] {
+  val Byte: AnyValManifest[Byte] = new AnyValManifest[scala.Byte]("Byte") {
     def erasure = java.lang.Byte.TYPE
     val factory: Factory[scala.Byte] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Byte"
     override def newArray(len: Int): Array[Byte] = new Array[Byte](len)
     override def newWrappedArray(len: Int): WrappedArray[Byte] = new WrappedArray.ofByte(new Array[Byte](len))
     override def newArrayBuilder(): ArrayBuilder[Byte] = new ArrayBuilder.ofByte()
     private def readResolve(): Any = Manifest.Byte
   }
 
-  val Short: AnyValManifest[Short] = new AnyValManifest[scala.Short] {
+  val Short: AnyValManifest[Short] = new AnyValManifest[scala.Short]("Short") {
     def erasure = java.lang.Short.TYPE
     val factory: Factory[scala.Short] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Short"
     override def newArray(len: Int): Array[Short] = new Array[Short](len)
     override def newWrappedArray(len: Int): WrappedArray[Short] = new WrappedArray.ofShort(new Array[Short](len))
     override def newArrayBuilder(): ArrayBuilder[Short] = new ArrayBuilder.ofShort()
     private def readResolve(): Any = Manifest.Short
   }
 
-  val Char: AnyValManifest[Char] = new AnyValManifest[scala.Char] {
+  val Char: AnyValManifest[Char] = new AnyValManifest[scala.Char]("Char") {
     def erasure = java.lang.Character.TYPE
     val factory: Factory[scala.Char] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Char"
     override def newArray(len: Int): Array[Char] = new Array[Char](len)
     override def newWrappedArray(len: Int): WrappedArray[Char] = new WrappedArray.ofChar(new Array[Char](len))
     override def newArrayBuilder(): ArrayBuilder[Char] = new ArrayBuilder.ofChar()
     private def readResolve(): Any = Manifest.Char
   }
 
-  val Int: AnyValManifest[Int] = new AnyValManifest[scala.Int] {
+  val Int: AnyValManifest[Int] = new AnyValManifest[scala.Int]("Int") {
     def erasure = java.lang.Integer.TYPE
     val factory: Factory[scala.Int] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Int"
     override def newArray(len: Int): Array[Int] = new Array[Int](len)
     override def newWrappedArray(len: Int): WrappedArray[Int] = new WrappedArray.ofInt(new Array[Int](len))
     override def newArrayBuilder(): ArrayBuilder[Int] = new ArrayBuilder.ofInt()
     private def readResolve(): Any = Manifest.Int
   }
 
-  val Long: AnyValManifest[Long] = new AnyValManifest[scala.Long] {
+  val Long: AnyValManifest[Long] = new AnyValManifest[scala.Long]("Long") {
     def erasure = java.lang.Long.TYPE
     val factory: Factory[scala.Long] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Long"
     override def newArray(len: Int): Array[Long] = new Array[Long](len)
     override def newWrappedArray(len: Int): WrappedArray[Long] = new WrappedArray.ofLong(new Array[Long](len))
     override def newArrayBuilder(): ArrayBuilder[Long] = new ArrayBuilder.ofLong()
     private def readResolve(): Any = Manifest.Long
   }
 
-  val Float: AnyValManifest[Float] = new AnyValManifest[scala.Float] {
+  val Float: AnyValManifest[Float] = new AnyValManifest[scala.Float]("Float") {
     def erasure = java.lang.Float.TYPE
     val factory: Factory[scala.Float] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Float"
     override def newArray(len: Int): Array[Float] = new Array[Float](len)
     override def newWrappedArray(len: Int): WrappedArray[Float] = new WrappedArray.ofFloat(new Array[Float](len))
     override def newArrayBuilder(): ArrayBuilder[Float] = new ArrayBuilder.ofFloat()
     private def readResolve(): Any = Manifest.Float
   }
 
-  val Double: AnyValManifest[Double] = new AnyValManifest[scala.Double] {
+  val Double: AnyValManifest[Double] = new AnyValManifest[scala.Double]("Double") {
     def erasure = java.lang.Double.TYPE
     val factory: Factory[scala.Double] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Double"
     override def newArray(len: Int): Array[Double] = new Array[Double](len)
     override def newWrappedArray(len: Int): WrappedArray[Double] = new WrappedArray.ofDouble(new Array[Double](len))
     override def newArrayBuilder(): ArrayBuilder[Double] = new ArrayBuilder.ofDouble()
     private def readResolve(): Any = Manifest.Double
   }
 
-  val Boolean: AnyValManifest[Boolean] = new AnyValManifest[scala.Boolean] {
+  val Boolean: AnyValManifest[Boolean] = new AnyValManifest[scala.Boolean]("Boolean") {
     def erasure = java.lang.Boolean.TYPE
     val factory: Factory[scala.Boolean] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Boolean"
     override def newArray(len: Int): Array[Boolean] = new Array[Boolean](len)
     override def newWrappedArray(len: Int): WrappedArray[Boolean] = new WrappedArray.ofBoolean(new Array[Boolean](len))
     override def newArrayBuilder(): ArrayBuilder[Boolean] = new ArrayBuilder.ofBoolean()
     private def readResolve(): Any = Manifest.Boolean
   }
 
-  val Unit: AnyValManifest[Unit] = new AnyValManifest[scala.Unit] {
+  val Unit: AnyValManifest[Unit] = new AnyValManifest[scala.Unit]("Unit") {
     def erasure = java.lang.Void.TYPE
     val factory: Factory[scala.Unit] = sys.error("stub. to be implemented by `factorymanifests` compiler plug-in.")
-    override def toString = "Unit"
     override def newArray(len: Int): Array[Unit] = new Array[Unit](len)
     override def newWrappedArray(len: Int): WrappedArray[Unit] = new WrappedArray.ofUnit(new Array[Unit](len))
     override def newArrayBuilder(): ArrayBuilder[Unit] = new ArrayBuilder.ofUnit()

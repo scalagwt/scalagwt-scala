@@ -174,7 +174,7 @@ abstract class FactoryManifestsTransform extends PluginComponent with Transform 
         val name = newTermName("newInstance")
         val s = owner.newMethod(name)
         val len = {
-          val ss = s.newValueParameter(NoPosition, newTermName("len")) setInfo definitions.IntClass.tpe
+          val ss = s.newValueParameter(newTermName("len")) setInfo definitions.IntClass.tpe
           ValDef(ss) setType ss.tpe
         }
         s setInfo MethodType(s newSyntheticValueParams List(len.tpe), arrayTpe)

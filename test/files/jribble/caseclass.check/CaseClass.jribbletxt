@@ -20,229 +20,6 @@ implements {
   pkg: "scala"
   name: "Serializable"
 }
-implements {
-  pkg: "scala"
-  name: "Product1$mcI$sp"
-}
-member {
-  type: Method
-  modifiers {
-    isPublic: true
-  }
-  method {
-    name: "productArity"
-    returnType {
-      type: Primitive
-      primitiveType: Int
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "productArity"
-                  owner {
-                    pkg: "scala"
-                    name: "Product1$class"
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "scala"
-                      name: "Product1"
-                    }
-                  }
-                  returnType {
-                    type: Primitive
-                    primitiveType: Int
-                  }
-                }
-                argument {
-                  type: ThisRef
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-member {
-  type: Method
-  modifiers {
-    isPublic: true
-  }
-  method {
-    name: "productElement"
-    paramDef {
-      name: "n"
-      tpe {
-        type: Primitive
-        primitiveType: Int
-      }
-    }
-    returnType {
-      type: Named
-      namedType {
-        pkg: "java.lang"
-        name: "Object"
-      }
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "productElement"
-                  owner {
-                    pkg: "scala"
-                    name: "Product1$class"
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "scala"
-                      name: "Product1"
-                    }
-                  }
-                  paramType {
-                    type: Primitive
-                    primitiveType: Int
-                  }
-                  returnType {
-                    type: Named
-                    namedType {
-                      pkg: "java.lang"
-                      name: "Object"
-                    }
-                  }
-                }
-                argument {
-                  type: ThisRef
-                }
-                argument {
-                  type: VarRef
-                  varRef {
-                    name: "n"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-member {
-  type: Method
-  modifiers {
-    isPublic: true
-  }
-  method {
-    name: "_1$mcD$sp"
-    returnType {
-      type: Primitive
-      primitiveType: Double
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "_1$mcD$sp"
-                  owner {
-                    pkg: "scala"
-                    name: "Product1$class"
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "scala"
-                      name: "Product1"
-                    }
-                  }
-                  returnType {
-                    type: Primitive
-                    primitiveType: Double
-                  }
-                }
-                argument {
-                  type: ThisRef
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-member {
-  type: Method
-  modifiers {
-    isPublic: true
-  }
-  method {
-    name: "_1$mcJ$sp"
-    returnType {
-      type: Primitive
-      primitiveType: Long
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "_1$mcJ$sp"
-                  owner {
-                    pkg: "scala"
-                    name: "Product1$class"
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "scala"
-                      name: "Product1"
-                    }
-                  }
-                  returnType {
-                    type: Primitive
-                    primitiveType: Long
-                  }
-                }
-                argument {
-                  type: ThisRef
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
 member {
   type: Field
   modifiers {
@@ -437,6 +214,280 @@ member {
     isPublic: true
   }
   method {
+    name: "productArity"
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "productElement"
+    paramDef {
+      name: "x$1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "temp1"
+            initializer {
+              type: VarRef
+              varRef {
+                name: "x$1"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
+                pkg: "java.lang"
+                name: "Object"
+              }
+            }
+            name: "$1$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: VarRef
+                  varRef {
+                    name: "temp1"
+                  }
+                }
+                rhs {
+                  type: Literal
+                  literal {
+                    type: Int
+                    intValue: 0
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: MethodCall
+                        methodCall {
+                          signature {
+                            name: "boxToInteger"
+                            owner {
+                              pkg: "scala.runtime"
+                              name: "BoxesRunTime"
+                            }
+                            paramType {
+                              type: Primitive
+                              primitiveType: Int
+                            }
+                            returnType {
+                              type: Named
+                              namedType {
+                                pkg: "java.lang"
+                                name: "Integer"
+                              }
+                            }
+                          }
+                          argument {
+                            type: MethodCall
+                            methodCall {
+                              receiver {
+                                type: ThisRef
+                              }
+                              signature {
+                                name: "x"
+                                owner {
+                                  name: "CaseClass"
+                                }
+                                returnType {
+                                  type: Primitive
+                                  primitiveType: Int
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Throw
+                  throwStat {
+                    expression {
+                      type: NewObject
+                      newObject {
+                        clazz {
+                          pkg: "java.lang"
+                          name: "IndexOutOfBoundsException"
+                        }
+                        signature {
+                          name: "new"
+                          owner {
+                            pkg: "java.lang"
+                            name: "IndexOutOfBoundsException"
+                          }
+                          paramType {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "String"
+                            }
+                          }
+                          returnType {
+                            type: Named
+                            namedType {
+                              pkg: "java.lang"
+                              name: "IndexOutOfBoundsException"
+                            }
+                          }
+                        }
+                        argument {
+                          type: MethodCall
+                          methodCall {
+                            receiver {
+                              type: MethodCall
+                              methodCall {
+                                signature {
+                                  name: "boxToInteger"
+                                  owner {
+                                    pkg: "scala.runtime"
+                                    name: "BoxesRunTime"
+                                  }
+                                  paramType {
+                                    type: Primitive
+                                    primitiveType: Int
+                                  }
+                                  returnType {
+                                    type: Named
+                                    namedType {
+                                      pkg: "java.lang"
+                                      name: "Integer"
+                                    }
+                                  }
+                                }
+                                argument {
+                                  type: VarRef
+                                  varRef {
+                                    name: "x$1"
+                                  }
+                                }
+                              }
+                            }
+                            signature {
+                              name: "toString"
+                              owner {
+                                pkg: "java.lang"
+                                name: "Object"
+                              }
+                              returnType {
+                                type: Named
+                                namedType {
+                                  pkg: "java.lang"
+                                  name: "String"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$1$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
     name: "productIterator"
     returnType {
       type: Named
@@ -577,7 +628,7 @@ member {
                   type: ThisRef
                 }
                 signature {
-                  name: "_1$mcI$sp"
+                  name: "x"
                   owner {
                     name: "CaseClass"
                   }
@@ -946,114 +997,6 @@ member {
     isPublic: true
   }
   method {
-    name: "_1$mcI$sp"
-    returnType {
-      type: Primitive
-      primitiveType: Int
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                receiver {
-                  type: ThisRef
-                }
-                signature {
-                  name: "x"
-                  owner {
-                    name: "CaseClass"
-                  }
-                  returnType {
-                    type: Primitive
-                    primitiveType: Int
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-member {
-  type: Method
-  modifiers {
-    isPublic: true
-  }
-  method {
-    name: "_1"
-    returnType {
-      type: Named
-      namedType {
-        pkg: "java.lang"
-        name: "Object"
-      }
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "boxToInteger"
-                  owner {
-                    pkg: "scala.runtime"
-                    name: "BoxesRunTime"
-                  }
-                  paramType {
-                    type: Primitive
-                    primitiveType: Int
-                  }
-                  returnType {
-                    type: Named
-                    namedType {
-                      pkg: "java.lang"
-                      name: "Integer"
-                    }
-                  }
-                }
-                argument {
-                  type: MethodCall
-                  methodCall {
-                    receiver {
-                      type: ThisRef
-                    }
-                    signature {
-                      name: "_1"
-                      owner {
-                        name: "CaseClass"
-                      }
-                      returnType {
-                        type: Primitive
-                        primitiveType: Int
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-member {
-  type: Method
-  modifiers {
-    isPublic: true
-  }
-  method {
     isConstructor: true
     name: "new"
     paramDef {
@@ -1146,68 +1089,6 @@ member {
                   namedType {
                     pkg: "scala"
                     name: "Product"
-                  }
-                }
-                returnType {
-                  type: Void
-                }
-              }
-              argument {
-                type: ThisRef
-              }
-            }
-          }
-        }
-        statement {
-          type: Expr
-          expr {
-            type: MethodCall
-            methodCall {
-              receiver {
-                type: ThisRef
-              }
-              signature {
-                name: "$init$"
-                owner {
-                  pkg: "scala"
-                  name: "Product1$class"
-                }
-                paramType {
-                  type: Named
-                  namedType {
-                    pkg: "scala"
-                    name: "Product1"
-                  }
-                }
-                returnType {
-                  type: Void
-                }
-              }
-              argument {
-                type: ThisRef
-              }
-            }
-          }
-        }
-        statement {
-          type: Expr
-          expr {
-            type: MethodCall
-            methodCall {
-              receiver {
-                type: ThisRef
-              }
-              signature {
-                name: "$init$"
-                owner {
-                  pkg: "scala"
-                  name: "Product1$mcI$sp$class"
-                }
-                paramType {
-                  type: Named
-                  namedType {
-                    pkg: "scala"
-                    name: "Product1$mcI$sp"
                   }
                 }
                 returnType {

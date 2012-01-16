@@ -3,6 +3,7 @@ name {
 }
 modifiers {
   isPublic: true
+  isFinal: true
 }
 ext {
   pkg: "java.lang"

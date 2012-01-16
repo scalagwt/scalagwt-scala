@@ -3,6 +3,7 @@ name {
 }
 modifiers {
   isPublic: true
+  isFinal: true
 }
 ext {
   pkg: "scala.runtime"
@@ -86,7 +87,7 @@ member {
                 name: "Option"
               }
             }
-            name: "$1$"
+            name: "$2$"
           }
         }
         statement {
@@ -145,7 +146,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$1$"
+                          name: "$2$"
                         }
                       }
                       rhs {
@@ -181,7 +182,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$1$"
+                          name: "$2$"
                         }
                       }
                       rhs {
@@ -271,7 +272,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$1$"
+                name: "$2$"
               }
             }
           }

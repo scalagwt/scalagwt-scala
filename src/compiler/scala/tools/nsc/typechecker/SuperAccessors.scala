@@ -43,7 +43,7 @@ abstract class SuperAccessors extends transform.Transform with transform.TypingT
     }
 
     private def transformArgs(params: List[Symbol], args: List[Tree]) = {
-      treeInfo.zipMethodParamsAndArgs(params, args) map { case (param, arg) =>
+      treeInfo.mapMethodParamsAndArgs(params, args) { (param, arg) =>
         if (isByNameParamType(param.tpe))
           withInvalidOwner { checkPackedConforms(transform(arg), param.tpe.typeArgs.head) }
         else transform(arg)
@@ -150,7 +150,7 @@ abstract class SuperAccessors extends transform.Transform with transform.TypingT
           checkCompanionNameClashes(sym)
           val decls = sym.info.decls
           for (s <- decls) {
-            if (s.privateWithin.isClass && !s.privateWithin.isModuleClass &&
+            if (s.privateWithin.isClass && !s.isProtected && !s.privateWithin.isModuleClass &&
                 !s.hasFlag(EXPANDEDNAME) && !s.isConstructor) {
               decls.unlink(s)
               s.expandName(s.privateWithin)
@@ -284,7 +284,7 @@ abstract class SuperAccessors extends transform.Transform with transform.TypingT
     }
 
     /** Add a protected accessor, if needed, and return a tree that calls
-     *  the accessor and returns the the same member. The result is already
+     *  the accessor and returns the same member. The result is already
      *  typed.
      */
     private def makeAccessor(tree: Select, targs: List[Tree]): Tree = {
@@ -321,12 +321,9 @@ abstract class SuperAccessors extends transform.Transform with transform.TypingT
         val code = DefDef(protAcc, {
           val (receiver :: _) :: tail = protAcc.paramss
           val base: Tree              = Select(Ident(receiver), sym)
-          val allParamTypes           = sym.tpe.paramss map (xs => xs map (_.tpe))
-
-          (tail zip allParamTypes).foldLeft(base) {
-            case (fn, (params, tpes)) =>
-              Apply(fn, params zip tpes map { case (p, tp) => makeArg(p, receiver, tp) })
-          }
+          val allParamTypes           = mapParamss(sym)(_.tpe)
+          val args = map2(tail, allParamTypes)((params, tpes) => map2(params, tpes)(makeArg(_, receiver, _)))
+          args.foldLeft(base)(Apply(_, _))
         })
 
         debuglog("" + code)

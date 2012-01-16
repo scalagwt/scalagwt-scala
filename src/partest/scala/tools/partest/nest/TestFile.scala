@@ -80,3 +80,4 @@ case class JribbleTestFile(file: JFile, fileManager: FileManager) extends TestFi
     settings.skip.tryToSetColon("jvm" :: Nil).isDefined
   }
 }
+case class AntTestFile(file: JFile, fileManager: FileManager) extends TestFile("ant")

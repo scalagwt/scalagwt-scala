@@ -30,6 +30,7 @@
  */
 package scala.util.matching
 
+import scala.collection.AbstractIterator
 import java.util.regex.{ Pattern, Matcher }
 
 /** This class provides methods for creating and using regular expressions.
@@ -103,7 +104,7 @@ import java.util.regex.{ Pattern, Matcher }
  *  }
  *  }}}
  *
- *  The are also methods that can be used to replace the patterns
+ *  There are also methods that can be used to replace the patterns
  *  on a text. The substitutions can be simple replacements, or more
  *  complex functions. For example:
  *
@@ -187,7 +188,7 @@ class Regex(regex: String, groupNames: String*) extends Serializable {
    *  match, subgroups, etc.
    *
    *  @param source The text to match against.
-   *  @return       A [[scala.util.matching.Reegex.MatchIterator]] of all matches.
+   *  @return       A [[scala.util.matching.Regex.MatchIterator]] of all matches.
    *  @example      {{{for (words <- """\w+""".r findAllIn "A simple example.") yield words}}}
    */
   def findAllIn(source: java.lang.CharSequence) = new Regex.MatchIterator(source, this, groupNames)
@@ -502,7 +503,7 @@ object Regex {
   /** A class to step through a sequence of regex matches
    */
   class MatchIterator(val source: java.lang.CharSequence, val regex: Regex, val groupNames: Seq[String])
-  extends Iterator[String] with MatchData { self =>
+  extends AbstractIterator[String] with Iterator[String] with MatchData { self =>
 
     protected val matcher = regex.pattern.matcher(source)
     private var nextSeen = false
@@ -520,7 +521,7 @@ object Regex {
       matcher.group
     }
 
-    override def toString = super[Iterator].toString
+    override def toString = super[AbstractIterator].toString
 
     /** The index of the first matched character */
     def start: Int = matcher.start
@@ -538,13 +539,13 @@ object Regex {
     def groupCount = matcher.groupCount
 
     /** Convert to an iterator that yields MatchData elements instead of Strings */
-    def matchData = new Iterator[Match] {
+    def matchData: Iterator[Match] = new AbstractIterator[Match] {
       def hasNext = self.hasNext
       def next = { self.next; new Match(source, matcher, groupNames).force }
     }
 
     /** Convert to an iterator that yields MatchData elements instead of Strings and has replacement support */
-    private[matching] def replacementData = new Iterator[Match] with Replacement {
+    private[matching] def replacementData = new AbstractIterator[Match] with Replacement {
       def matcher = self.matcher
       def hasNext = self.hasNext
       def next = { self.next; new Match(source, matcher, groupNames).force }

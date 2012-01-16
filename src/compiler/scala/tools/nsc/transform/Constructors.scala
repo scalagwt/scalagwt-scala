@@ -105,8 +105,7 @@ abstract class Constructors extends Transform with ast.TreeDSL {
 
       // Move tree into constructor, take care of changing owner from `oldowner` to constructor symbol
       def intoConstructor(oldowner: Symbol, tree: Tree) =
-        intoConstructorTransformer.transform(
-          new ChangeOwnerTraverser(oldowner, constr.symbol)(tree))
+        intoConstructorTransformer transform tree.changeOwner(oldowner -> constr.symbol)
 
       // Should tree be moved in front of super constructor call?
       def canBeMoved(tree: Tree) = tree match {
@@ -254,26 +253,18 @@ abstract class Constructors extends Transform with ast.TreeDSL {
       for ((accSym, accBody) <- outerAccessors)
         if (mustbeKept(accSym)) accessTraverser.traverse(accBody)
 
-      // Conflicting symbol list from parents: see bug #1960.
-      // It would be better to mangle the constructor parameter name since
-      // it can only be used internally, but I think we need more robust name
-      // mangling before we introduce more of it.
-      val parentSymbols = Map((for {
-        p <- impl.parents
-        if p.symbol.isTrait
-        sym <- p.symbol.info.nonPrivateMembers
-        if sym.isGetter && !sym.isOuterField
-      } yield sym.name -> p): _*)
-
       // Initialize all parameters fields that must be kept.
-      val paramInits =
-        for (acc <- paramAccessors if mustbeKept(acc)) yield {
-          if (parentSymbols contains acc.name)
-            unit.error(acc.pos, "parameter '%s' requires field but conflicts with %s in '%s'".format(
-              acc.name, acc.name, parentSymbols(acc.name)))
+      val paramInits = paramAccessors filter mustbeKept map { acc =>
+        // Check for conflicting symbol amongst parents: see bug #1960.
+        // It would be better to mangle the constructor parameter name since
+        // it can only be used internally, but I think we need more robust name
+        // mangling before we introduce more of it.
+        val conflict = clazz.info.nonPrivateMember(acc.name) filter (s => s.isGetter && !s.isOuterField && s.enclClass.isTrait)
+        if (conflict ne NoSymbol)
+          unit.error(acc.pos, "parameter '%s' requires field but conflicts with %s".format(acc.name, conflict.fullLocationString))
 
-          copyParam(acc, parameter(acc))
-        }
+        copyParam(acc, parameter(acc))
+      }
 
       /** Return a single list of statements, merging the generic class constructor with the
        *  specialized stats. The original statements are retyped in the current class, and
@@ -285,10 +276,11 @@ abstract class Constructors extends Transform with ast.TreeDSL {
         specBuf ++= specializedStats
 
         def specializedAssignFor(sym: Symbol): Option[Tree] =
-          specializedStats.find {
-            case Assign(sel @ Select(This(_), _), rhs) if sel.symbol.hasFlag(SPECIALIZED) =>
-              val (generic, _, _) = nme.splitSpecializedName(nme.localToGetter(sel.symbol.name))
-              generic == nme.localToGetter(sym.name)
+          specializedStats find {
+            case Assign(sel @ Select(This(_), _), rhs) =>
+              (    (sel.symbol hasFlag SPECIALIZED)
+                && (nme.unspecializedName(nme.localToGetter(sel.symbol.name)) == nme.localToGetter(sym.name))
+              )
             case _ => false
           }
 
@@ -298,11 +290,10 @@ abstract class Constructors extends Transform with ast.TreeDSL {
          *  be an error to pass it to array_update(.., .., Object).
          */
         def rewriteArrayUpdate(tree: Tree): Tree = {
-          val array_update = definitions.ScalaRunTimeModule.info.member("array_update")
           val adapter = new Transformer {
             override def transform(t: Tree): Tree = t match {
-              case Apply(fun @ Select(receiver, method), List(xs, idx, v)) if fun.symbol == array_update =>
-                localTyper.typed(Apply(gen.mkAttributedSelect(xs, definitions.Array_update), List(idx, v)))
+              case Apply(fun @ Select(receiver, method), List(xs, idx, v)) if fun.symbol == arrayUpdateMethod =>
+                localTyper.typed(Apply(gen.mkAttributedSelect(xs, arrayUpdateMethod), List(idx, v)))
               case _ => super.transform(t)
             }
           }
@@ -378,11 +369,12 @@ abstract class Constructors extends Transform with ast.TreeDSL {
               EmptyTree)
 
           List(localTyper.typed(tree))
-        } else if (clazz.hasFlag(SPECIALIZED)) {
+        }
+        else if (clazz.hasFlag(SPECIALIZED)) {
           // add initialization from its generic class constructor
-          val (genericName, _, _) = nme.splitSpecializedName(clazz.name)
+          val genericName  = nme.unspecializedName(clazz.name)
           val genericClazz = clazz.owner.info.decl(genericName.toTypeName)
-          assert(genericClazz != NoSymbol)
+          assert(genericClazz != NoSymbol, clazz)
 
           guardedCtorStats.get(genericClazz) match {
             case Some(stats1) => mergeConstructors(genericClazz, stats1, stats)
@@ -400,11 +392,12 @@ abstract class Constructors extends Transform with ast.TreeDSL {
       /** Create a getter or a setter and enter into `clazz` scope
        */
       def addAccessor(sym: Symbol, name: TermName, flags: Long) = {
-        val m = clazz.newMethod(sym.pos, name)
-          .setFlag(flags & ~LOCAL & ~PRIVATE)
-        m.privateWithin = clazz
-        clazz.info.decls.enter(m)
-        m
+        val m = (
+          clazz.newMethod(sym.pos, name)
+            setFlag (flags & ~LOCAL & ~PRIVATE)
+            setPrivateWithin clazz
+        )
+        clazz.info.decls enter m
       }
 
       def addGetter(sym: Symbol): Symbol = {
@@ -460,28 +453,24 @@ abstract class Constructors extends Transform with ast.TreeDSL {
       def delayedInitClosure(stats: List[Tree]) =
         localTyper.typed {
           atPos(impl.pos) {
-            val closureClass = clazz.newClass(impl.pos, nme.delayedInitArg.toTypeName)
-              .setFlag(SYNTHETIC | FINAL)
+            val closureClass   = clazz.newClass(nme.delayedInitArg.toTypeName, impl.pos, SYNTHETIC | FINAL)
             val closureParents = List(AbstractFunctionClass(0).tpe, ScalaObjectClass.tpe)
-            closureClass.setInfo(new ClassInfoType(closureParents, new Scope, closureClass))
 
-            val outerField = closureClass.newValue(impl.pos, nme.OUTER)
-              .setFlag(PrivateLocal | PARAMACCESSOR)
-              .setInfo(clazz.tpe)
+            closureClass setInfoAndEnter new ClassInfoType(closureParents, new Scope, closureClass)
 
-            val applyMethod = closureClass.newMethod(impl.pos, nme.apply)
-              .setFlag(FINAL)
-              .setInfo(MethodType(List(), ObjectClass.tpe))
-
-            closureClass.info.decls enter outerField
-            closureClass.info.decls enter applyMethod
-
-            val outerFieldDef = ValDef(outerField)
-
-            val changeOwner = new ChangeOwnerTraverser(impl.symbol, applyMethod)
-
+            val outerField = (
+              closureClass
+                newValue(nme.OUTER, impl.pos, PrivateLocal | PARAMACCESSOR)
+                setInfoAndEnter clazz.tpe
+            )
+            val applyMethod = (
+              closureClass
+                newMethod(nme.apply, impl.pos, FINAL)
+                setInfoAndEnter MethodType(Nil, ObjectClass.tpe)
+            )
+            val outerFieldDef     = ValDef(outerField)
             val closureClassTyper = localTyper.atOwner(closureClass)
-            val applyMethodTyper = closureClassTyper.atOwner(applyMethod)
+            val applyMethodTyper  = closureClassTyper.atOwner(applyMethod)
 
             val constrStatTransformer = new Transformer {
               override def transform(tree: Tree): Tree = tree match {
@@ -513,8 +502,7 @@ abstract class Constructors extends Transform with ast.TreeDSL {
                           }
                         else tree
                       case _ =>
-                        changeOwner.changeOwner(tree)
-                        tree
+                        tree.changeOwner(impl.symbol -> applyMethod)
                     }
                   }
               }

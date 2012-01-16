@@ -8,11 +8,8 @@ package interpreter
 
 import Predef.{ println => _, _ }
 import util.{ Set => _, _ }
-import scala.collection.{ mutable, immutable }
+import java.net.URL
 import scala.sys.BooleanProp
-import Exceptional.unwrap
-import ScalaClassLoader.URLClassLoader
-import symtab.Flags
 import io.VirtualDirectory
 import scala.tools.nsc.io.AbstractFile
 import reporters._
@@ -23,9 +20,21 @@ import scala.tools.nsc.util.{ ScalaClassLoader, Exceptional, Indenter }
 import ScalaClassLoader.URLClassLoader
 import Exceptional.unwrap
 import scala.collection.{ mutable, immutable }
-import scala.PartialFunction.{ cond, condOpt }
 import scala.util.control.Exception.{ ultimately }
 import IMain._
+import java.util.concurrent.Future
+
+/** directory to save .class files to */
+private class ReplVirtualDirectory(out: JPrintWriter) extends VirtualDirectory("(memory)", None) {
+  private def pp(root: AbstractFile, indentLevel: Int) {
+    val spaces = "    " * indentLevel
+    out.println(spaces + root.name)
+    if (root.isDirectory)
+      root.toList sortBy (_.name) foreach (x => pp(x, indentLevel + 1))
+  }
+  // print the contents hierarchically
+  def show() = pp(this, 0)
+}
 
 /** An interpreter for Scala code.
  *
@@ -62,7 +71,32 @@ import IMain._
 class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends Imports {
   imain =>
 
-  private var currentSettings: Settings = initialSettings
+  /** Leading with the eagerly evaluated.
+   */
+  val virtualDirectory: VirtualDirectory            = new ReplVirtualDirectory(out) // "directory" for classfiles
+  private var currentSettings: Settings             = initialSettings
+  private[nsc] var printResults                     = true      // whether to print result lines
+  private[nsc] var totalSilence                     = false     // whether to print anything
+  private var _initializeComplete                   = false     // compiler is initialized
+  private var _isInitialized: Future[Boolean]       = null      // set up initialization future
+  private var bindExceptions                        = true      // whether to bind the lastException variable
+  private var _executionWrapper                     = ""        // code to be wrapped around all lines
+
+  /** We're going to go to some trouble to initialize the compiler asynchronously.
+   *  It's critical that nothing call into it until it's been initialized or we will
+   *  run into unrecoverable issues, but the perceived repl startup time goes
+   *  through the roof if we wait for it.  So we initialize it with a future and
+   *  use a lazy val to ensure that any attempt to use the compiler object waits
+   *  on the future.
+   */
+  private var _classLoader: AbstractFileClassLoader = null                              // active classloader
+  private var _lineManager: Line.Manager            = null                              // logic for individual lines
+  private val _compiler: Global                     = newCompiler(settings, reporter)   // our private compiler
+
+  def compilerClasspath: Seq[URL] = (
+    if (isInitializeComplete) global.classPath.asURLs
+    else new PathResolver(settings).result.asURLs  // the compiler's classpath
+  )
   def settings = currentSettings
   def savingSettings[T](fn: Settings => Unit)(body: => T): T = {
     val saved = currentSettings
@@ -104,33 +138,8 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   import formatting._
   import reporter.{ printMessage, withoutTruncating }
 
-  private[nsc] var printResults: Boolean = true   // whether to print result lines
-  private[nsc] var totalSilence: Boolean = false  // whether to print anything
-
-  /** directory to save .class files to */
-  val virtualDirectory = new VirtualDirectory("(memory)", None) {
-    private def pp(root: io.AbstractFile, indentLevel: Int) {
-      val spaces = "    " * indentLevel
-      out.println(spaces + root.name)
-      if (root.isDirectory)
-        root.toList sortBy (_.name) foreach (x => pp(x, indentLevel + 1))
-    }
-    // print the contents hierarchically
-    def show() = pp(this, 0)
-  }
-
   // This exists mostly because using the reporter too early leads to deadlock.
   private def echo(msg: String) { Console println msg }
-
-  /** We're going to go to some trouble to initialize the compiler asynchronously.
-   *  It's critical that nothing call into it until it's been initialized or we will
-   *  run into unrecoverable issues, but the perceived repl startup time goes
-   *  through the roof if we wait for it.  So we initialize it with a future and
-   *  use a lazy val to ensure that any attempt to use the compiler object waits
-   *  on the future.
-   */
-  private val _compiler: Global = newCompiler(settings, reporter)
-  private var _initializeComplete = false
   private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
   private def _initialize() = {
     try {
@@ -140,17 +149,16 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     }
     catch AbstractOrMissingHandler()
   }
-
-  // set up initialization future
-  private var _isInitialized: () => Boolean = null
   // argument is a thunk to execute after init is done
-  def initialize(postInitSignal: => Unit): Unit = synchronized {
-    if (_isInitialized == null)
-      _isInitialized = scala.concurrent.ops future {
-        val result = _initialize()
-        postInitSignal
-        result
+  def initialize(postInitSignal: => Unit) {
+    synchronized {
+      if (_isInitialized == null) {
+        _isInitialized = io.spawn {
+          try _initialize()
+          finally postInitSignal
+        }
       }
+    }
   }
   def initializeSynchronous(): Unit = {
     if (!isInitializeComplete) {
@@ -170,7 +178,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
         initialize(())
       }
       // blocks until it is ; false means catastrophic failure
-      if (_isInitialized()) _compiler
+      if (_isInitialized.get()) _compiler
       else null
     }
   }
@@ -178,12 +186,21 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   lazy val compiler: global.type = global
 
   import global._
-  import definitions.{ ScalaPackage, JavaLangPackage, PredefModule, RootClass }
+  import definitions.{
+    ScalaPackage, JavaLangPackage, PredefModule, RootClass,
+    getClassIfDefined, getModuleIfDefined, getRequiredModule, getRequiredClass
+  }
 
   private implicit def privateTreeOps(t: Tree): List[Tree] = {
     (new Traversable[Tree] {
       def foreach[U](f: Tree => U): Unit = t foreach { x => f(x) ; () }
     }).toList
+  }
+  
+  implicit def installReplTypeOps(tp: Type): ReplTypeOps = new ReplTypeOps(tp)
+  class ReplTypeOps(tp: Type) {
+    def orElse(other: => Type): Type    = if (tp ne NoType) tp else other
+    def andAlso(fn: Type => Type): Type = if (tp eq NoType) tp else fn(tp)
   }
 
   // TODO: If we try to make naming a lazy val, we run into big time
@@ -193,12 +210,13 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     val global: imain.global.type = imain.global
   } with Naming {
     // make sure we don't overwrite their unwisely named res3 etc.
-    override def freshUserVarName(): String = {
-      val name = super.freshUserVarName()
-      if (definedNameMap contains name) freshUserVarName()
+    def freshUserTermName(): TermName = {
+      val name = newTermName(freshUserVarName())
+      if (definedNameMap contains name) freshUserTermName()
       else name
     }
-    def isInternalVarName(name: Name): Boolean = isInternalVarName("" + name)
+    def isUserTermName(name: Name) = isUserVarName("" + name)
+    def isInternalTermName(name: Name) = isInternalVarName("" + name)
   }
   import naming._
 
@@ -231,40 +249,27 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
 
   def quietRun[T](code: String) = beQuietDuring(interpret(code))
 
-  private def logAndDiscard[T](label: String, alt: => T): PartialFunction[Throwable, T] = {
-    case t =>
-      repldbg(label + ": " + unwrap(t))
-      repltrace(util.stackTraceString(unwrap(t)))
-
-      alt
-  }
-
-  /** whether to bind the lastException variable */
-  private var bindExceptions = true
   /** takes AnyRef because it may be binding a Throwable or an Exceptional */
-  private def withLastExceptionLock[T](body: => T): T = {
+  private def withLastExceptionLock[T](body: => T, alt: => T): T = {
     assert(bindExceptions, "withLastExceptionLock called incorrectly.")
     bindExceptions = false
 
     try     beQuietDuring(body)
-    catch   logAndDiscard("bindLastException", null.asInstanceOf[T])
+    catch   logAndDiscard("withLastExceptionLock", alt)
     finally bindExceptions = true
   }
 
-  /** A string representing code to be wrapped around all lines. */
-  private var _executionWrapper: String = ""
   def executionWrapper = _executionWrapper
   def setExecutionWrapper(code: String) = _executionWrapper = code
   def clearExecutionWrapper() = _executionWrapper = ""
-
-  lazy val lineManager = createLineManager()
+  def lineManager = _lineManager
 
   /** interpreter settings */
   lazy val isettings = new ISettings(this)
 
   /** Create a line manager.  Overridable.  */
-  protected def createLineManager(): Line.Manager =
-    if (ReplPropsKludge.noThreadCreation(settings)) null else new Line.Manager
+  protected def noLineManager = ReplPropsKludge.noThreadCreation(settings)
+  protected def createLineManager(): Line.Manager = new Line.Manager(_classLoader)
 
   /** Instantiate a compiler.  Overridable. */
   protected def newCompiler(settings: Settings, reporter: Reporter) = {
@@ -277,9 +282,6 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   /** Parent classloader.  Overridable. */
   protected def parentClassLoader: ClassLoader =
     settings.explicitParentLoader.getOrElse( this.getClass.getClassLoader() )
-
-  /** the compiler's classpath, as URL's */
-  lazy val compilerClasspath = global.classPath.asURLs
 
   /* A single class loader is used for all commands interpreted by this Interpreter.
      It would also be possible to create a new class loader for each command
@@ -294,38 +296,44 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
          shadow the old ones, and old code objects refer to the old
          definitions.
   */
-  private var _classLoader: AbstractFileClassLoader = null
   def resetClassLoader() = {
     repldbg("Setting new classloader: was " + _classLoader)
-    _classLoader = makeClassLoader()
+    _classLoader = null
+    ensureClassLoader()
+  }
+  final def ensureClassLoader() {
+    if (_classLoader == null) {
+      _classLoader = makeClassLoader()
+      _lineManager = if (noLineManager) null else createLineManager()
+    }
   }
   def classLoader: AbstractFileClassLoader = {
-    if (_classLoader == null)
-      resetClassLoader()
-
+    ensureClassLoader()
     _classLoader
   }
-  private def makeClassLoader(): AbstractFileClassLoader = {
-    val parent =
-      if (parentClassLoader == null)  ScalaClassLoader fromURLs compilerClasspath
-      else                            new URLClassLoader(compilerClasspath, parentClassLoader)
+  private class TranslatingClassLoader(parent: ClassLoader) extends AbstractFileClassLoader(virtualDirectory, parent) {
+    private[IMain] var traceClassLoading = isReplTrace
+    override protected def trace = super.trace || traceClassLoading
 
-    new AbstractFileClassLoader(virtualDirectory, parent) {
-      /** Overridden here to try translating a simple name to the generated
-       *  class name if the original attempt fails.  This method is used by
-       *  getResourceAsStream as well as findClass.
-       */
-      override protected def findAbstractFile(name: String): AbstractFile = {
-        super.findAbstractFile(name) match {
-          // deadlocks on startup if we try to translate names too early
-          case null if isInitializeComplete =>
-            generatedName(name) map (x => super.findAbstractFile(x)) orNull
-          case file                         =>
-            file
-        }
+    /** Overridden here to try translating a simple name to the generated
+     *  class name if the original attempt fails.  This method is used by
+     *  getResourceAsStream as well as findClass.
+     */
+    override protected def findAbstractFile(name: String): AbstractFile = {
+      super.findAbstractFile(name) match {
+        // deadlocks on startup if we try to translate names too early
+        case null if isInitializeComplete =>
+          generatedName(name) map (x => super.findAbstractFile(x)) orNull
+        case file                         =>
+          file
       }
     }
   }
+  private def makeClassLoader(): AbstractFileClassLoader =
+    new TranslatingClassLoader(parentClassLoader match {
+      case null   => ScalaClassLoader fromURLs compilerClasspath
+      case p      => new URLClassLoader(compilerClasspath, p)
+    })
 
   def getInterpreterClassLoader() = classLoader
 
@@ -358,7 +366,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   private def mostRecentlyHandledTree: Option[Tree] = {
     prevRequests.reverse foreach { req =>
       req.handlers.reverse foreach {
-        case x: MemberDefHandler if x.definesValue && !isInternalVarName(x.name) => return Some(x.member)
+        case x: MemberDefHandler if x.definesValue && !isInternalTermName(x.name) => return Some(x.member)
         case _ => ()
       }
     }
@@ -500,7 +508,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     trees.last match {
       case _:Assign                        => // we don't want to include assignments
       case _:TermTree | _:Ident | _:Select => // ... but do want other unnamed terms.
-        val varName  = if (synthetic) freshInternalVarName() else freshUserVarName()
+        val varName  = if (synthetic) freshInternalVarName() else ("" + freshUserTermName())
         val rewrittenLine = (
           // In theory this would come out the same without the 1-specific test, but
           // it's a cushion against any more sneaky parse-tree position vs. code mismatches:
@@ -639,10 +647,18 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
         interpret(line)
     }
   }
+  def directBind(name: String, boundType: String, value: Any): IR.Result = {
+    val result = bind(name, boundType, value)
+    if (result == IR.Success)
+      directlyBoundNames += newTermName(name)
+    result
+  }
+  def directBind(p: NamedParam): IR.Result                       = directBind(p.name, p.tpe, p.value)
+  def directBind[T: Manifest](name: String, value: T): IR.Result = directBind((name, value))
 
   def rebind(p: NamedParam): IR.Result = {
     val name     = p.name
-    val oldType  = typeOfTerm(name) getOrElse { return IR.Error }
+    val oldType  = typeOfTerm(name) orElse { return IR.Error }
     val newType  = p.tpe
     val tempName = freshInternalVarName()
 
@@ -657,15 +673,18 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   def quietBind(p: NamedParam): IR.Result                  = beQuietDuring(bind(p))
   def bind(p: NamedParam): IR.Result                       = bind(p.name, p.tpe, p.value)
   def bind[T: Manifest](name: String, value: T): IR.Result = bind((name, value))
-  def bindValue(x: Any): IR.Result                         = bindValue(freshUserVarName(), x)
+  def bindValue(x: Any): IR.Result                         = bindValue("" + freshUserTermName(), x)
   def bindValue(name: String, x: Any): IR.Result           = bind(name, TypeStrings.fromValue(x), x)
 
   /** Reset this interpreter, forgetting all user-specified requests. */
   def reset() {
-    virtualDirectory.clear()
+    clearExecutionWrapper()
     resetClassLoader()
     resetAllCreators()
     prevRequests.clear()
+    referencedNameMap.clear()
+    definedNameMap.clear()
+    virtualDirectory.clear()
   }
 
   /** This instance is no longer needed, so release any resources
@@ -709,17 +728,17 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
         throw t
 
       val unwrapped = unwrap(t)
-      withLastExceptionLock {
+      withLastExceptionLock[String]({
         if (opt.richExes) {
           val ex = new LineExceptional(unwrapped)
-          bind[Exceptional]("lastException", ex)
+          directBind[Exceptional]("lastException", ex)
           ex.contextHead + "\n(access lastException for the full trace)"
         }
         else {
-          bind[Throwable]("lastException", unwrapped)
+          directBind[Throwable]("lastException", unwrapped)
           util.stackTraceString(unwrapped)
         }
-      }
+      }, util.stackTraceString(unwrapped))
     }
 
     // TODO: split it out into a package object and a regular
@@ -733,8 +752,14 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     def evalPath  = pathTo(evalName)
     def printPath = pathTo(printName)
 
-    def call(name: String, args: Any*): AnyRef =
-      evalMethod(name).invoke(evalClass, args.map(_.asInstanceOf[AnyRef]): _*)
+    def call(name: String, args: Any*): AnyRef = {
+      val m = evalMethod(name)
+      repldbg("Invoking: " + m)
+      if (args.nonEmpty)
+        repldbg("  with args: " + args.mkString(", "))
+
+      m.invoke(evalClass, args.map(_.asInstanceOf[AnyRef]): _*)
+    }
 
     def callEither(name: String, args: Any*): Either[Throwable, AnyRef] =
       try Right(call(name, args: _*))
@@ -771,7 +796,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
       * following accessPath into the outer one.
       */
     def resolvePathToSymbol(accessPath: String): Symbol = {
-      val readRoot  = definitions.getModule(readPath)   // the outermost wrapper
+      val readRoot  = getRequiredModule(readPath)   // the outermost wrapper
       (accessPath split '.').foldLeft(readRoot) { (sym, name) =>
         if (name == "") sym else
         lineAfterTyper(sym.info member newTermName(name))
@@ -1021,16 +1046,6 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   def requestHistoryForName(name: Name): List[Request] =
     prevRequests.toList.reverse filter (_.definedNames contains name)
 
-  def safeClass(name: String): Option[Symbol] = {
-    try Some(definitions.getClass(newTypeName(name)))
-    catch { case _: MissingRequirementError => None }
-  }
-
-  def safeModule(name: String): Option[Symbol] = {
-    try Some(definitions.getModule(newTermName(name)))
-    catch { case _: MissingRequirementError => None }
-  }
-
   def definitionForName(name: Name): Option[MemberHandler] =
     requestForName(name) flatMap { req =>
       req.handlers find (_.definedNames contains name)
@@ -1042,34 +1057,32 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   def classOfTerm(id: String): Option[JClass] =
     valueOfTerm(id) map (_.getClass)
 
-  def typeOfTerm(id: String): Option[Type] = newTermName(id) match {
-    case nme.ROOTPKG  => Some(definitions.RootClass.tpe)
-    case name         => requestForName(name) flatMap (_.compilerTypeOf get name)
+  def typeOfTerm(id: String): Type = newTermName(id) match {
+    case nme.ROOTPKG  => definitions.RootClass.tpe
+    case name         => requestForName(name) flatMap (_.compilerTypeOf get name) getOrElse NoType
   }
 
   def symbolOfTerm(id: String): Symbol =
     requestForIdent(id) flatMap (_.definedSymbols get newTermName(id)) getOrElse NoSymbol
 
   def runtimeClassAndTypeOfTerm(id: String): Option[(JClass, Type)] = {
-    for {
-      clazz <- classOfTerm(id)
-      tpe <- runtimeTypeOfTerm(id)
-      nonAnon <- clazz.supers find (!_.isScalaAnonymous)
-    } yield {
-      (nonAnon, tpe)
+    classOfTerm(id) flatMap { clazz =>
+      clazz.supers find (!_.isScalaAnonymous) map { nonAnon =>
+        (nonAnon, runtimeTypeOfTerm(id))
+      }
     }
   }
 
-  def runtimeTypeOfTerm(id: String): Option[Type] = {
-    for {
-      tpe <- typeOfTerm(id)
-      clazz <- classOfTerm(id)
-      staticSym = tpe.typeSymbol
-      runtimeSym <- safeClass(clazz.getName)
-      if runtimeSym != staticSym
-      if runtimeSym isSubClass staticSym
+  def runtimeTypeOfTerm(id: String): Type = {
+    typeOfTerm(id) andAlso { tpe =>
+      val clazz      = classOfTerm(id) getOrElse { return NoType }
+      val staticSym  = tpe.typeSymbol
+      val runtimeSym = getClassIfDefined(clazz.getName)
+      
+      if ((runtimeSym != NoSymbol) && (runtimeSym != staticSym) && (runtimeSym isSubClass staticSym))
+        runtimeSym.info
+      else NoType
     }
-    yield runtimeSym.info
   }
 
   object replTokens extends {
@@ -1081,61 +1094,48 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   } with ExprTyper { }
 
   def parse(line: String): Option[List[Tree]] = exprTyper.parse(line)
-  def typeOfExpression(expr: String, silent: Boolean = true): Option[Type] = {
+  def typeOfExpression(expr: String, silent: Boolean = true): Type =
     exprTyper.typeOfExpression(expr, silent)
-  }
+
   def prettyPrint(code: String) =
     replTokens.prettyPrint(exprTyper tokens code)
 
   protected def onlyTerms(xs: List[Name]) = xs collect { case x: TermName => x }
   protected def onlyTypes(xs: List[Name]) = xs collect { case x: TypeName => x }
 
-  def definedTerms   = onlyTerms(allDefinedNames) filterNot isInternalVarName
+  def definedTerms   = onlyTerms(allDefinedNames) filterNot isInternalTermName
   def definedTypes   = onlyTypes(allDefinedNames)
   def definedSymbols = prevRequests.toSet flatMap ((x: Request) => x.definedSymbols.values)
 
+  // Terms with user-given names (i.e. not res0 and not synthetic)
+  def namedDefinedTerms = definedTerms filterNot (x => isUserVarName("" + x) || directlyBoundNames(x))
+
   private def findName(name: Name) = definedSymbols find (_.name == name)
-
-  private def missingOpt(op: => Symbol): Option[Symbol] =
-    try Some(op)
-    catch { case _: MissingRequirementError => None }
-  private def missingWrap(op: => Symbol): Symbol =
-    try op
-    catch { case _: MissingRequirementError => NoSymbol }
-
-  def optCompilerClass(name: String)  = missingOpt(definitions.getClass(name))
-  def optCompilerModule(name: String) = missingOpt(definitions.getModule(name))
-  def getCompilerClass(name: String)  = missingWrap(definitions.getClass(name))
-  def getCompilerModule(name: String) = missingWrap(definitions.getModule(name))
 
   /** Translate a repl-defined identifier into a Symbol.
    */
-  def apply(name: String): Symbol = {
-    val tpname = newTypeName(name)
-    (
-             findName(tpname)
-      orElse findName(tpname.companionName)
-      orElse optCompilerClass(name)
-      orElse optCompilerModule(name)
-      getOrElse NoSymbol
-    )
-  }
+  def apply(name: String): Symbol =
+    types(name) orElse terms(name)
+
   def types(name: String): Symbol = {
-    findName(newTypeName(name)) getOrElse getCompilerClass(name)
+    val tpname = newTypeName(name)
+    findName(tpname) getOrElse getClassIfDefined(tpname)
   }
   def terms(name: String): Symbol = {
-    findName(newTermName(name)) getOrElse getCompilerModule(name)
+    val termname = newTypeName(name)
+    findName(termname) getOrElse getModuleIfDefined(termname)
   }
 
   /** the previous requests this interpreter has processed */
-  private lazy val prevRequests      = mutable.ListBuffer[Request]()
-  private lazy val referencedNameMap = mutable.Map[Name, Request]()
-  private lazy val definedNameMap    = mutable.Map[Name, Request]()
-  protected def prevRequestList      = prevRequests.toList
-  private def allHandlers            = prevRequestList flatMap (_.handlers)
-  def allSeenTypes                   = prevRequestList flatMap (_.typeOf.values.toList) distinct
-  def allImplicits                   = allHandlers filter (_.definesImplicit) flatMap (_.definedNames)
-  def importHandlers                 = allHandlers collect { case x: ImportHandler => x }
+  private lazy val prevRequests       = mutable.ListBuffer[Request]()
+  private lazy val referencedNameMap  = mutable.Map[Name, Request]()
+  private lazy val definedNameMap     = mutable.Map[Name, Request]()
+  private lazy val directlyBoundNames = mutable.Set[Name]()
+  protected def prevRequestList       = prevRequests.toList
+  private def allHandlers             = prevRequestList flatMap (_.handlers)
+  def allSeenTypes                    = prevRequestList flatMap (_.typeOf.values.toList) distinct
+  def allImplicits                    = allHandlers filter (_.definesImplicit) flatMap (_.definedNames)
+  def importHandlers                  = allHandlers collect { case x: ImportHandler => x }
 
   def visibleTermNames: List[Name] = definedTerms ++ importedTerms distinct
 

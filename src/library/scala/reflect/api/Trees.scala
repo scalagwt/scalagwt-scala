@@ -16,10 +16,6 @@ trait Trees /*extends reflect.generic.Trees*/ { self: Universe =>
 
   type Modifiers <: AbsModifiers
 
-  /** Hook to define what toString means on a tree
-   */
-  def show(tree: Tree): String
-
   abstract class AbsModifiers {
     def hasModifier(mod: Modifier.Value): Boolean
     def allModifiers: Set[Modifier.Value]
@@ -319,7 +315,7 @@ trait Trees /*extends reflect.generic.Trees*/ { self: Universe =>
   /** A common base class for ValDefs and DefDefs.
    */
   abstract class ValOrDefDef extends MemberDef {
-    def name: TermName
+    def name: Name // can't be a TermName because macros can be type names.
     def tpt: Tree
     def rhs: Tree
   }
@@ -329,9 +325,10 @@ trait Trees /*extends reflect.generic.Trees*/ { self: Universe =>
    */
   case class ValDef(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree) extends ValOrDefDef
 
-  /** A method definition.
+  /** A method or macro definition.
+   *  @param name   The name of the method or macro. Can be a type name in case this is a type macro
    */
-  case class DefDef(mods: Modifiers, name: TermName, tparams: List[TypeDef],
+  case class DefDef(mods: Modifiers, name: Name, tparams: List[TypeDef],
                     vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree) extends ValOrDefDef
 
   /** An abstract type, a type parameter, or a type alias.
@@ -496,7 +493,10 @@ trait Trees /*extends reflect.generic.Trees*/ { self: Universe =>
   }
 
   /** Explicit type application.
-  */
+   *  @PP: All signs point toward it being a requirement that args.nonEmpty,
+   *  but I can't find that explicitly stated anywhere.  Unless your last name
+   *  is odersky, you should probably treat it as true.
+   */
   case class TypeApply(fun: Tree, args: List[Tree])
        extends GenericApply {
     override def symbol: Symbol = fun.symbol
@@ -542,8 +542,20 @@ trait Trees /*extends reflect.generic.Trees*/ { self: Universe =>
   case class Select(qualifier: Tree, name: Name)
        extends RefTree
 
+  def Select(qualifier: Tree, name: String): Select =
+    Select(qualifier, newTermName(name))
+
+  def Select(qualifier: Tree, sym: Symbol): Select =
+    Select(qualifier, sym.name) setSymbol sym
+
   /** Identifier <name> */
   case class Ident(name: Name) extends RefTree { }
+
+  def Ident(name: String): Ident =
+    Ident(newTermName(name))
+
+  def Ident(sym: Symbol): Ident =
+    Ident(sym.name) setSymbol sym
 
   class BackQuotedIdent(name: Name) extends Ident(name)
 
@@ -618,6 +630,13 @@ trait Trees /*extends reflect.generic.Trees*/ { self: Universe =>
   }
 
   def TypeTree(tp: Type): TypeTree = TypeTree() setType tp
+  
+  /** An empty deferred value definition corresponding to:
+   *    val _: _
+   *  This is used as a placeholder in the `self` parameter Template if there is 
+   *  no definition of a self value of self type.
+   */
+  def emptyValDef: ValDef
 
   // ------ traversers, copiers, and transformers ---------------------------------------------
 

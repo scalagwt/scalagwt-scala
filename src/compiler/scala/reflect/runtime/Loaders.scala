@@ -63,19 +63,20 @@ trait Loaders { self: SymbolTable =>
    */
   protected def createClassModule(owner: Symbol, name: TypeName, completer: (Symbol, Symbol) => LazyType) = {
     assert(!(name.toString endsWith "[]"), name)
-    val clazz = owner.newClass(NoPosition, name)
-    val module = owner.newModule(NoPosition, name.toTermName)
+    val clazz = owner.newClass(name)
+    val module = owner.newModule(name.toTermName)
     owner.info.decls enter clazz
     owner.info.decls enter module
     initClassModule(clazz, module, completer(clazz, module))
     (clazz, module)
   }
 
-  protected def initClassModule(clazz: Symbol, module: Symbol, completer: LazyType) = {
-    clazz.setInfo(completer)
-    module.setInfo(completer)
-    module.moduleClass.setInfo(completer)
+  protected def setAllInfos(clazz: Symbol, module: Symbol, info: Type) = {
+    List(clazz, module, module.moduleClass) foreach (_ setInfo info)
   }
+
+  protected def initClassModule(clazz: Symbol, module: Symbol, completer: LazyType) =
+    setAllInfos(clazz, module, completer)
 
   /** The type completer for packages.
    */
@@ -88,6 +89,9 @@ trait Loaders { self: SymbolTable =>
     }
   }
 
+  /** Is the given name valid for a top-level class? We exclude names with embedded $-signs, because
+   *  these are nested classes or anonymous classes,
+   */
   def invalidClassName(name: Name) = {
     val dp = name pos '$'
     0 < dp && dp < (name.length - 1)

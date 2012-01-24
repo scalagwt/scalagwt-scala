@@ -187,6 +187,7 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
     val fieldRef = P.FieldRef.newBuilder
     fieldRef.setEnclosingType(globalName(module))
     fieldRef.setName(nme.MODULE_INSTANCE_FIELD.toString)
+    fieldRef.setTpe(convert(module.info))
     exprBuilder.setFieldRef(fieldRef.build)
   }
   
@@ -437,6 +438,7 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
         }
         fieldRef.setEnclosingType(globalName(tree.symbol.enclClass))
         fieldRef.setName(tree.symbol.name.encode.toString)
+        fieldRef.setTpe(convert(tree.tpe))
         proto.setFieldRef(fieldRef)
         
       case tree@Assign(lhs, rhs) =>
@@ -908,6 +910,7 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
     val lhsField = P.FieldRef.newBuilder
     lhsField.setEnclosingType(globalName(clazz, true))
     lhsField.setName("MODULE$")
+    lhsField.setTpe(convert(clazz.tpe))
     lhs.setFieldRef(lhsField)
     assign.setLhs(lhs)
     val rhs = P.Expr.newBuilder

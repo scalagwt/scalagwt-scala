@@ -34,6 +34,9 @@ object Stack extends SeqFactory[Stack] {
  *  @author  Matthias Zenger
  *  @version 1.0, 10/07/2003
  *  @since   1
+ *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#immutable_stacks "Scala's Collection Library overview"]]
+ *  section on `Immutable stacks` for more information.
+ *
  *  @define Coll immutable.Stack
  *  @define coll immutable stack
  *  @define orderDependent
@@ -43,7 +46,8 @@ object Stack extends SeqFactory[Stack] {
  */
 @SerialVersionUID(1976480595012942526L)
 class Stack[+A] protected (protected val elems: List[A])
-                    extends LinearSeq[A]
+                 extends AbstractSeq[A]
+                    with LinearSeq[A]
                     with GenericTraversableTemplate[A, Stack]
                     with LinearSeqOptimized[A, Stack[A]]
                     with Serializable {

@@ -172,13 +172,17 @@ import Stream.cons
  *  @author Martin Odersky, Matthias Zenger
  *  @version 1.1 08/08/03
  *  @since   2.8
+ *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#streams "Scala's Collection Library overview"]]
+ *  section on `Streams` for more information.
+
  *  @define naturalsEx def naturalsFrom(i: Int): Stream[Int] = i #:: naturalsFrom(i + 1)
  *  @define Coll Stream
  *  @define coll stream
  *  @define orderDependent
  *  @define orderDependentFold
  */
-abstract class Stream[+A] extends LinearSeq[A]
+abstract class Stream[+A] extends AbstractSeq[A]
+                             with LinearSeq[A]
                              with GenericTraversableTemplate[A, Stream]
                              with LinearSeqOptimized[A, Stream[A]] {
 self =>
@@ -925,7 +929,7 @@ self =>
 /** A specialized, extra-lazy implementation of a stream iterator, so it can
  *  iterate as lazily as it traverses the tail.
  */
-final class StreamIterator[+A](self: Stream[A]) extends Iterator[A] {
+final class StreamIterator[+A](self: Stream[A]) extends AbstractIterator[A] with Iterator[A] {
   // A call-by-need cell.
   class LazyCell(st: => Stream[A]) {
     lazy val v = st

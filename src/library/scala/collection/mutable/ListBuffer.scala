@@ -21,6 +21,8 @@ import immutable.{List, Nil, ::}
  *  @author  Martin Odersky
  *  @version 2.8
  *  @since   1
+ *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-mutable-collection-classes.html#list_buffers "Scala's Collection Library overview"]]
+ *  section on `List Buffers` for more information.
  *
  *  @tparam A    the type of this list buffer's elements.
  *
@@ -40,7 +42,8 @@ import immutable.{List, Nil, ::}
  */
 @SerialVersionUID(3419063961353022661L)
 final class ListBuffer[A]
-      extends Buffer[A]
+      extends AbstractBuffer[A]
+         with Buffer[A]
          with GenericTraversableTemplate[A, ListBuffer]
          with BufferLike[A, ListBuffer[A]]
          with Builder[A, List[A]]
@@ -316,7 +319,7 @@ final class ListBuffer[A]
     this
   }
 
-  override def iterator: Iterator[A] = new Iterator[A] {
+  override def iterator: Iterator[A] = new AbstractIterator[A] {
     // Have to be careful iterating over mutable structures.
     // This used to have "(cursor ne last0)" as part of its hasNext
     // condition, which means it can return true even when the iterator

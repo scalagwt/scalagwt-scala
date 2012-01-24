@@ -16,6 +16,9 @@ import annotation.{tailrec, bridge}
 
 /** $factoryInfo
  *  @since 1
+ *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#list_maps "Scala's Collection Library overview"]]
+ *  section on `List Maps` for more information.
+ *
  *  @define Coll immutable.ListMap
  *  @define coll immutable list map
  */
@@ -45,7 +48,11 @@ object ListMap extends ImmutableMapFactory[ListMap] {
  *  @define willNotTerminateInf
  */
 @SerialVersionUID(301002838095710379L)
-class ListMap[A, +B] extends Map[A, B] with MapLike[A, B, ListMap[A, B]] with Serializable {
+class ListMap[A, +B]
+extends AbstractMap[A, B]
+   with Map[A, B]
+   with MapLike[A, B, ListMap[A, B]]
+   with Serializable {
 
   override def empty = ListMap.empty
 
@@ -112,7 +119,7 @@ class ListMap[A, +B] extends Map[A, B] with MapLike[A, B, ListMap[A, B]] with Se
   /** Returns an iterator over key-value pairs.
    */
   def iterator: Iterator[(A,B)] =
-    new Iterator[(A,B)] {
+    new AbstractIterator[(A,B)] {
       var self: ListMap[A,B] = ListMap.this
       def hasNext = !self.isEmpty
       def next(): (A,B) =

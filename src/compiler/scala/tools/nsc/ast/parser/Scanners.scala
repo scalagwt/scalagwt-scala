@@ -28,6 +28,7 @@ trait ScannersCommon {
     def warning(off: Int, msg: String): Unit
     def error  (off: Int, msg: String): Unit
     def incompleteInputError(off: Int, msg: String): Unit
+    def deprecationWarning(off: Int, msg: String): Unit
   }
 
   def createKeywordArray(keywords: Seq[(Name, Int)], defaultToken: Int): (Int, Array[Int]) = {
@@ -82,6 +83,7 @@ trait Scanners extends ScannersCommon {
   }
 
   abstract class Scanner extends CharArrayReader with TokenData with ScannerCommon {
+    private def isDigit(c: Char) = java.lang.Character isDigit c
 
     def flush = { charOffset = offset; nextChar(); this }
 
@@ -339,7 +341,16 @@ trait Scanners extends ScannersCommon {
           if (ch == 'x' || ch == 'X') {
             nextChar()
             base = 16
-          } else {
+          }
+          else {
+            /** What should leading 0 be in the future? It is potentially dangerous
+             *  to let it be base-10 because of history.  Should it be an error? Is
+             *  there a realistic situation where one would need it?
+             */
+            if (isDigit(ch)) {
+              if (opt.future) syntaxError("Non-zero numbers may not have a leading zero.")
+              else deprecationWarning("Treating numbers with a leading zero as octal is deprecated.")
+            }
             base = 8
           }
           getNumber()
@@ -797,12 +808,25 @@ trait Scanners extends ScannersCommon {
     /** Convert current strVal, base to double value
     */
     def floatVal(negated: Boolean): Double = {
+
       val limit: Double =
         if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
       try {
         val value: Double = java.lang.Double.valueOf(strVal).doubleValue()
+        def isDeprecatedForm = {
+          val idx = strVal indexOf '.'
+          (idx == strVal.length - 1) || (
+               (idx >= 0)
+            && (idx + 1 < strVal.length)
+            && (!Character.isDigit(strVal charAt (idx + 1)))
+          )
+        }
         if (value > limit)
           syntaxError("floating point number too large")
+        if (isDeprecatedForm) {
+          deprecationWarning("This lexical syntax is deprecated.  From scala 2.11, a dot will only be considered part of a number if it is immediately followed by a digit.")
+        }
+
         if (negated) -value else value
       } catch {
         case _: NumberFormatException =>
@@ -821,9 +845,8 @@ trait Scanners extends ScannersCommon {
     /** Read a number into strVal and set base
     */
     protected def getNumber() {
-      def isDigit(c: Char) = java.lang.Character isDigit c
       val base1 = if (base < 10) 10 else base
-        // read 8,9's even if format is octal, produce a malformed number error afterwards.
+      // read 8,9's even if format is octal, produce a malformed number error afterwards.
       while (digit2int(ch, base1) >= 0) {
         putChar(ch)
         nextChar()
@@ -856,29 +879,36 @@ trait Scanners extends ScannersCommon {
         restOfUncertainToken()
       else {
         val lookahead = lookaheadReader
-        val isDefinitelyNumber =
-          (lookahead.getc(): @switch) match {
-            /** Another digit is a giveaway. */
-            case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'  =>
-              true
+        val c = lookahead.getc()
 
-            /** Backquoted idents like 22.`foo`. */
-            case '`' =>
-              return setStrVal()  /** Note the early return */
+        /** As of scala 2.11, it isn't a number unless c here is a digit, so
+         *  opt.future excludes the rest of the logic.
+         */
+        if (opt.future && !isDigit(c))
+          return setStrVal()
 
-            /** These letters may be part of a literal, or a method invocation on an Int */
-            case 'd' | 'D' | 'f' | 'F' =>
-              !isIdentifierPart(lookahead.getc())
+        val isDefinitelyNumber = (c: @switch) match {
+          /** Another digit is a giveaway. */
+          case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'  =>
+            true
 
-            /** A little more special handling for e.g. 5e7 */
-            case 'e' | 'E' =>
-              val ch = lookahead.getc()
-              !isIdentifierPart(ch) || (isDigit(ch) || ch == '+' || ch == '-')
+          /** Backquoted idents like 22.`foo`. */
+          case '`' =>
+            return setStrVal()  /** Note the early return */
 
-            case x  =>
-              !isIdentifierStart(x)
-          }
+          /** These letters may be part of a literal, or a method invocation on an Int.
+           */
+          case 'd' | 'D' | 'f' | 'F' =>
+            !isIdentifierPart(lookahead.getc())
 
+          /** A little more special handling for e.g. 5e7 */
+          case 'e' | 'E' =>
+            val ch = lookahead.getc()
+            !isIdentifierPart(ch) || (isDigit(ch) || ch == '+' || ch == '-')
+
+          case x  =>
+            !isIdentifierStart(x)
+        }
         if (isDefinitelyNumber) restOfNumber()
         else restOfUncertainToken()
       }
@@ -914,6 +944,8 @@ trait Scanners extends ScannersCommon {
     /** generate an error at the current token offset
     */
     def syntaxError(msg: String): Unit = syntaxError(offset, msg)
+
+    def deprecationWarning(msg: String): Unit = deprecationWarning(offset, msg)
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String) {
@@ -1091,7 +1123,8 @@ trait Scanners extends ScannersCommon {
     override val decodeUni: Boolean = !settings.nouescape.value
 
     // suppress warnings, throw exception on errors
-    def warning(off: Offset, msg: String): Unit = {}
+    def warning(off: Offset, msg: String): Unit = ()
+    def deprecationWarning(off: Offset, msg: String): Unit = ()
     def error  (off: Offset, msg: String): Unit = throw new MalformedInput(off, msg)
     def incompleteInputError(off: Offset, msg: String): Unit = throw new MalformedInput(off, msg)
   }
@@ -1101,8 +1134,9 @@ trait Scanners extends ScannersCommon {
   class UnitScanner(unit: CompilationUnit, patches: List[BracePatch]) extends SourceFileScanner(unit.source) {
     def this(unit: CompilationUnit) = this(unit, List())
 
-    override def warning(off: Offset, msg: String) = unit.warning(unit.position(off), msg)
-    override def error  (off: Offset, msg: String) = unit.error(unit.position(off), msg)
+    override def warning(off: Offset, msg: String)              = unit.warning(unit.position(off), msg)
+    override def deprecationWarning(off: Offset, msg: String)   = unit.deprecationWarning(unit.position(off), msg)
+    override def error  (off: Offset, msg: String)              = unit.error(unit.position(off), msg)
     override def incompleteInputError(off: Offset, msg: String) = unit.incompleteInputError(unit.position(off), msg)
 
     private var bracePatches: List[BracePatch] = patches

@@ -421,7 +421,7 @@ abstract class Erasure extends AddInterfaces
    */
 
   /** The modifier typer which retypes with erased types. */
-  class Eraser(context: Context) extends Typer(context) {
+  class Eraser(_context: Context) extends Typer(_context) {
     private def safeToRemoveUnbox(cls: Symbol): Boolean =
       (cls == definitions.NullClass) || isBoxedValueClass(cls)
 
@@ -490,7 +490,7 @@ abstract class Erasure extends AddInterfaces
         log("Attempted to cast to Unit: " + tree)
         tree.duplicate setType pt
       }
-      else tree AS_ATTR pt
+      else gen.mkAttributedCast(tree, pt)
     }
 
     private def isUnboxedValueMember(sym: Symbol) =
@@ -755,7 +755,7 @@ abstract class Erasure extends AddInterfaces
       while (opc.hasNext) {
         val member = opc.overriding
         val other = opc.overridden
-        //Console.println("bridge? " + member + ":" + member.tpe + member.locationString + " to " + other + ":" + other.tpe + other.locationString)//DEBUG
+        //println("bridge? " + member + ":" + member.tpe + member.locationString + " to " + other + ":" + other.tpe + other.locationString)//DEBUG
         if (atPhase(currentRun.explicitouterPhase)(!member.isDeferred)) {
           val otpe = erasure(owner, other.tpe)
           val bridgeNeeded = atPhase(phase.next) (
@@ -768,10 +768,8 @@ abstract class Erasure extends AddInterfaces
             }
           );
           if (bridgeNeeded) {
-            val bridge = other.cloneSymbolImpl(owner)
-              .setPos(owner.pos)
-              .setFlag(member.flags | BRIDGE)
-              .resetFlag(ACCESSOR | DEFERRED | LAZY | lateDEFERRED)
+            val newFlags = (member.flags | BRIDGE) & ~(ACCESSOR | DEFERRED | LAZY | lateDEFERRED)
+            val bridge   = other.cloneSymbolImpl(owner, newFlags) setPos owner.pos
             // the parameter symbols need to have the new owner
             bridge.setInfo(otpe.cloneInfo(bridge))
             bridgeTarget(bridge) = member
@@ -790,8 +788,19 @@ abstract class Erasure extends AddInterfaces
                       member.tpe match {
                         case MethodType(List(), ConstantType(c)) => Literal(c)
                         case _ =>
-                          (((Select(This(owner), member): Tree) /: bridge.paramss)
+                          val bridgingCall = (((Select(This(owner), member): Tree) /: bridge.paramss)
                              ((fun, vparams) => Apply(fun, vparams map Ident)))
+                          // type checking ensures we can safely call `other`, but unless `member.tpe <:< other.tpe`, calling `member` is not guaranteed to succeed
+                          // in general, there's nothing we can do about this, except for an unapply: when this subtype test fails, return None without calling `member`
+                          if (  member.isSynthetic // TODO: should we do this for user-defined unapplies as well?
+                             && ((member.name == nme.unapply) || (member.name == nme.unapplySeq))
+                             // && (bridge.paramss.nonEmpty && bridge.paramss.head.nonEmpty && bridge.paramss.head.tail.isEmpty) // does the first argument list has exactly one argument -- for user-defined unapplies we can't be sure
+                             && !(atPhase(phase.next)(member.tpe <:< other.tpe))) { // no static guarantees (TODO: is the subtype test ever true?)
+                            import CODE._
+                            val typeTest = gen.mkIsInstanceOf(REF(bridge.paramss.head.head), member.tpe.params.head.tpe, any = true, wrapInApply = true) // any = true since we're before erasure (?), wrapInapply is true since we're after uncurry
+                            // println("unapp type test: "+ typeTest)
+                            IF (typeTest) THEN bridgingCall ELSE REF(NoneModule)
+                          } else bridgingCall
                       });
                   debuglog("generating bridge from " + other + "(" + Flags.flagsToString(bridge.flags)  + ")" + ":" + otpe + other.locationString + " to " + member + ":" + erasure(owner, member.tpe) + member.locationString + " =\n " + bridgeDef);
                   bridgeDef
@@ -855,7 +864,7 @@ abstract class Erasure extends AddInterfaces
                   unboundedGenericArrayLevel(arg.tpe) > 0) =>
           val level = unboundedGenericArrayLevel(arg.tpe)
           def isArrayTest(arg: Tree) =
-            gen.mkRuntimeCall("isArray", List(arg, Literal(Constant(level))))
+            gen.mkRuntimeCall(nme.isArray, List(arg, Literal(Constant(level))))
 
           global.typer.typedPos(tree.pos) {
             if (level == 1) isArrayTest(qual)
@@ -876,19 +885,30 @@ abstract class Erasure extends AddInterfaces
                                       fun.symbol != Object_isInstanceOf) =>
           // leave all other type tests/type casts, remove all other type applications
           preErase(fun)
-        case Apply(fn @ Select(qual, name), args) if (fn.symbol.owner == ArrayClass) =>
-          if (unboundedGenericArrayLevel(qual.tpe.widen) == 1)
+        case Apply(fn @ Select(qual, name), args) if fn.symbol.owner == ArrayClass =>
+          // Have to also catch calls to abstract types which are bounded by Array.
+          if (unboundedGenericArrayLevel(qual.tpe.widen) == 1 || qual.tpe.typeSymbol.isAbstractType) {
             // convert calls to apply/update/length on generic arrays to
             // calls of ScalaRunTime.array_xxx method calls
-            global.typer.typedPos(tree.pos) { gen.mkRuntimeCall("array_"+name, qual :: args) }
-          else
+            global.typer.typedPos(tree.pos)({
+              val arrayMethodName = name match {
+                case nme.apply  => nme.array_apply
+                case nme.length => nme.array_length
+                case nme.update => nme.array_update
+                case nme.clone_ => nme.array_clone
+                case _          => unit.error(tree.pos, "Unexpected array member, no translation exists.") ; nme.NO_NAME
+              }
+              gen.mkRuntimeCall(arrayMethodName, qual :: args)
+            })
+          }
+          else {
             // store exact array erasure in map to be retrieved later when we might
             // need to do the cast in adaptMember
             treeCopy.Apply(
               tree,
               SelectFromArray(qual, name, erasure(tree.symbol, qual.tpe)).copyAttrs(fn),
               args)
-
+          }
         case Apply(fn @ Select(qual, _), Nil) if interceptedMethods(fn.symbol) =>
           if (fn.symbol == Any_## || fn.symbol == Object_##) {
             // This is unattractive, but without it we crash here on ().## because after
@@ -991,7 +1011,7 @@ abstract class Erasure extends AddInterfaces
             if (isAccessible(qualSym) && !qualSym.isPackageClass && !qualSym.isPackageObjectClass) {
               // insert cast to prevent illegal access error (see #4283)
               // util.trace("insert erasure cast ") (*/
-              treeCopy.Select(tree, qual AS_ATTR qual.tpe.widen, name) //)
+              treeCopy.Select(tree, gen.mkAttributedCast(qual, qual.tpe.widen), name) //)
             } else tree
           } else tree
 

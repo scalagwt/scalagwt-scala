@@ -3,6 +3,8 @@
  * @author Philipp Haller
  */
 
+// $Id$
+
 package scala.tools.partest
 package nest
 
@@ -13,9 +15,11 @@ import scala.tools.util.PathResolver
 import scala.tools.nsc.{ io, util }
 import util.{ ClassPath }
 import io.{ Path, Directory }
+import File.pathSeparator
 import ClassPath.{ join }
 import PathResolver.{ Environment, Defaults }
 import RunnerUtils._
+
 
 class ConsoleFileManager extends FileManager {
   var testBuild: Option[String] = PartestDefaults.testBuild
@@ -40,7 +44,7 @@ class ConsoleFileManager extends FileManager {
 
   def this(buildPath: String, rawClasses: Boolean, moreOpts: String) = {
     this(buildPath, rawClasses)
-    SCALAC_OPTS = SCALAC_OPTS+" "+moreOpts
+    SCALAC_OPTS = SCALAC_OPTS ++ moreOpts.split(' ').toSeq.filter(_.length > 0)
   }
 
   lazy val srcDir        = PathSettings.srcDir
@@ -52,6 +56,9 @@ class ConsoleFileManager extends FileManager {
   var JAVACMD     = PartestDefaults.javaCmd
   var JAVAC_CMD   = PartestDefaults.javacCmd
 
+
+  NestUI.verbose("CLASSPATH: "+CLASSPATH)
+
   if (!srcDir.isDirectory) {
     NestUI.failure("Source directory \"" + srcDir.path + "\" not found")
     sys.exit(1)
@@ -61,9 +68,8 @@ class ConsoleFileManager extends FileManager {
     val libs = (srcDir / Directory("lib")).files filter (_ hasExtension "jar") map (_.toCanonical.path)
 
     // add all jars in libs
-    (CLASSPATH :: libs.toList) mkString File.pathSeparator
+    (CLASSPATH :: libs.toList) mkString pathSeparator
   }
-  NestUI.verbose("CLASSPATH: "+CLASSPATH)
 
   def findLatest() {
     NestUI.verbose("test parent: "+testParent)
@@ -163,8 +169,6 @@ class ConsoleFileManager extends FileManager {
   var latestPartestFile: File = _
   var latestFjbgFile: File = _
   var latestProtobufFile: File = _
-  // NB. Needed by partest when actors library is put in separate jar file.
-  def latestActorsFile: File = (latestLibFile.parent / "scala-actors.jar").jfile
   def latestScalapFile: File = (latestLibFile.parent / "scalap.jar").jfile
   var testClassesDir: Directory = _
   // initialize above fields

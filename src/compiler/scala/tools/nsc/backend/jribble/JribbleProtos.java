@@ -16997,6 +16997,11 @@ public final class JribbleProtos {
     // required string name = 3;
     boolean hasName();
     String getName();
+    
+    // required .jribble.Type tpe = 4;
+    boolean hasTpe();
+    scala.tools.nsc.backend.jribble.JribbleProtos.Type getTpe();
+    scala.tools.nsc.backend.jribble.JribbleProtos.TypeOrBuilder getTpeOrBuilder();
   }
   public static final class FieldRef extends
       com.google.protobuf.GeneratedMessage
@@ -17085,10 +17090,24 @@ public final class JribbleProtos {
       }
     }
     
+    // required .jribble.Type tpe = 4;
+    public static final int TPE_FIELD_NUMBER = 4;
+    private scala.tools.nsc.backend.jribble.JribbleProtos.Type tpe_;
+    public boolean hasTpe() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    public scala.tools.nsc.backend.jribble.JribbleProtos.Type getTpe() {
+      return tpe_;
+    }
+    public scala.tools.nsc.backend.jribble.JribbleProtos.TypeOrBuilder getTpeOrBuilder() {
+      return tpe_;
+    }
+    
     private void initFields() {
       qualifier_ = scala.tools.nsc.backend.jribble.JribbleProtos.Expr.getDefaultInstance();
       enclosingType_ = scala.tools.nsc.backend.jribble.JribbleProtos.GlobalName.getDefaultInstance();
       name_ = "";
+      tpe_ = scala.tools.nsc.backend.jribble.JribbleProtos.Type.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -17103,6 +17122,10 @@ public final class JribbleProtos {
         memoizedIsInitialized = 0;
         return false;
       }
+      if (!hasTpe()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       if (hasQualifier()) {
         if (!getQualifier().isInitialized()) {
           memoizedIsInitialized = 0;
@@ -17110,6 +17133,10 @@ public final class JribbleProtos {
         }
       }
       if (!getEnclosingType().isInitialized()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!getTpe().isInitialized()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -17128,6 +17155,9 @@ public final class JribbleProtos {
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeBytes(3, getNameBytes());
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeMessage(4, tpe_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -17149,6 +17179,10 @@ public final class JribbleProtos {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(3, getNameBytes());
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(4, tpe_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -17268,6 +17302,7 @@ public final class JribbleProtos {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getQualifierFieldBuilder();
           getEnclosingTypeFieldBuilder();
+          getTpeFieldBuilder();
         }
       }
       private static Builder create() {
@@ -17290,6 +17325,12 @@ public final class JribbleProtos {
         bitField0_ = (bitField0_ & ~0x00000002);
         name_ = "";
         bitField0_ = (bitField0_ & ~0x00000004);
+        if (tpeBuilder_ == null) {
+          tpe_ = scala.tools.nsc.backend.jribble.JribbleProtos.Type.getDefaultInstance();
+        } else {
+          tpeBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
       
@@ -17348,6 +17389,14 @@ public final class JribbleProtos {
           to_bitField0_ |= 0x00000004;
         }
         result.name_ = name_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        if (tpeBuilder_ == null) {
+          result.tpe_ = tpe_;
+        } else {
+          result.tpe_ = tpeBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -17373,6 +17422,9 @@ public final class JribbleProtos {
         if (other.hasName()) {
           setName(other.getName());
         }
+        if (other.hasTpe()) {
+          mergeTpe(other.getTpe());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -17386,6 +17438,10 @@ public final class JribbleProtos {
           
           return false;
         }
+        if (!hasTpe()) {
+          
+          return false;
+        }
         if (hasQualifier()) {
           if (!getQualifier().isInitialized()) {
             
@@ -17393,6 +17449,10 @@ public final class JribbleProtos {
           }
         }
         if (!getEnclosingType().isInitialized()) {
+          
+          return false;
+        }
+        if (!getTpe().isInitialized()) {
           
           return false;
         }
@@ -17443,6 +17503,15 @@ public final class JribbleProtos {
             case 26: {
               bitField0_ |= 0x00000004;
               name_ = input.readBytes();
+              break;
+            }
+            case 34: {
+              scala.tools.nsc.backend.jribble.JribbleProtos.Type.Builder subBuilder = scala.tools.nsc.backend.jribble.JribbleProtos.Type.newBuilder();
+              if (hasTpe()) {
+                subBuilder.mergeFrom(getTpe());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setTpe(subBuilder.buildPartial());
               break;
             }
           }
@@ -17665,6 +17734,96 @@ public final class JribbleProtos {
         bitField0_ |= 0x00000004;
         name_ = value;
         onChanged();
+      }
+      
+      // required .jribble.Type tpe = 4;
+      private scala.tools.nsc.backend.jribble.JribbleProtos.Type tpe_ = scala.tools.nsc.backend.jribble.JribbleProtos.Type.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          scala.tools.nsc.backend.jribble.JribbleProtos.Type, scala.tools.nsc.backend.jribble.JribbleProtos.Type.Builder, scala.tools.nsc.backend.jribble.JribbleProtos.TypeOrBuilder> tpeBuilder_;
+      public boolean hasTpe() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      public scala.tools.nsc.backend.jribble.JribbleProtos.Type getTpe() {
+        if (tpeBuilder_ == null) {
+          return tpe_;
+        } else {
+          return tpeBuilder_.getMessage();
+        }
+      }
+      public Builder setTpe(scala.tools.nsc.backend.jribble.JribbleProtos.Type value) {
+        if (tpeBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          tpe_ = value;
+          onChanged();
+        } else {
+          tpeBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder setTpe(
+          scala.tools.nsc.backend.jribble.JribbleProtos.Type.Builder builderForValue) {
+        if (tpeBuilder_ == null) {
+          tpe_ = builderForValue.build();
+          onChanged();
+        } else {
+          tpeBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder mergeTpe(scala.tools.nsc.backend.jribble.JribbleProtos.Type value) {
+        if (tpeBuilder_ == null) {
+          if (((bitField0_ & 0x00000008) == 0x00000008) &&
+              tpe_ != scala.tools.nsc.backend.jribble.JribbleProtos.Type.getDefaultInstance()) {
+            tpe_ =
+              scala.tools.nsc.backend.jribble.JribbleProtos.Type.newBuilder(tpe_).mergeFrom(value).buildPartial();
+          } else {
+            tpe_ = value;
+          }
+          onChanged();
+        } else {
+          tpeBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder clearTpe() {
+        if (tpeBuilder_ == null) {
+          tpe_ = scala.tools.nsc.backend.jribble.JribbleProtos.Type.getDefaultInstance();
+          onChanged();
+        } else {
+          tpeBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
+        return this;
+      }
+      public scala.tools.nsc.backend.jribble.JribbleProtos.Type.Builder getTpeBuilder() {
+        bitField0_ |= 0x00000008;
+        onChanged();
+        return getTpeFieldBuilder().getBuilder();
+      }
+      public scala.tools.nsc.backend.jribble.JribbleProtos.TypeOrBuilder getTpeOrBuilder() {
+        if (tpeBuilder_ != null) {
+          return tpeBuilder_.getMessageOrBuilder();
+        } else {
+          return tpe_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          scala.tools.nsc.backend.jribble.JribbleProtos.Type, scala.tools.nsc.backend.jribble.JribbleProtos.Type.Builder, scala.tools.nsc.backend.jribble.JribbleProtos.TypeOrBuilder> 
+          getTpeFieldBuilder() {
+        if (tpeBuilder_ == null) {
+          tpeBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              scala.tools.nsc.backend.jribble.JribbleProtos.Type, scala.tools.nsc.backend.jribble.JribbleProtos.Type.Builder, scala.tools.nsc.backend.jribble.JribbleProtos.TypeOrBuilder>(
+                  tpe_,
+                  getParentForChildren(),
+                  isClean());
+          tpe_ = null;
+        }
+        return tpeBuilder_;
       }
       
       // @@protoc_insertion_point(builder_scope:jribble.FieldRef)
@@ -31511,62 +31670,63 @@ public final class JribbleProtos {
       "nditional\022 \n\tcondition\030\001 \002(\0132\r.jribble.E" +
       "xpr\022\032\n\003tpe\030\002 \002(\0132\r.jribble.Type\022\033\n\004then\030",
       "\003 \002(\0132\r.jribble.Expr\022\034\n\005elsee\030\004 \002(\0132\r.jr" +
-      "ibble.Expr\"f\n\010FieldRef\022 \n\tqualifier\030\001 \001(" +
-      "\0132\r.jribble.Expr\022*\n\renclosingType\030\002 \002(\0132" +
-      "\023.jribble.GlobalName\022\014\n\004name\030\003 \002(\t\"E\n\nIn" +
-      "stanceOf\022\033\n\004expr\030\001 \002(\0132\r.jribble.Expr\022\032\n" +
-      "\003tpe\030\002 \002(\0132\r.jribble.Type\"\340\002\n\007Literal\022*\n" +
-      "\004type\030\001 \002(\0162\034.jribble.Literal.LiteralTyp" +
-      "e\022\021\n\tboolValue\030\002 \001(\010\022\021\n\tbyteValue\030\003 \001(\005\022" +
-      "\021\n\tcharValue\030\004 \001(\005\022\023\n\013doubleValue\030\005 \001(\001\022" +
-      "\022\n\nfloatValue\030\006 \001(\002\022\020\n\010intValue\030\007 \001(\005\022\021\n",
-      "\tlongValue\030\010 \001(\003\022\022\n\nshortValue\030\t \001(\005\022\023\n\013" +
-      "stringValue\030\n \001(\t\"y\n\013LiteralType\022\013\n\007Bool" +
-      "ean\020\001\022\010\n\004Byte\020\002\022\010\n\004Char\020\003\022\n\n\006Double\020\004\022\t\n" +
-      "\005Float\020\005\022\007\n\003Int\020\006\022\010\n\004Long\020\007\022\010\n\004Null\020\010\022\t\n" +
-      "\005Short\020\t\022\n\n\006String\020\n\"{\n\nMethodCall\022\037\n\010re" +
-      "ceiver\030\001 \001(\0132\r.jribble.Expr\022+\n\tsignature" +
-      "\030\002 \002(\0132\030.jribble.MethodSignature\022\037\n\010argu" +
-      "ment\030\003 \003(\0132\r.jribble.Expr\"\210\001\n\017MethodSign" +
-      "ature\022\014\n\004name\030\001 \002(\t\022\"\n\005owner\030\002 \002(\0132\023.jri" +
-      "bble.GlobalName\022 \n\tparamType\030\003 \003(\0132\r.jri",
-      "bble.Type\022!\n\nreturnType\030\004 \002(\0132\r.jribble." +
-      "Type\"\211\001\n\010NewArray\022\"\n\013elementType\030\001 \002(\0132\r" +
-      ".jribble.Type\022\022\n\ndimensions\030\002 \002(\005\022$\n\rdim" +
-      "ensionExpr\030\003 \003(\0132\r.jribble.Expr\022\037\n\010initE" +
-      "xpr\030\004 \003(\0132\r.jribble.Expr\"}\n\tNewObject\022\"\n" +
-      "\005clazz\030\001 \002(\0132\023.jribble.GlobalName\022+\n\tsig" +
-      "nature\030\002 \002(\0132\030.jribble.MethodSignature\022\037" +
-      "\n\010argument\030\003 \003(\0132\r.jribble.Expr\"z\n\005Unary" +
-      "\022\"\n\002op\030\001 \002(\0162\026.jribble.Unary.UnaryOp\022\033\n\004" +
-      "expr\030\002 \002(\0132\r.jribble.Expr\"0\n\007UnaryOp\022\n\n\006",
-      "BitNot\020\001\022\007\n\003Neg\020\002\022\007\n\003Not\020\003\022\007\n\003Pos\020\004\"\026\n\006V" +
-      "arRef\022\014\n\004name\030\001 \002(\t\".\n\005Block\022%\n\tstatemen" +
-      "t\030\001 \003(\0132\022.jribble.Statement\"\026\n\005Break\022\r\n\005" +
-      "label\030\001 \001(\t\"\031\n\010Continue\022\r\n\005label\030\001 \001(\t\"k" +
-      "\n\002If\022 \n\tcondition\030\001 \002(\0132\r.jribble.Expr\022 " +
-      "\n\004then\030\002 \002(\0132\022.jribble.Statement\022!\n\005else" +
-      "e\030\003 \001(\0132\022.jribble.Statement\"D\n\014LabelledS" +
-      "tat\022\r\n\005label\030\001 \002(\t\022%\n\tstatement\030\002 \002(\0132\022." +
-      "jribble.Statement\"+\n\006Return\022!\n\nexpressio" +
-      "n\030\001 \001(\0132\r.jribble.Expr\"q\n\006Switch\022!\n\nexpr",
-      "ession\030\001 \002(\0132\r.jribble.Expr\022\033\n\004case\030\002 \003(" +
-      "\0132\r.jribble.Case\022\'\n\013defaultCase\030\003 \001(\0132\022." +
-      "jribble.Statement\"Q\n\004Case\022\"\n\010constant\030\001 " +
-      "\002(\0132\020.jribble.Literal\022%\n\tstatement\030\002 \002(\013" +
-      "2\022.jribble.Statement\"*\n\005Throw\022!\n\nexpress" +
-      "ion\030\001 \002(\0132\r.jribble.Expr\"n\n\003Try\022!\n\005block" +
-      "\030\001 \002(\0132\022.jribble.Statement\022\035\n\005catch\030\002 \003(" +
-      "\0132\016.jribble.Catch\022%\n\tfinalizer\030\003 \001(\0132\022.j" +
-      "ribble.Statement\"Z\n\005Catch\022 \n\003tpe\030\001 \002(\0132\023" +
-      ".jribble.GlobalName\022\r\n\005param\030\002 \002(\t\022 \n\004bo",
-      "dy\030\003 \002(\0132\022.jribble.Statement\"K\n\005While\022 \n" +
-      "\tcondition\030\001 \002(\0132\r.jribble.Expr\022 \n\004body\030" +
-      "\002 \002(\0132\022.jribble.Statement*e\n\rPrimitiveTy" +
-      "pe\022\013\n\007Boolean\020\001\022\010\n\004Byte\020\002\022\010\n\004Char\020\003\022\n\n\006D" +
-      "ouble\020\004\022\t\n\005Float\020\005\022\007\n\003Int\020\006\022\010\n\004Long\020\007\022\t\n" +
-      "\005Short\020\010B2\n\037scala.tools.nsc.backend.jrib" +
-      "bleB\rJribbleProtosH\001"
+      "ibble.Expr\"\202\001\n\010FieldRef\022 \n\tqualifier\030\001 \001" +
+      "(\0132\r.jribble.Expr\022*\n\renclosingType\030\002 \002(\013" +
+      "2\023.jribble.GlobalName\022\014\n\004name\030\003 \002(\t\022\032\n\003t" +
+      "pe\030\004 \002(\0132\r.jribble.Type\"E\n\nInstanceOf\022\033\n" +
+      "\004expr\030\001 \002(\0132\r.jribble.Expr\022\032\n\003tpe\030\002 \002(\0132" +
+      "\r.jribble.Type\"\340\002\n\007Literal\022*\n\004type\030\001 \002(\016" +
+      "2\034.jribble.Literal.LiteralType\022\021\n\tboolVa" +
+      "lue\030\002 \001(\010\022\021\n\tbyteValue\030\003 \001(\005\022\021\n\tcharValu" +
+      "e\030\004 \001(\005\022\023\n\013doubleValue\030\005 \001(\001\022\022\n\nfloatVal",
+      "ue\030\006 \001(\002\022\020\n\010intValue\030\007 \001(\005\022\021\n\tlongValue\030" +
+      "\010 \001(\003\022\022\n\nshortValue\030\t \001(\005\022\023\n\013stringValue" +
+      "\030\n \001(\t\"y\n\013LiteralType\022\013\n\007Boolean\020\001\022\010\n\004By" +
+      "te\020\002\022\010\n\004Char\020\003\022\n\n\006Double\020\004\022\t\n\005Float\020\005\022\007\n" +
+      "\003Int\020\006\022\010\n\004Long\020\007\022\010\n\004Null\020\010\022\t\n\005Short\020\t\022\n\n" +
+      "\006String\020\n\"{\n\nMethodCall\022\037\n\010receiver\030\001 \001(" +
+      "\0132\r.jribble.Expr\022+\n\tsignature\030\002 \002(\0132\030.jr" +
+      "ibble.MethodSignature\022\037\n\010argument\030\003 \003(\0132" +
+      "\r.jribble.Expr\"\210\001\n\017MethodSignature\022\014\n\004na" +
+      "me\030\001 \002(\t\022\"\n\005owner\030\002 \002(\0132\023.jribble.Global",
+      "Name\022 \n\tparamType\030\003 \003(\0132\r.jribble.Type\022!" +
+      "\n\nreturnType\030\004 \002(\0132\r.jribble.Type\"\211\001\n\010Ne" +
+      "wArray\022\"\n\013elementType\030\001 \002(\0132\r.jribble.Ty" +
+      "pe\022\022\n\ndimensions\030\002 \002(\005\022$\n\rdimensionExpr\030" +
+      "\003 \003(\0132\r.jribble.Expr\022\037\n\010initExpr\030\004 \003(\0132\r" +
+      ".jribble.Expr\"}\n\tNewObject\022\"\n\005clazz\030\001 \002(" +
+      "\0132\023.jribble.GlobalName\022+\n\tsignature\030\002 \002(" +
+      "\0132\030.jribble.MethodSignature\022\037\n\010argument\030" +
+      "\003 \003(\0132\r.jribble.Expr\"z\n\005Unary\022\"\n\002op\030\001 \002(" +
+      "\0162\026.jribble.Unary.UnaryOp\022\033\n\004expr\030\002 \002(\0132",
+      "\r.jribble.Expr\"0\n\007UnaryOp\022\n\n\006BitNot\020\001\022\007\n" +
+      "\003Neg\020\002\022\007\n\003Not\020\003\022\007\n\003Pos\020\004\"\026\n\006VarRef\022\014\n\004na" +
+      "me\030\001 \002(\t\".\n\005Block\022%\n\tstatement\030\001 \003(\0132\022.j" +
+      "ribble.Statement\"\026\n\005Break\022\r\n\005label\030\001 \001(\t" +
+      "\"\031\n\010Continue\022\r\n\005label\030\001 \001(\t\"k\n\002If\022 \n\tcon" +
+      "dition\030\001 \002(\0132\r.jribble.Expr\022 \n\004then\030\002 \002(" +
+      "\0132\022.jribble.Statement\022!\n\005elsee\030\003 \001(\0132\022.j" +
+      "ribble.Statement\"D\n\014LabelledStat\022\r\n\005labe" +
+      "l\030\001 \002(\t\022%\n\tstatement\030\002 \002(\0132\022.jribble.Sta" +
+      "tement\"+\n\006Return\022!\n\nexpression\030\001 \001(\0132\r.j",
+      "ribble.Expr\"q\n\006Switch\022!\n\nexpression\030\001 \002(" +
+      "\0132\r.jribble.Expr\022\033\n\004case\030\002 \003(\0132\r.jribble" +
+      ".Case\022\'\n\013defaultCase\030\003 \001(\0132\022.jribble.Sta" +
+      "tement\"Q\n\004Case\022\"\n\010constant\030\001 \002(\0132\020.jribb" +
+      "le.Literal\022%\n\tstatement\030\002 \002(\0132\022.jribble." +
+      "Statement\"*\n\005Throw\022!\n\nexpression\030\001 \002(\0132\r" +
+      ".jribble.Expr\"n\n\003Try\022!\n\005block\030\001 \002(\0132\022.jr" +
+      "ibble.Statement\022\035\n\005catch\030\002 \003(\0132\016.jribble" +
+      ".Catch\022%\n\tfinalizer\030\003 \001(\0132\022.jribble.Stat" +
+      "ement\"Z\n\005Catch\022 \n\003tpe\030\001 \002(\0132\023.jribble.Gl",
+      "obalName\022\r\n\005param\030\002 \002(\t\022 \n\004body\030\003 \002(\0132\022." +
+      "jribble.Statement\"K\n\005While\022 \n\tcondition\030" +
+      "\001 \002(\0132\r.jribble.Expr\022 \n\004body\030\002 \002(\0132\022.jri" +
+      "bble.Statement*e\n\rPrimitiveType\022\013\n\007Boole" +
+      "an\020\001\022\010\n\004Byte\020\002\022\010\n\004Char\020\003\022\n\n\006Double\020\004\022\t\n\005" +
+      "Float\020\005\022\007\n\003Int\020\006\022\010\n\004Long\020\007\022\t\n\005Short\020\010B2\n" +
+      "\037scala.tools.nsc.backend.jribbleB\rJribbl" +
+      "eProtosH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -31722,7 +31882,7 @@ public final class JribbleProtos {
           internal_static_jribble_FieldRef_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_jribble_FieldRef_descriptor,
-              new java.lang.String[] { "Qualifier", "EnclosingType", "Name", },
+              new java.lang.String[] { "Qualifier", "EnclosingType", "Name", "Tpe", },
               scala.tools.nsc.backend.jribble.JribbleProtos.FieldRef.class,
               scala.tools.nsc.backend.jribble.JribbleProtos.FieldRef.Builder.class);
           internal_static_jribble_InstanceOf_descriptor =

@@ -31,6 +31,7 @@ import annotation.bridge
  *  Unlike iterables, sequences always have a defined order of elements.
  */
 trait GenSeqLike[+A, +Repr] extends GenIterableLike[A, Repr] with Equals with Parallelizable[A, parallel.ParSeq[A]] {
+  def seq: Seq[A]
 
   /** Selects an element by its index in the $coll.
    *
@@ -275,6 +276,8 @@ trait GenSeqLike[+A, +Repr] extends GenIterableLike[A, Repr] with Equals with Pa
   /** A copy of the $coll with an element prepended.
    *
    * Note that :-ending operators are right associative (see example).
+   * A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
+   *
    * Also, the original $coll is not modified, so you will want to capture the result.
    *
    *  Example:
@@ -302,6 +305,8 @@ trait GenSeqLike[+A, +Repr] extends GenIterableLike[A, Repr] with Equals with Pa
   def +:[B >: A, That](elem: B)(implicit bf: CanBuildFrom[Repr, B, That]): That
 
   /** A copy of this $coll with an element appended.
+   *
+   *  A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
    *
    *  $willNotTerminateInf
    *  @param  elem   the appended element
@@ -439,16 +444,7 @@ trait GenSeqLike[+A, +Repr] extends GenIterableLike[A, Repr] with Equals with Pa
   /** Hashcodes for $Coll produce a value from the hashcodes of all the
    *  elements of the $coll.
    */
-  override def hashCode() = {
-    import util.MurmurHash3._
-    var n = 0
-    var h = Seq.hashSeed
-    seq foreach {
-      x => h = mix(h, x.##)
-      n += 1
-    }
-    finalizeHash(h, n)
-  }
+  override def hashCode() = util.MurmurHash3.seqHash(seq)
 
   /** The equals method for arbitrary sequences. Compares this sequence to
    *  some other object.

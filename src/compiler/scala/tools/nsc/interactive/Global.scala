@@ -22,8 +22,8 @@ import symtab.Flags.{ACCESSOR, PARAMACCESSOR}
 
 /** The main class of the presentation compiler in an interactive environment such as an IDE
  */
-class Global(settings: Settings, reporter: Reporter, projectName: String = "")
-  extends scala.tools.nsc.Global(settings, reporter)
+class Global(settings: Settings, _reporter: Reporter, projectName: String = "")
+  extends scala.tools.nsc.Global(settings, _reporter)
      with CompilerControl
      with RangePositions
      with ContextTrees
@@ -153,6 +153,7 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
   protected[interactive] def getUnit(s: SourceFile): Option[RichCompilationUnit] = {
     toBeRemoved.synchronized {
       for (f <- toBeRemoved) {
+        informIDE("removed: "+s)
         unitOfFile -= f
         allSources = allSources filter (_.file != f)
       }
@@ -730,7 +731,7 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
       val originalTypeParams = sym.owner.typeParams
       parseAndEnter(unit)
       val pre = adaptToNewRunMap(ThisType(sym.owner))
-      val newsym = pre.decl(sym.name) filter { alt =>
+      val newsym = pre.typeSymbol.info.decl(sym.name) filter { alt =>
         sym.isType || {
           try {
             val tp1 = pre.memberType(alt) onTypeError NoType
@@ -817,7 +818,7 @@ class Global(settings: Settings, reporter: Reporter, projectName: String = "")
     def add(sym: Symbol, pre: Type, implicitlyAdded: Boolean)(toMember: (Symbol, Type) => M) {
       if ((sym.isGetter || sym.isSetter) && sym.accessed != NoSymbol) {
         add(sym.accessed, pre, implicitlyAdded)(toMember)
-      } else if (!sym.name.decode.containsName(Dollar) && !sym.isSynthetic && sym.hasRawInfo) {
+      } else if (!sym.name.decodedName.containsName(Dollar) && !sym.isSynthetic && sym.hasRawInfo) {
         val symtpe = pre.memberType(sym) onTypeError ErrorType
         matching(sym, symtpe, this(sym.name)) match {
           case Some(m) =>

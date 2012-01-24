@@ -7,7 +7,7 @@ package scala.tools.partest
 
 import scala.tools.nsc._
 import io.Directory
-import util.BatchSourceFile
+import util.{BatchSourceFile, CommandLineParser}
 
 /** A class for testing code which is embedded as a string.
  *  It allows for more complete control over settings, compiler
@@ -26,16 +26,18 @@ abstract class DirectTest extends App {
   // override to add additional settings with strings
   def extraSettings: String = ""
   // a default Settings object
-  def settings: Settings = newSettings(extraSettings)
+  def settings: Settings = newSettings(CommandLineParser tokenize extraSettings)
   // a custom Settings object
-  def newSettings(argString: String) = {
+  def newSettings(args: List[String]) = {
     val s = new Settings
-    s processArgumentString (argString + " " + debugSettings)
+    val allArgs = args ++ (CommandLineParser tokenize debugSettings)
+    log("newSettings: allArgs = " + allArgs)
+    s processArguments (allArgs, true)
     s
   }
   // compile the code, optionally first adding to the settings
   def compile(args: String*) = {
-    val settings = newSettings(extraSettings +: args mkString " ")
+    val settings = newSettings((CommandLineParser tokenize extraSettings) ++ args.toList)
     val global   = new Global(settings)
     new global.Run compileSources List(new BatchSourceFile("<partest>", code))
     !global.reporter.hasErrors
@@ -46,8 +48,10 @@ abstract class DirectTest extends App {
   catch { case t => println(t) ; sys.exit(1) }
 
   /** Debugger interest only below this line **/
-  protected val isDebug       = (sys.props contains "partest.debug") || (sys.env contains "PARTEST_DEBUG")
+  protected def isDebug       = (sys.props contains "partest.debug") || (sys.env contains "PARTEST_DEBUG")
   protected def debugSettings = sys.props.getOrElse("partest.debug.settings", "")
 
-  final def log(msg: => Any) { if (isDebug) Console println msg }
+  final def log(msg: => Any) {
+    if (isDebug) Console.err println msg
+  }
 }

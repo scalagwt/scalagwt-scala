@@ -3,12 +3,13 @@
  * @author Philipp Haller
  */
 
+// $Id$
+
 package scala.tools.partest
 package nest
 
-import java.io.{ File }
-import java.util.StringTokenizer
-import scala.util.Properties.{ setProp }
+import java.io.File
+import scala.util.Properties.setProp
 import scala.tools.nsc.util.ScalaClassLoader
 import scala.tools.nsc.io.Path
 import scala.collection.{ mutable, immutable }
@@ -23,7 +24,7 @@ trait DirectRunner {
 
   import PartestDefaults.numActors
 
-  def denotesTestFile(arg: String) = Path(arg).hasExtension("scala", "res")
+  def denotesTestFile(arg: String) = Path(arg).hasExtension("scala", "res", "xml")
   def denotesTestDir(arg: String)  = Path(arg).ifDirectory(_.files.nonEmpty) exists (x => x)
   def denotesTestPath(arg: String) = denotesTestDir(arg) || denotesTestFile(arg)
 
@@ -52,10 +53,10 @@ trait DirectRunner {
     val groupSize = (kindFiles.length / numActors) + 1
 
     val consFM = new ConsoleFileManager
-    import consFM.{ latestCompFile, latestLibFile, latestActorsFile, latestPartestFile }
+    import consFM.{ latestCompFile, latestLibFile, latestPartestFile }
     val scalacheckURL = PathSettings.scalaCheck.toURL
     val scalaCheckParentClassLoader = ScalaClassLoader.fromURLs(
-      List(scalacheckURL, latestCompFile.toURI.toURL, latestLibFile.toURI.toURL, latestActorsFile.toURI.toURL, latestPartestFile.toURI.toURL)
+      List(scalacheckURL, latestCompFile.toURI.toURL, latestLibFile.toURI.toURL, latestPartestFile.toURI.toURL)
     )
     Output.init()
 

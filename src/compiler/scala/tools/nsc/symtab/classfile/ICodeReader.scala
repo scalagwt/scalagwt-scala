@@ -25,10 +25,7 @@ abstract class ICodeReader extends ClassfileParser {
 
   var instanceCode: IClass = null          // the ICode class for the current symbol
   var staticCode:   IClass = null          // the ICode class static members
-  var method: IMethod = _                  // the current IMethod
-
-  val nothingName = newTermName(SCALA_NOTHING)
-  val nullName    = newTermName(SCALA_NULL)
+  var method: IMethod = NoIMethod          // the current IMethod
   var isScalaModule = false
 
   /** Read back bytecode for the given class symbol. It returns
@@ -63,8 +60,7 @@ abstract class ICodeReader extends ClassfileParser {
     this.staticCode   = new IClass(staticModule)
     val jflags = in.nextChar
     val isAttribute = (jflags & JAVA_ACC_ANNOTATION) != 0
-    var sflags = toScalaFlags(jflags, true)
-    if ((sflags & DEFERRED) != 0L) sflags = sflags & ~DEFERRED | ABSTRACT
+    val sflags = toScalaClassFlags(jflags)  // what, this is never used??
     val c = pool getClassSymbol in.nextChar
 
     parseInnerClasses()
@@ -89,29 +85,24 @@ abstract class ICodeReader extends ClassfileParser {
     val jflags   = in.nextChar
     val name     = pool getName in.nextChar
     val owner    = getOwner(jflags)
-    val dummySym = owner.newMethod(owner.pos, name) setFlag javaToScalaFlags(jflags)
+    val dummySym = owner.newMethod(name, owner.pos, toScalaMethodFlags(jflags))
 
     try {
-      val ch = in.nextChar
-      var tpe  = pool.getType(dummySym, ch)
+      val ch  = in.nextChar
+      val tpe = pool.getType(dummySym, ch)
 
       if ("<clinit>" == name.toString)
         (jflags, NoSymbol)
       else {
         val owner = getOwner(jflags)
-        var sym = owner.info.findMember(name, 0, 0, false).suchThat(old => sameType(old.tpe, tpe));
+        var sym = owner.info.findMember(name, 0, 0, false).suchThat(old => sameType(old.tpe, tpe))
         if (sym == NoSymbol)
-          sym = owner.info.findMember(newTermName(name + nme.LOCAL_SUFFIX_STRING), 0, 0, false).suchThat(old => old.tpe =:= tpe);
+          sym = owner.info.findMember(newTermName(name + nme.LOCAL_SUFFIX_STRING), 0, 0, false).suchThat(_.tpe =:= tpe)
         if (sym == NoSymbol) {
           log("Could not find symbol for " + name + ": " + tpe)
           log(owner.info.member(name).tpe + " : " + tpe)
-          if (name.toString == "toMap")
-            tpe = pool.getType(dummySym, ch)
-          if (field)
-            sym = owner.newValue(owner.pos, name).setInfo(tpe).setFlag(MUTABLE | javaToScalaFlags(jflags))
-          else
-            sym = dummySym.setInfo(tpe)
-          owner.info.decls.enter(sym)
+          sym = if (field) owner.newValue(name, owner.pos, toScalaFieldFlags(jflags)) else dummySym
+          sym setInfoAndEnter tpe
           log("added " + sym + ": " + sym.tpe)
         }
         (jflags, sym)
@@ -120,19 +111,6 @@ abstract class ICodeReader extends ClassfileParser {
       case e: MissingRequirementError =>
         (jflags, NoSymbol)
     }
-  }
-
-  private def javaToScalaFlags(flags: Int): Long = {
-    import ch.epfl.lamp.fjbg.JAccessFlags._
-
-    var res = 0L
-    if ((flags & ACC_PRIVATE) != 0) res |= Flags.PRIVATE
-    if ((flags & ACC_PROTECTED) != 0) res |= Flags.PROTECTED
-    if ((flags & ACC_FINAL) != 0) res |= Flags.FINAL
-    if ((flags & ACC_ABSTRACT) != 0) res |= Flags.DEFERRED
-    if ((flags & ACC_SYNTHETIC) != 0) res |= Flags.SYNTHETIC
-
-    res
   }
 
   /** Checks if `tp1` is the same type as `tp2`, modulo implicit methods.
@@ -182,9 +160,9 @@ abstract class ICodeReader extends ClassfileParser {
   }
 
   override def classNameToSymbol(name: Name) = {
-    val sym = if (name == nothingName)
+    val sym = if (name == fulltpnme.RuntimeNothing)
       definitions.NothingClass
-    else if (name == nullName)
+    else if (name == fulltpnme.RuntimeNull)
       definitions.NullClass
     else if (nme.isImplClassName(name)) {
       val iface = definitions.getClass(nme.interfaceName(name))
@@ -194,7 +172,7 @@ abstract class ICodeReader extends ClassfileParser {
     }
     else if (nme.isModuleName(name)) {
       val strippedName = nme.stripModuleSuffix(name)
-      val sym = forceMangledName(strippedName.decode, true)
+      val sym = forceMangledName(newTermName(strippedName.decode), true)
 
       if (sym == NoSymbol) definitions.getModule(strippedName)
       else sym
@@ -629,7 +607,7 @@ abstract class ICodeReader extends ClassfileParser {
     skipAttributes()
 
     code.toBasicBlock
-    assert(method.code ne null)
+    assert(method.hasCode, method)
     // reverse parameters, as they were prepended during code generation
     method.params = method.params.reverse
 
@@ -692,7 +670,7 @@ abstract class ICodeReader extends ClassfileParser {
         mutable.Map(jmpTargets.toSeq map (_ -> code.newBlock): _*)
 
       val blocks = makeBasicBlocks
-      var otherBlock: BasicBlock = null
+      var otherBlock: BasicBlock = NoBasicBlock
       var disableJmpTarget = false
 
       for ((pc, instr) <- instrs.iterator) {
@@ -991,7 +969,7 @@ abstract class ICodeReader extends ClassfileParser {
     /** Return a fresh Local variable for the given index.
      */
     private def freshLocal(idx: Int, kind: TypeKind, isArg: Boolean) = {
-      val sym = method.symbol.newVariable(NoPosition, "loc" + idx).setInfo(kind.toType);
+      val sym = method.symbol.newVariable(newTermName("loc" + idx)).setInfo(kind.toType);
       val l = new Local(sym, kind, isArg)
       method.addLocal(l)
       l
@@ -1008,7 +986,7 @@ abstract class ICodeReader extends ClassfileParser {
 
     /** add a method param with the given index. */
     def enterParam(idx: Int, kind: TypeKind) = {
-      val sym = method.symbol.newVariable(NoPosition, "par" + idx).setInfo(kind.toType)
+      val sym = method.symbol.newVariable(newTermName("par" + idx)).setInfo(kind.toType)
       val l = new Local(sym, kind, true)
       assert(!locals.isDefinedAt(idx))
       locals += (idx -> List((l, kind)))

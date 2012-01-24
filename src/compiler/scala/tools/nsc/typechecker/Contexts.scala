@@ -17,13 +17,16 @@ import annotation.tailrec
 trait Contexts { self: Analyzer =>
   import global._
 
-  val NoContext = new Context {
-    override def implicitss: List[List[ImplicitInfo]] = List()
-    outer = this
+  object NoContext extends Context {
+    outer      = this
+    enclClass  = this
+    enclMethod = this
+    
+    override def nextEnclosing(p: Context => Boolean): Context = this
+    override def enclosingContextChain: List[Context] = Nil
+    override def implicitss: List[List[ImplicitInfo]] = Nil
     override def toString = "NoContext"
   }
-  NoContext.enclClass = NoContext
-  NoContext.enclMethod = NoContext
 
   private val startContext = {
     NoContext.make(
@@ -39,11 +42,11 @@ trait Contexts { self: Analyzer =>
    *
    *  - if option `-Yno-imports` is given, nothing is imported
    *  - if the unit is java defined, only `java.lang` is imported
-   *  - if option `-Yno-predef` is given, if the unit has an import of Predef
-   *    among its leading imports, or if the unit is [[scala.ScalaObject]]
+   *  - if option `-Yno-predef` is given, if the unit body has an import of Predef
+   *    among its leading imports, or if the tree is [[scala.ScalaObject]]
    *    or [[scala.Predef]], `Predef` is not imported.
    */
-  protected def rootImports(unit: CompilationUnit, tree: Tree): List[Symbol] = {
+  protected def rootImports(unit: CompilationUnit): List[Symbol] = {
     import definitions._
     assert(isDefinitionsInitialized, "definitions uninitialized")
 
@@ -53,23 +56,15 @@ trait Contexts { self: Analyzer =>
     else List(JavaLangPackage, ScalaPackage, PredefModule)
   }
 
-  def rootContext(unit: CompilationUnit): Context =
-    rootContext(unit, EmptyTree, false)
-
+  def rootContext(unit: CompilationUnit): Context             = rootContext(unit, EmptyTree, false)
+  def rootContext(unit: CompilationUnit, tree: Tree): Context = rootContext(unit, tree, false)
   def rootContext(unit: CompilationUnit, tree: Tree, erasedTypes: Boolean): Context = {
     import definitions._
     var sc = startContext
-    def addImport(pkg: Symbol) {
-      assert(pkg ne null)
-      val qual = gen.mkAttributedStableRef(pkg)
-      sc = sc.makeNewImport(
-        Import(qual, List(ImportSelector(nme.WILDCARD, -1, null, -1)))
-        .setSymbol(NoSymbol.newImport(NoPosition).setFlag(SYNTHETIC).setInfo(ImportType(qual)))
-        .setType(NoType))
+    for (sym <- rootImports(unit)) {
+      sc = sc.makeNewImport(sym)
       sc.depth += 1
     }
-    for (imp <- rootImports(unit, tree))
-      addImport(imp)
     val c = sc.make(unit, tree, sc.owner, sc.scope, sc.imports)
     c.reportAmbiguousErrors = !erasedTypes
     c.reportGeneralErrors = !erasedTypes
@@ -204,6 +199,9 @@ trait Contexts { self: Analyzer =>
       c.implicitsEnabled = true
       c
     }
+    
+    def makeNewImport(sym: Symbol): Context =
+      makeNewImport(gen.mkWildcardImport(sym))
 
     def makeNewImport(imp: Import): Context =
       make(unit, imp, owner, scope, new ImportInfo(imp, depth) :: imports)
@@ -337,7 +335,9 @@ trait Contexts { self: Analyzer =>
     }
 
     def nextEnclosing(p: Context => Boolean): Context =
-      if (this == NoContext || p(this)) this else outer.nextEnclosing(p)
+      if (p(this)) this else outer.nextEnclosing(p)
+
+    def enclosingContextChain: List[Context] = this :: outer.enclosingContextChain
 
     override def toString = "Context(%s@%s unit=%s scope=%s)".format(
       owner.fullName, tree.shortClass, unit, scope.##

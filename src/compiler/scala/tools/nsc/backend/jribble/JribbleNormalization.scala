@@ -98,4 +98,6 @@ with JribbleAnalysis
     DefDef(sym, mods, List(params), rhs)
 
   val unitLiteral = Literal(Constant()) setType UnitClass.tpe
+  val trueLiteral = Literal(Constant(true)) setType BooleanClass.tpe
+  val falseLiteral = Literal(Constant(false)) setType BooleanClass.tpe
 }

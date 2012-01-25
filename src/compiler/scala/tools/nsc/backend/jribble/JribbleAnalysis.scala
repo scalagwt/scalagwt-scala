@@ -80,6 +80,15 @@ trait JribbleAnalysis {
     isPrimitive(sym) && scalaPrimitives.isCoercion(getPrimitive(sym))
   }
 
+  def isBooleanOr(sym: Symbol): Boolean = {
+    import scalaPrimitives._
+    isPrimitive(sym) && (getPrimitive(sym) == ZOR)
+  }
+
+  def isBooleanAnd(sym: Symbol): Boolean = {
+    import scalaPrimitives._
+    isPrimitive(sym) && (getPrimitive(sym) == ZAND)
+  }
 
   def isInterface(sym: Symbol): Boolean = sym.hasFlag(INTERFACE)
 

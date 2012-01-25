@@ -811,62 +811,77 @@ member {
           type: VarDef
           varDef {
             tpe {
-              type: Named
-              namedType {
-                name: "CaseClass"
-              }
+              type: Primitive
+              primitiveType: Boolean
             }
-            name: "CaseClass$1"
-            initializer {
-              type: Cast
-              cast {
-                expr {
+            name: "$3$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Binary
+              binary {
+                op: Equal
+                lhs {
+                  type: ThisRef
+                }
+                rhs {
                   type: VarRef
                   varRef {
                     name: "x$1"
                   }
                 }
                 tpe {
-                  type: Named
-                  namedType {
-                    name: "CaseClass"
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$3$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
-          }
-        }
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: Binary
-              binary {
-                op: Or
-                lhs {
-                  type: Binary
-                  binary {
-                    op: Equal
-                    lhs {
-                      type: ThisRef
-                    }
-                    rhs {
-                      type: VarRef
-                      varRef {
-                        name: "x$1"
-                      }
-                    }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: VarDef
+                  varDef {
                     tpe {
                       type: Primitive
                       primitiveType: Boolean
                     }
+                    name: "$4$"
                   }
                 }
-                rhs {
-                  type: Binary
-                  binary {
-                    op: And
-                    lhs {
+                statement {
+                  type: If
+                  ifStat {
+                    condition {
                       type: InstanceOf
                       instanceOf {
                         expr {
@@ -883,106 +898,203 @@ member {
                         }
                       }
                     }
-                    rhs {
-                      type: Binary
-                      binary {
-                        op: And
-                        lhs {
-                          type: Binary
-                          binary {
-                            op: Equal
-                            lhs {
-                              type: MethodCall
-                              methodCall {
-                                receiver {
-                                  type: ThisRef
-                                }
-                                signature {
-                                  name: "x"
-                                  owner {
-                                    name: "CaseClass"
-                                  }
-                                  returnType {
-                                    type: Primitive
-                                    primitiveType: Int
-                                  }
-                                }
-                              }
-                            }
-                            rhs {
-                              type: MethodCall
-                              methodCall {
-                                receiver {
-                                  type: VarRef
-                                  varRef {
-                                    name: "CaseClass$1"
-                                  }
-                                }
-                                signature {
-                                  name: "x"
-                                  owner {
-                                    name: "CaseClass"
-                                  }
-                                  returnType {
-                                    type: Primitive
-                                    primitiveType: Int
-                                  }
-                                }
-                              }
-                            }
+                    then {
+                      type: Block
+                      block {
+                        statement {
+                          type: VarDef
+                          varDef {
                             tpe {
-                              type: Primitive
-                              primitiveType: Boolean
-                            }
-                          }
-                        }
-                        rhs {
-                          type: MethodCall
-                          methodCall {
-                            receiver {
-                              type: VarRef
-                              varRef {
-                                name: "CaseClass$1"
-                              }
-                            }
-                            signature {
-                              name: "canEqual"
-                              owner {
+                              type: Named
+                              namedType {
                                 name: "CaseClass"
                               }
-                              paramType {
-                                type: Named
-                                namedType {
-                                  pkg: "java.lang"
-                                  name: "Object"
+                            }
+                            name: "CaseClass$1"
+                            initializer {
+                              type: Cast
+                              cast {
+                                expr {
+                                  type: VarRef
+                                  varRef {
+                                    name: "x$1"
+                                  }
+                                }
+                                tpe {
+                                  type: Named
+                                  namedType {
+                                    name: "CaseClass"
+                                  }
                                 }
                               }
-                              returnType {
-                                type: Primitive
-                                primitiveType: Boolean
-                              }
-                            }
-                            argument {
-                              type: ThisRef
                             }
                           }
                         }
-                        tpe {
-                          type: Primitive
-                          primitiveType: Boolean
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$4$"
+                                }
+                              }
+                              rhs {
+                                type: Binary
+                                binary {
+                                  op: And
+                                  lhs {
+                                    type: Binary
+                                    binary {
+                                      op: Equal
+                                      lhs {
+                                        type: MethodCall
+                                        methodCall {
+                                          receiver {
+                                            type: ThisRef
+                                          }
+                                          signature {
+                                            name: "x"
+                                            owner {
+                                              name: "CaseClass"
+                                            }
+                                            returnType {
+                                              type: Primitive
+                                              primitiveType: Int
+                                            }
+                                          }
+                                        }
+                                      }
+                                      rhs {
+                                        type: MethodCall
+                                        methodCall {
+                                          receiver {
+                                            type: VarRef
+                                            varRef {
+                                              name: "CaseClass$1"
+                                            }
+                                          }
+                                          signature {
+                                            name: "x"
+                                            owner {
+                                              name: "CaseClass"
+                                            }
+                                            returnType {
+                                              type: Primitive
+                                              primitiveType: Int
+                                            }
+                                          }
+                                        }
+                                      }
+                                      tpe {
+                                        type: Primitive
+                                        primitiveType: Boolean
+                                      }
+                                    }
+                                  }
+                                  rhs {
+                                    type: MethodCall
+                                    methodCall {
+                                      receiver {
+                                        type: VarRef
+                                        varRef {
+                                          name: "CaseClass$1"
+                                        }
+                                      }
+                                      signature {
+                                        name: "canEqual"
+                                        owner {
+                                          name: "CaseClass"
+                                        }
+                                        paramType {
+                                          type: Named
+                                          namedType {
+                                            pkg: "java.lang"
+                                            name: "Object"
+                                          }
+                                        }
+                                        returnType {
+                                          type: Primitive
+                                          primitiveType: Boolean
+                                        }
+                                      }
+                                      argument {
+                                        type: ThisRef
+                                      }
+                                    }
+                                  }
+                                  tpe {
+                                    type: Primitive
+                                    primitiveType: Boolean
+                                  }
+                                }
+                              }
+                            }
+                          }
                         }
                       }
                     }
-                    tpe {
-                      type: Primitive
-                      primitiveType: Boolean
+                    elsee {
+                      type: Block
+                      block {
+                        statement {
+                          type: Expr
+                          expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: VarRef
+                                varRef {
+                                  name: "$4$"
+                                }
+                              }
+                              rhs {
+                                type: Literal
+                                literal {
+                                  type: Boolean
+                                  boolValue: false
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
-                tpe {
-                  type: Primitive
-                  primitiveType: Boolean
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$3$"
+                        }
+                      }
+                      rhs {
+                        type: VarRef
+                        varRef {
+                          name: "$4$"
+                        }
+                      }
+                    }
+                  }
                 }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$3$"
               }
             }
           }

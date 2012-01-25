@@ -1,0 +1,846 @@
+name {
+  name: "Test"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseOr"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$1$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "shouldNotCall"
+                        owner {
+                          name: "Test"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$1$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$1$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseAnd"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$2$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: false
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "shouldNotCall"
+                        owner {
+                          name: "Test"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$2$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$2$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseOrComplex"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "callA"
+                owner {
+                  name: "Test"
+                }
+                returnType {
+                  type: Void
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$3$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$3$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "callB"
+                        owner {
+                          name: "Test"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$3$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$4$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: VarRef
+              varRef {
+                name: "$3$"
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$4$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "callC"
+                        owner {
+                          name: "Test"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$4$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$4$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseAndComplex"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "callA"
+                owner {
+                  name: "Test"
+                }
+                returnType {
+                  type: Void
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$5$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: false
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "callB"
+                        owner {
+                          name: "Test"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$5$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$5$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "$6$"
+          }
+        }
+        statement {
+          type: If
+          ifStat {
+            condition {
+              type: VarRef
+              varRef {
+                name: "$5$"
+              }
+            }
+            then {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: MethodCall
+                    methodCall {
+                      receiver {
+                        type: ThisRef
+                      }
+                      signature {
+                        name: "callC"
+                        owner {
+                          name: "Test"
+                        }
+                        returnType {
+                          type: Void
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$6$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            elsee {
+              type: Block
+              block {
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "$6$"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$6$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "shouldNotCall"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "callA"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "callB"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "callC"
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Test"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

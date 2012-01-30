@@ -1,0 +1,404 @@
+name {
+  name: "Test"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseOr"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseAnd"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseOrComplex"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Binary
+              binary {
+                op: Or
+                lhs {
+                  type: Binary
+                  binary {
+                    op: Or
+                    lhs {
+                      type: MethodCall
+                      methodCall {
+                        receiver {
+                          type: ThisRef
+                        }
+                        signature {
+                          name: "callA"
+                          owner {
+                            name: "Test"
+                          }
+                          returnType {
+                            type: Primitive
+                            primitiveType: Boolean
+                          }
+                        }
+                      }
+                    }
+                    rhs {
+                      type: MethodCall
+                      methodCall {
+                        receiver {
+                          type: ThisRef
+                        }
+                        signature {
+                          name: "callB"
+                          owner {
+                            name: "Test"
+                          }
+                          returnType {
+                            type: Primitive
+                            primitiveType: Boolean
+                          }
+                        }
+                      }
+                    }
+                    tpe {
+                      type: Primitive
+                      primitiveType: Boolean
+                    }
+                  }
+                }
+                rhs {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: ThisRef
+                    }
+                    signature {
+                      name: "callC"
+                      owner {
+                        name: "Test"
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Boolean
+                      }
+                    }
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "testCaseAndComplex"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Binary
+              binary {
+                op: And
+                lhs {
+                  type: Binary
+                  binary {
+                    op: And
+                    lhs {
+                      type: MethodCall
+                      methodCall {
+                        receiver {
+                          type: ThisRef
+                        }
+                        signature {
+                          name: "callA"
+                          owner {
+                            name: "Test"
+                          }
+                          returnType {
+                            type: Primitive
+                            primitiveType: Boolean
+                          }
+                        }
+                      }
+                    }
+                    rhs {
+                      type: MethodCall
+                      methodCall {
+                        receiver {
+                          type: ThisRef
+                        }
+                        signature {
+                          name: "callB"
+                          owner {
+                            name: "Test"
+                          }
+                          returnType {
+                            type: Primitive
+                            primitiveType: Boolean
+                          }
+                        }
+                      }
+                    }
+                    tpe {
+                      type: Primitive
+                      primitiveType: Boolean
+                    }
+                  }
+                }
+                rhs {
+                  type: MethodCall
+                  methodCall {
+                    receiver {
+                      type: ThisRef
+                    }
+                    signature {
+                      name: "callC"
+                      owner {
+                        name: "Test"
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Boolean
+                      }
+                    }
+                  }
+                }
+                tpe {
+                  type: Primitive
+                  primitiveType: Boolean
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "callA"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "callB"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "callC"
+    returnType {
+      type: Primitive
+      primitiveType: Boolean
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Test"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

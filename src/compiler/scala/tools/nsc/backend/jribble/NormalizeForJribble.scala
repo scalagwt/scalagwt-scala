@@ -388,6 +388,25 @@ with JribbleNormalization
       case tree@Apply(fun @ Select(receiver, name), args) if isCoercion(fun.symbol) =>
         assert(args.isEmpty)
         treeGen.mkCast(transform(receiver), tree.tpe)
+      //boolean or/and are both lazy operators and need to short-circuit when applicable
+      case tree@Apply(fun @ Select(receiver, name), args) if isBooleanOr(fun.symbol) =>
+        assert(args.tail.isEmpty)
+        val (rhsStats, rhsExpr) = removeNonJribbleExpressions(args.head, false)
+        if (rhsStats.isEmpty) {
+          val funT = transform(fun)
+          treeCopy.Apply(tree, funT, List(rhsExpr))
+        } else {
+          transform(If(receiver, trueLiteral, args.head) setType tree.tpe setPos tree.pos)
+        }
+      case tree@Apply(fun @ Select(receiver, name), args) if isBooleanAnd(fun.symbol) =>
+        assert(args.tail.isEmpty)
+        val (rhsStats, rhsExpr) = removeNonJribbleExpressions(args.head, false)
+        if (rhsStats.isEmpty) {
+          val funT = transform(fun)
+          treeCopy.Apply(tree, funT, List(rhsExpr))
+        } else {
+          transform(If(receiver, args.head, falseLiteral) setType tree.tpe setPos tree.pos)
+        }
       case Apply(fun, args) =>
         val funT :: argsT = transformTrees(fun :: args)
         treeCopy.Apply(tree, funT, argsT)

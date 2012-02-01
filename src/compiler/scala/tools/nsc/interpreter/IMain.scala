@@ -269,7 +269,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
 
   /** Create a line manager.  Overridable.  */
   protected def noLineManager = ReplPropsKludge.noThreadCreation(settings)
-  protected def createLineManager(): Line.Manager = new Line.Manager(_classLoader)
+  protected def createLineManager(classLoader: ClassLoader): Line.Manager = new Line.Manager(classLoader)
 
   /** Instantiate a compiler.  Overridable. */
   protected def newCompiler(settings: Settings, reporter: Reporter) = {
@@ -304,7 +304,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   final def ensureClassLoader() {
     if (_classLoader == null) {
       _classLoader = makeClassLoader()
-      _lineManager = if (noLineManager) null else createLineManager()
+      _lineManager = if (noLineManager) null else createLineManager(_classLoader)
     }
   }
   def classLoader: AbstractFileClassLoader = {
@@ -1125,6 +1125,9 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     val termname = newTypeName(name)
     findName(termname) getOrElse getModuleIfDefined(termname)
   }
+  def types[T: ClassManifest] : Symbol = types(classManifest[T].erasure.getName)
+  def terms[T: ClassManifest] : Symbol = terms(classManifest[T].erasure.getName)
+  def apply[T: ClassManifest] : Symbol = apply(classManifest[T].erasure.getName)
 
   /** the previous requests this interpreter has processed */
   private lazy val prevRequests       = mutable.ListBuffer[Request]()

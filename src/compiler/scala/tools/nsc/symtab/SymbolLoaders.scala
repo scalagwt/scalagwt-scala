@@ -39,7 +39,7 @@ abstract class SymbolLoaders {
    */
   def enterClass(root: Symbol, name: String, completer: SymbolLoader): Symbol = {
     val owner = realOwner(root)
-    val clazz = owner.newClass(NoPosition, newTypeName(name))
+    val clazz = owner.newClass(newTypeName(name))
     clazz setInfo completer
     enterIfNew(owner, clazz, completer)
   }
@@ -207,7 +207,7 @@ abstract class SymbolLoaders {
 
     protected def doComplete(root: Symbol) {
       assert(root.isPackageClass, root)
-      root.setInfo(new PackageClassInfoType(new Scope(), root))
+      root.setInfo(new PackageClassInfoType(newScope, root))
 
       val sourcepaths = classpath.sourcepaths
       for (classRep <- classpath.classes if platform.doLoad(classRep)) {

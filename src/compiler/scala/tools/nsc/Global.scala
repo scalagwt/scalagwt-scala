@@ -5,7 +5,7 @@
 
 package scala.tools.nsc
 
-import backend.jribble.{RemoveForwardJumps, GenJribble, RemoveNothingExpressions, NormalizeForJribble}
+import backend.jribble.{RemoveForwardJumps, GenJribble, RemoveNothingExpressions, NormalizeForJribble, FactoryManifestsTransform}
 import java.io.{ File, FileOutputStream, PrintWriter, IOException, FileNotFoundException }
 import java.nio.charset.{ Charset, CharsetDecoder, IllegalCharsetNameException, UnsupportedCharsetException }
 import compat.Platform.currentTime
@@ -569,6 +569,13 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
     val runsAfter = List[String]("dce")
     val runsRightAfter = None
   } with GenJVM
+
+  // phaseName = "factorymanifests"
+  object factoryManifests extends {
+    val global: Global.this.type = Global.this
+    val runsAfter = List[String]("refchecks")
+    val runsRightAfter = None
+  } with FactoryManifestsTransform
 
   // phaseName = "nothingexps"
   object removeNothingExpressions extends {

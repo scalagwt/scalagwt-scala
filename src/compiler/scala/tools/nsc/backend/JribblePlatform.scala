@@ -16,13 +16,11 @@ trait JribblePlatform extends JavaPlatform {
 
   override def platformPhases = super.platformPhases ++ List(
     flatten,                   // get rid of inner classes
+    factoryManifests,          // replace regular Manifests with FactoryManifests
     removeNothingExpressions,  // move Nothing-type expressions to top level
     removeForwardJumps,        // translate forward jumps into method calls
     normalizeForJribble,       // many normalizations needed for emitting Jribble
     genJribble                 // generate .jribble files
-  ) ++ loadFactoryManifestsPlugin.components //add `factorymanifests` plugin components, they are required!
+  )
 
-  def loadFactoryManifestsPlugin =
-    global.plugins.find(_.name == "factorymanifests") getOrElse
-      sys.error("Jribble backend requires `factorymanifests` plugin. Did you forget to include it using -Xplugin option?")
 }

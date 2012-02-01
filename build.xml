@@ -712,11 +712,10 @@ QUICK BUILD (QUICK)
   <target name="quick.pre-plugins" depends="quick.comp">
     <uptodate property="quick.plugins.available" targetfile="${build-quick.dir}/plugins.complete">
       <srcfiles dir="${src.dir}/continuations"/>
-      <srcfiles dir="${src.dir}/factorymanifests"/>
     </uptodate>
   </target>
 
-  <target name="quick.plugins" depends="quick.pre-plugins, quick.factorymanifests.plugin" unless="quick.plugins.available">
+  <target name="quick.plugins" depends="quick.pre-plugins" unless="quick.plugins.available">
     <stopwatch name="quick.plugins.timer"/>
     <mkdir dir="${build-quick.dir}/classes/continuations-plugin"/>
     <scalacfork
@@ -755,44 +754,6 @@ QUICK BUILD (QUICK)
     </scalacfork>
     <touch file="${build-quick.dir}/plugins.complete" verbose="no"/>
     <stopwatch name="quick.plugins.timer" action="total"/>
-  </target>
-  
-  <target name="quick.factorymanifests.plugin" depends="quick.pre-plugins" unless="quick.plugins.available">
-    <stopwatch name="quick.factorymanifests.plugin.timer"/>
-    <mkdir dir="${build-quick.dir}/classes/factorymanifests-plugin"/>
-    <scalacfork
-      destdir="${build-quick.dir}/classes/factorymanifests-plugin"
-      compilerpathref="locker.classpath"
-      params="${scalac.args.quick}"
-      srcdir="${src.dir}/factorymanifests/plugin"
-      jvmargs="${scalacfork.jvmargs}">
-      <include name="**/*.scala"/>
-      <compilationpath>
-        <pathelement location="${build-quick.dir}/classes/library"/>
-        <pathelement location="${build-quick.dir}/classes/compiler"/>
-        <pathelement location="${build-quick.dir}/classes/factorymanifests-plugin"/>
-        <pathelement location="${lib.dir}/forkjoin.jar"/>
-      </compilationpath>
-    </scalacfork>
-    <copy
-       file="${src.dir}/factorymanifests/plugin/scalac-plugin.xml"
-       todir="${build-quick.dir}/classes/factorymanifests-plugin"/>
-    <!-- not very nice to create jar here but needed to load plugin -->
-    <mkdir dir="${build-quick.dir}/misc/scala-devel/plugins"/>
-    <jar destfile="${build-quick.dir}/misc/scala-devel/plugins/factorymanifests.jar">
-      <fileset dir="${build-quick.dir}/classes/factorymanifests-plugin"/>
-    </jar>
-    <!-- might split off library part into its own ant target -->
-    <scalacfork
-      destdir="${build-quick.dir}/classes/library"
-      compilerpathref="locker.classpath"
-      params="${scalac.args.quick} -Xplugin:${basedir}/build/quick/misc/scala-devel/plugins/factorymanifests.jar"
-      srcdir="${src.dir}/factorymanifests/library"
-      jvmargs="${scalacfork.jvmargs}">
-      <include name="**/*.scala"/>
-      <compilationpath refid="quick.compilation.path"/>
-    </scalacfork>
-    <stopwatch name="quick.factorymanifests.plugin.timer" action="total"/>
   </target>
 
   <target name="quick.pre-scalacheck" depends="quick.plugins">

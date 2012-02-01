@@ -1,5 +1,6 @@
 
-package scala.tools.factorymanifests
+package scala.tools.nsc
+package backend.jribble
 import scala.collection.mutable
 import scala.tools.nsc.transform.{Transform, TypingTransformers}
 import scala.tools.nsc.plugins.PluginComponent
@@ -48,7 +49,7 @@ import scala.tools.nsc.plugins.PluginComponent
  * run after 'refcheck' because it means we are running after pickler. It's desirable because
  * we don't want pickling information for our anonymous classes to be generated.
  */
-abstract class FactoryManifestsTransform extends PluginComponent with Transform with TypingTransformers {
+abstract class FactoryManifestsTransform extends Transform with TypingTransformers {
   import global._
 
   val phaseName = "factorymanifests"

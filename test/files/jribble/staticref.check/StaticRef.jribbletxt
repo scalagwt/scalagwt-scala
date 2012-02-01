@@ -141,11 +141,41 @@ member {
             tpe {
               type: Named
               namedType {
+                pkg: "scala"
+                name: "Option"
+              }
+            }
+            name: "zero5"
+            initializer {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  pkg: "scala"
+                  name: "None$"
+                }
+                name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala"
+                    name: "None$"
+                  }
+                }
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Named
+              namedType {
                 pkg: "java.lang"
                 name: "Class"
               }
             }
-            name: "temp1"
+            name: "x1"
             initializer {
               type: VarRef
               varRef {
@@ -161,110 +191,274 @@ member {
               type: Primitive
               primitiveType: Int
             }
-            name: "$1$"
+            name: "matchRes3"
+            initializer {
+              type: Literal
+              literal {
+                type: Int
+                intValue: 0
+              }
+            }
           }
         }
         statement {
-          type: If
-          ifStat {
-            condition {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "equals"
-                  owner {
-                    pkg: "scala.runtime"
-                    name: "BoxesRunTime"
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "java.lang"
-                      name: "Object"
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Boolean
+            }
+            name: "keepGoing4"
+            initializer {
+              type: Literal
+              literal {
+                type: Boolean
+                boolValue: true
+              }
+            }
+          }
+        }
+        statement {
+          type: Block
+          block {
+            statement {
+              type: If
+              ifStat {
+                condition {
+                  type: MethodCall
+                  methodCall {
+                    signature {
+                      name: "equals"
+                      owner {
+                        pkg: "scala.runtime"
+                        name: "BoxesRunTime"
+                      }
+                      paramType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Object"
+                        }
+                      }
+                      paramType {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Object"
+                        }
+                      }
+                      returnType {
+                        type: Primitive
+                        primitiveType: Boolean
+                      }
                     }
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "java.lang"
-                      name: "Object"
+                    argument {
+                      type: FieldRef
+                      fieldRef {
+                        enclosingType {
+                          pkg: "java.lang"
+                          name: "Byte"
+                        }
+                        name: "TYPE"
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "Class"
+                          }
+                        }
+                      }
                     }
-                  }
-                  returnType {
-                    type: Primitive
-                    primitiveType: Boolean
-                  }
-                }
-                argument {
-                  type: FieldRef
-                  fieldRef {
-                    enclosingType {
-                      pkg: "java.lang"
-                      name: "Byte"
-                    }
-                    name: "TYPE"
-                    tpe {
-                      type: Named
-                      namedType {
-                        pkg: "java.lang"
-                        name: "Class"
+                    argument {
+                      type: VarRef
+                      varRef {
+                        name: "x1"
                       }
                     }
                   }
                 }
-                argument {
+                then {
+                  type: Block
+                  block {
+                    statement {
+                      type: VarDef
+                      varDef {
+                        tpe {
+                          type: Named
+                          namedType {
+                            pkg: "java.lang"
+                            name: "Class"
+                          }
+                        }
+                        name: "x2"
+                        initializer {
+                          type: VarRef
+                          varRef {
+                            name: "x1"
+                          }
+                        }
+                      }
+                    }
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "matchRes3"
+                            }
+                          }
+                          rhs {
+                            type: Literal
+                            literal {
+                              type: Int
+                              intValue: 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "keepGoing4"
+                            }
+                          }
+                          rhs {
+                            type: Literal
+                            literal {
+                              type: Boolean
+                              boolValue: false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                elsee {
+                  type: Block
+                  block {
+                  }
+                }
+              }
+            }
+            statement {
+              type: VarDef
+              varDef {
+                tpe {
+                  type: Named
+                  namedType {
+                    pkg: "scala"
+                    name: "Option"
+                  }
+                }
+                name: "$1$"
+              }
+            }
+            statement {
+              type: If
+              ifStat {
+                condition {
                   type: VarRef
                   varRef {
-                    name: "temp1"
+                    name: "keepGoing4"
                   }
                 }
-              }
-            }
-            then {
-              type: Block
-              block {
-                statement {
-                  type: Expr
-                  expr {
-                    type: Assignment
-                    assignment {
-                      lhs {
-                        type: VarRef
-                        varRef {
-                          name: "$1$"
+                then {
+                  type: Block
+                  block {
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "matchRes3"
+                            }
+                          }
+                          rhs {
+                            type: Literal
+                            literal {
+                              type: Int
+                              intValue: 1
+                            }
+                          }
                         }
                       }
-                      rhs {
-                        type: Literal
-                        literal {
-                          type: Int
-                          intValue: 0
+                    }
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "keepGoing4"
+                            }
+                          }
+                          rhs {
+                            type: Literal
+                            literal {
+                              type: Boolean
+                              boolValue: false
+                            }
+                          }
+                        }
+                      }
+                    }
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "$1$"
+                            }
+                          }
+                          rhs {
+                            type: VarRef
+                            varRef {
+                              name: "zero5"
+                            }
+                          }
                         }
                       }
                     }
                   }
                 }
-              }
-            }
-            elsee {
-              type: Block
-              block {
-                statement {
-                  type: Expr
-                  expr {
-                    type: Assignment
-                    assignment {
-                      lhs {
-                        type: VarRef
-                        varRef {
-                          name: "$1$"
-                        }
-                      }
-                      rhs {
-                        type: Literal
-                        literal {
-                          type: Int
-                          intValue: 1
+                elsee {
+                  type: Block
+                  block {
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "$1$"
+                            }
+                          }
+                          rhs {
+                            type: VarRef
+                            varRef {
+                              name: "zero5"
+                            }
+                          }
                         }
                       }
                     }
@@ -280,7 +474,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$1$"
+                name: "matchRes3"
               }
             }
           }

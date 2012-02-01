@@ -87,7 +87,7 @@ member {
                 name: "Option"
               }
             }
-            name: "$5$"
+            name: "$6$"
           }
         }
         statement {
@@ -146,7 +146,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$5$"
+                          name: "$6$"
                         }
                       }
                       rhs {
@@ -182,7 +182,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$5$"
+                          name: "$6$"
                         }
                       }
                       rhs {
@@ -272,7 +272,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$5$"
+                name: "$6$"
               }
             }
           }

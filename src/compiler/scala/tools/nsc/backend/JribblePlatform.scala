@@ -14,6 +14,9 @@ import scala.tools.util.PathResolver
 trait JribblePlatform extends JavaPlatform {
   import global._
 
+  //TODO(grek): introduce some better mechanism (hook?) for manipulating settings
+  global.opt.settings.YvirtPatmat.value = true
+
   override def platformPhases = super.platformPhases ++ List(
     flatten,                   // get rid of inner classes
     removeNothingExpressions,  // move Nothing-type expressions to top level

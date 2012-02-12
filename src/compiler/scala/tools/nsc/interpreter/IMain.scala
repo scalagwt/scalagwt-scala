@@ -196,7 +196,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
       def foreach[U](f: Tree => U): Unit = t foreach { x => f(x) ; () }
     }).toList
   }
-  
+
   implicit def installReplTypeOps(tp: Type): ReplTypeOps = new ReplTypeOps(tp)
   class ReplTypeOps(tp: Type) {
     def orElse(other: => Type): Type    = if (tp ne NoType) tp else other
@@ -269,7 +269,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
 
   /** Create a line manager.  Overridable.  */
   protected def noLineManager = ReplPropsKludge.noThreadCreation(settings)
-  protected def createLineManager(): Line.Manager = new Line.Manager(_classLoader)
+  protected def createLineManager(classLoader: ClassLoader): Line.Manager = new Line.Manager(classLoader)
 
   /** Instantiate a compiler.  Overridable. */
   protected def newCompiler(settings: Settings, reporter: Reporter) = {
@@ -304,7 +304,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   final def ensureClassLoader() {
     if (_classLoader == null) {
       _classLoader = makeClassLoader()
-      _lineManager = if (noLineManager) null else createLineManager()
+      _lineManager = if (noLineManager) null else createLineManager(_classLoader)
     }
   }
   def classLoader: AbstractFileClassLoader = {
@@ -831,7 +831,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
       case xs            => sys.error("Internal error: eval object " + evalClass + ", " + xs.mkString("\n", "\n", ""))
     }
     private def compileAndSaveRun(label: String, code: String) = {
-      showCodeIfDebugging(code)
+      showCodeIfDebugging(packaged(code))
       val (success, run) = compileSourcesKeepingRun(new BatchSourceFile(label, packaged(code)))
       lastRun = run
       success
@@ -1078,7 +1078,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
       val clazz      = classOfTerm(id) getOrElse { return NoType }
       val staticSym  = tpe.typeSymbol
       val runtimeSym = getClassIfDefined(clazz.getName)
-      
+
       if ((runtimeSym != NoSymbol) && (runtimeSym != staticSym) && (runtimeSym isSubClass staticSym))
         runtimeSym.info
       else NoType
@@ -1125,6 +1125,9 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     val termname = newTypeName(name)
     findName(termname) getOrElse getModuleIfDefined(termname)
   }
+  def types[T: ClassManifest] : Symbol = types(classManifest[T].erasure.getName)
+  def terms[T: ClassManifest] : Symbol = terms(classManifest[T].erasure.getName)
+  def apply[T: ClassManifest] : Symbol = apply(classManifest[T].erasure.getName)
 
   /** the previous requests this interpreter has processed */
   private lazy val prevRequests       = mutable.ListBuffer[Request]()

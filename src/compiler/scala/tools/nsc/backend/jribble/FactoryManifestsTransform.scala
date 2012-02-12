@@ -194,7 +194,7 @@ abstract class FactoryManifestsTransform extends Transform with TypingTransforme
       
       val anonClass = owner newAnonymousClass owner.pos setFlag (FINAL | SYNTHETIC)
       val parents = List(definitions.ObjectClass.tpe, factoryTpe)
-      anonClass setInfo ClassInfoType(parents, new Scope, anonClass)
+      anonClass setInfo ClassInfoType(parents, newScope, anonClass)
       val members = List(mkNewInstance(anonClass), mkforArrayOf(anonClass))
       members foreach { x => anonClass.info.decls enter x.symbol }
       Block(ClassDef(anonClass, NoMods, List(Nil), List(Nil), members, owner.pos),

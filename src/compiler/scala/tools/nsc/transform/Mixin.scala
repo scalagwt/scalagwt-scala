@@ -186,13 +186,9 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
        *  always accessors and deferred. */
       def newGetter(field: Symbol): Symbol = {
         // println("creating new getter for "+ field +" : "+ field.info +" at "+ field.locationString+(field hasFlag MUTABLE))
-        // atPhase(currentRun.erasurePhase){
-        //   println("before erasure: "+ (field.info))
-        // }
-        clazz.newMethod(field.pos, nme.getterName(field.name))
-          .setFlag(field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED |
-                     (if (field.isMutable) 0 else STABLE))
-          .setInfo(MethodType(List(), field.info)) // TODO preserve pre-erasure info?
+        val newFlags = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED | ( if (field.isMutable) 0 else STABLE )
+        // TODO preserve pre-erasure info?
+        clazz.newMethod(nme.getterName(field.name), field.pos, newFlags) setInfo MethodType(Nil, field.info)
       }
 
       /** Create a new setter. Setters are never private or local. They are
@@ -200,13 +196,13 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
       def newSetter(field: Symbol): Symbol = {
         //println("creating new setter for "+field+field.locationString+(field hasFlag MUTABLE))
         val setterName = nme.getterToSetter(nme.getterName(field.name))
-        val setter = clazz.newMethod(field.pos, setterName)
-          .setFlag(field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED)
-        setter.setInfo(MethodType(setter.newSyntheticValueParams(List(field.info)), UnitClass.tpe))  // TODO preserve pre-erasure info?
-        if (needsExpandedSetterName(field)) {
-          //println("creating expanded setter from "+field)
+        val newFlags   = field.flags & ~PrivateLocal | ACCESSOR | lateDEFERRED
+        val setter     = clazz.newMethod(setterName, field.pos, newFlags)
+        // TODO preserve pre-erasure info?
+        setter setInfo MethodType(setter.newSyntheticValueParams(List(field.info)), UnitClass.tpe)
+        if (needsExpandedSetterName(field))
           setter.name = nme.expandedSetterName(setter.name, clazz)
-        }
+        
         setter
       }
 
@@ -343,7 +339,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
                     // so it can no longer be found in the member's owner (the trait)
                     val accessed = atPhase(currentRun.picklerPhase)(member.accessed)
                     val sym = atPhase(currentRun.erasurePhase){ // #3857, need to retain info before erasure when cloning (since cloning only carries over the current entry in the type history)
-                      clazz.newValue(member.pos, nme.getterToLocal(member.name)).setInfo(member.tpe.resultType) // so we have a type history entry before erasure
+                      clazz.newValue(nme.getterToLocal(member.name), member.pos).setInfo(member.tpe.resultType) // so we have a type history entry before erasure
                     }
                     sym.updateInfo(member.tpe.resultType) // info at current phase
                     addMember(clazz,
@@ -361,9 +357,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
 
           } else if (member.isMethod && member.isModule && member.hasNoFlags(LIFTED | BRIDGE)) {
             // mixin objects: todo what happens with abstract objects?
-            addMember(clazz, member.cloneSymbol(clazz))
-              .setPos(clazz.pos)
-              .resetFlag(DEFERRED | lateDEFERRED)
+            addMember(clazz, member.cloneSymbol(clazz, member.flags & ~(DEFERRED | lateDEFERRED)) setPos clazz.pos)
           }
         }
       }
@@ -409,12 +403,12 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
           assert(clazz.sourceModule != NoSymbol || clazz.isAnonymousClass,
             clazz + " has no sourceModule: sym = " + sym + " sym.tpe = " + sym.tpe)
           parents1 = List()
-          decls1 = new Scope(decls.toList filter isImplementedStatically)
+          decls1 = newScopeWith(decls.toList filter isImplementedStatically: _*)
         } else if (!parents.isEmpty) {
           parents1 = parents.head :: (parents.tail map toInterface)
         }
       }
-      //decls1 = atPhase(phase.next)(new Scope(decls1.toList))//debug
+      //decls1 = atPhase(phase.next)(newScopeWith(decls1.toList: _*))//debug
       if ((parents1 eq parents) && (decls1 eq decls)) tp
       else ClassInfoType(parents1, decls1, clazz)
 
@@ -486,7 +480,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
 
     /** The rootContext used for typing */
     private val rootContext =
-      erasure.NoContext.make(EmptyTree, RootClass, new Scope)
+      erasure.NoContext.make(EmptyTree, RootClass, newScope)
 
     /** The typer */
     private var localTyper: erasure.Typer = _
@@ -533,9 +527,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
           if (currentOwner.isImplClass) {
             if (isImplementedStatically(sym)) {
               sym setFlag notOVERRIDE
-              self = sym.newValue(sym.pos, nme.SELF)
-                .setFlag(PARAM)
-                .setInfo(toInterface(currentOwner.typeOfThis));
+              self = sym.newValueParameter(nme.SELF, sym.pos) setInfo toInterface(currentOwner.typeOfThis)
               val selfdef = ValDef(self) setType NoType
               treeCopy.DefDef(tree, mods, name, tparams, List(selfdef :: vparams), tpt, rhs)
             } else {
@@ -1061,7 +1053,7 @@ abstract class Mixin extends InfoTransform with ast.TreeDSL {
                 else accessedRef match {
                   case Literal(_) => accessedRef
                   case _ =>
-                    val init   = Assign(accessedRef, Ident(sym.paramss.head.head))
+                    val init   = Assign(accessedRef, Ident(sym.firstParam))
                     val getter = sym.getter(clazz)
 
                     if (!needsInitFlag(getter)) init

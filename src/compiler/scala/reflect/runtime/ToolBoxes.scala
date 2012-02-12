@@ -41,9 +41,12 @@ trait ToolBoxes extends { self: Universe =>
       private def isFree(t: Tree) = t.isInstanceOf[Ident] && t.symbol.isInstanceOf[FreeVar]
 
       def typedTopLevelExpr(tree: Tree, pt: Type): Tree = {
-        val ownerClass = EmptyPackageClass.newClass(newTypeName("<expression-owner>"))
-        ownerClass.setInfo(new ClassInfoType(List(ObjectClass.tpe), newScope, ownerClass))
-        val owner = ownerClass.newLocalDummy(tree.pos)
+        // !!! Why is this is in the empty package? If it's only to make
+        // it inaccessible then please put it somewhere designed for that
+        // rather than polluting the empty package with synthetics.
+        val ownerClass = EmptyPackageClass.newClassWithInfo(newTypeName("<expression-owner>"), List(ObjectClass.tpe), newScope)
+        val owner      = ownerClass.newLocalDummy(tree.pos)
+
         typer.atOwner(tree, owner).typed(tree, analyzer.EXPRmode, pt)
       }
       
@@ -54,7 +57,7 @@ trait ToolBoxes extends { self: Universe =>
     
       def wrapInObject(expr: Tree, fvs: List[Symbol]): ModuleDef = {
         val obj = EmptyPackageClass.newModule(nextWrapperModuleName())
-        val minfo = ClassInfoType(List(ObjectClass.tpe, ScalaObjectClass.tpe), new Scope, obj.moduleClass)
+        val minfo = ClassInfoType(List(ObjectClass.tpe, ScalaObjectClass.tpe), newScope, obj.moduleClass)
         obj.moduleClass setInfo minfo
         obj setInfo obj.moduleClass.tpe
         val meth = obj.moduleClass.newMethod(newTermName(wrapperMethodName))
@@ -120,15 +123,21 @@ trait ToolBoxes extends { self: Universe =>
           applyMeth.invoke(result)
         }
       }
-      
-      def showAttributed(tree: Tree): String = {
-        val saved = settings.printtypes.value
+
+      def showAttributed(tree: Tree, printTypes: Boolean = true, printIds: Boolean = true, printKinds: Boolean = false): String = {
+        val saved1 = settings.printtypes.value
+        val saved2 = settings.uniqid.value
+        val saved3 = settings.Yshowsymkinds.value
         try {
-          settings.printtypes.value = true
-          //settings.uniqid.value = true
+          settings.printtypes.value = printTypes
+          settings.uniqid.value = printIds
+          settings.uniqid.value = printKinds
           tree.toString
-        } finally
-          compiler.settings.printtypes.value = saved
+        } finally {
+          settings.printtypes.value = saved1
+          settings.uniqid.value = saved2
+          settings.Yshowsymkinds.value = saved3
+        }
       }
     }
 

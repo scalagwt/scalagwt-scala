@@ -269,11 +269,27 @@ member {
               type: Primitive
               primitiveType: Int
             }
-            name: "temp1"
+            name: "x1"
             initializer {
               type: VarRef
               varRef {
                 name: "x$1"
+              }
+            }
+          }
+        }
+        statement {
+          type: VarDef
+          varDef {
+            tpe {
+              type: Primitive
+              primitiveType: Int
+            }
+            name: "$1$"
+            initializer {
+              type: VarRef
+              varRef {
+                name: "x1"
               }
             }
           }
@@ -288,84 +304,73 @@ member {
                 name: "Object"
               }
             }
-            name: "$1$"
+            name: "$2$"
           }
         }
         statement {
-          type: If
-          ifStat {
-            condition {
-              type: Binary
-              binary {
-                op: Equal
-                lhs {
-                  type: VarRef
-                  varRef {
-                    name: "temp1"
-                  }
-                }
-                rhs {
-                  type: Literal
-                  literal {
-                    type: Int
-                    intValue: 0
-                  }
-                }
-                tpe {
-                  type: Primitive
-                  primitiveType: Boolean
-                }
+          type: Switch
+          switchStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "$1$"
               }
             }
-            then {
-              type: Block
-              block {
-                statement {
-                  type: Expr
-                  expr {
-                    type: Assignment
-                    assignment {
-                      lhs {
-                        type: VarRef
-                        varRef {
-                          name: "$1$"
-                        }
-                      }
-                      rhs {
-                        type: MethodCall
-                        methodCall {
-                          signature {
-                            name: "boxToInteger"
-                            owner {
-                              pkg: "scala.runtime"
-                              name: "BoxesRunTime"
-                            }
-                            paramType {
-                              type: Primitive
-                              primitiveType: Int
-                            }
-                            returnType {
-                              type: Named
-                              namedType {
-                                pkg: "java.lang"
-                                name: "Integer"
-                              }
-                            }
+            case {
+              constant {
+                type: Int
+                intValue: 0
+              }
+              statement {
+                type: Block
+                block {
+                  statement {
+                    type: Expr
+                    expr {
+                      type: Assignment
+                      assignment {
+                        lhs {
+                          type: VarRef
+                          varRef {
+                            name: "$2$"
                           }
-                          argument {
-                            type: MethodCall
-                            methodCall {
-                              receiver {
-                                type: ThisRef
+                        }
+                        rhs {
+                          type: MethodCall
+                          methodCall {
+                            signature {
+                              name: "boxToInteger"
+                              owner {
+                                pkg: "scala.runtime"
+                                name: "BoxesRunTime"
                               }
-                              signature {
-                                name: "x"
-                                owner {
-                                  name: "CaseClass"
+                              paramType {
+                                type: Primitive
+                                primitiveType: Int
+                              }
+                              returnType {
+                                type: Named
+                                namedType {
+                                  pkg: "java.lang"
+                                  name: "Integer"
                                 }
-                                returnType {
-                                  type: Primitive
-                                  primitiveType: Int
+                              }
+                            }
+                            argument {
+                              type: MethodCall
+                              methodCall {
+                                receiver {
+                                  type: ThisRef
+                                }
+                                signature {
+                                  name: "x"
+                                  owner {
+                                    name: "CaseClass"
+                                  }
+                                  returnType {
+                                    type: Primitive
+                                    primitiveType: Int
+                                  }
                                 }
                               }
                             }
@@ -374,10 +379,15 @@ member {
                       }
                     }
                   }
+                  statement {
+                    type: Break
+                    break {
+                    }
+                  }
                 }
               }
             }
-            elsee {
+            defaultCase {
               type: Block
               block {
                 statement {
@@ -463,6 +473,11 @@ member {
                     }
                   }
                 }
+                statement {
+                  type: Break
+                  break {
+                  }
+                }
               }
             }
           }
@@ -473,7 +488,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$1$"
+                name: "$2$"
               }
             }
           }
@@ -814,7 +829,7 @@ member {
               type: Primitive
               primitiveType: Boolean
             }
-            name: "$3$"
+            name: "$4$"
           }
         }
         statement {
@@ -850,7 +865,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$3$"
+                          name: "$4$"
                         }
                       }
                       rhs {
@@ -875,7 +890,7 @@ member {
                       type: Primitive
                       primitiveType: Boolean
                     }
-                    name: "$4$"
+                    name: "$5$"
                   }
                 }
                 statement {
@@ -938,7 +953,7 @@ member {
                               lhs {
                                 type: VarRef
                                 varRef {
-                                  name: "$4$"
+                                  name: "$5$"
                                 }
                               }
                               rhs {
@@ -1047,7 +1062,7 @@ member {
                               lhs {
                                 type: VarRef
                                 varRef {
-                                  name: "$4$"
+                                  name: "$5$"
                                 }
                               }
                               rhs {
@@ -1072,13 +1087,13 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$3$"
+                          name: "$4$"
                         }
                       }
                       rhs {
                         type: VarRef
                         varRef {
-                          name: "$4$"
+                          name: "$5$"
                         }
                       }
                     }
@@ -1094,7 +1109,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$3$"
+                name: "$4$"
               }
             }
           }

@@ -218,6 +218,27 @@ member {
                         statement {
                           type: Expr
                           expr {
+                            type: Assignment
+                            assignment {
+                              lhs {
+                                type: VarRef
+                                varRef {
+                                  name: "keepGoing6"
+                                }
+                              }
+                              rhs {
+                                type: Literal
+                                literal {
+                                  type: Boolean
+                                  boolValue: false
+                                }
+                              }
+                            }
+                          }
+                        }
+                        statement {
+                          type: Expr
+                          expr {
                             type: MethodCall
                             methodCall {
                               receiver {
@@ -259,27 +280,6 @@ member {
                                 literal {
                                   type: String
                                   stringValue: "empty list"
-                                }
-                              }
-                            }
-                          }
-                        }
-                        statement {
-                          type: Expr
-                          expr {
-                            type: Assignment
-                            assignment {
-                              lhs {
-                                type: VarRef
-                                varRef {
-                                  name: "keepGoing6"
-                                }
-                              }
-                              rhs {
-                                type: Literal
-                                literal {
-                                  type: Boolean
-                                  boolValue: false
                                 }
                               }
                             }
@@ -560,6 +560,27 @@ member {
                                                 statement {
                                                   type: Expr
                                                   expr {
+                                                    type: Assignment
+                                                    assignment {
+                                                      lhs {
+                                                        type: VarRef
+                                                        varRef {
+                                                          name: "keepGoing6"
+                                                        }
+                                                      }
+                                                      rhs {
+                                                        type: Literal
+                                                        literal {
+                                                          type: Boolean
+                                                          boolValue: false
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                                statement {
+                                                  type: Expr
+                                                  expr {
                                                     type: MethodCall
                                                     methodCall {
                                                       receiver {
@@ -601,27 +622,6 @@ member {
                                                         literal {
                                                           type: String
                                                           stringValue: "singleton list"
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                }
-                                                statement {
-                                                  type: Expr
-                                                  expr {
-                                                    type: Assignment
-                                                    assignment {
-                                                      lhs {
-                                                        type: VarRef
-                                                        varRef {
-                                                          name: "keepGoing6"
-                                                        }
-                                                      }
-                                                      rhs {
-                                                        type: Literal
-                                                        literal {
-                                                          type: Boolean
-                                                          boolValue: false
                                                         }
                                                       }
                                                     }
@@ -853,6 +853,27 @@ member {
                     statement {
                       type: Expr
                       expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "keepGoing6"
+                            }
+                          }
+                          rhs {
+                            type: Literal
+                            literal {
+                              type: Boolean
+                              boolValue: false
+                            }
+                          }
+                        }
+                      }
+                    }
+                    statement {
+                      type: Expr
+                      expr {
                         type: MethodCall
                         methodCall {
                           receiver {
@@ -894,27 +915,6 @@ member {
                             literal {
                               type: String
                               stringValue: "more than one element list"
-                            }
-                          }
-                        }
-                      }
-                    }
-                    statement {
-                      type: Expr
-                      expr {
-                        type: Assignment
-                        assignment {
-                          lhs {
-                            type: VarRef
-                            varRef {
-                              name: "keepGoing6"
-                            }
-                          }
-                          rhs {
-                            type: Literal
-                            literal {
-                              type: Boolean
-                              boolValue: false
                             }
                           }
                         }
@@ -1298,7 +1298,7 @@ member {
                 name: "Tuple2"
               }
             }
-            name: "matchRes2"
+            name: "matchRes3"
             initializer {
               type: Literal
               literal {
@@ -1314,7 +1314,7 @@ member {
               type: Primitive
               primitiveType: Boolean
             }
-            name: "keepGoing3"
+            name: "keepGoing2"
             initializer {
               type: Literal
               literal {
@@ -1360,7 +1360,28 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "matchRes2"
+                          name: "keepGoing2"
+                        }
+                      }
+                      rhs {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                }
+                statement {
+                  type: Expr
+                  expr {
+                    type: Assignment
+                    assignment {
+                      lhs {
+                        type: VarRef
+                        varRef {
+                          name: "matchRes3"
                         }
                       }
                       rhs {
@@ -1441,27 +1462,6 @@ member {
                     }
                   }
                 }
-                statement {
-                  type: Expr
-                  expr {
-                    type: Assignment
-                    assignment {
-                      lhs {
-                        type: VarRef
-                        varRef {
-                          name: "keepGoing3"
-                        }
-                      }
-                      rhs {
-                        type: Literal
-                        literal {
-                          type: Boolean
-                          boolValue: false
-                        }
-                      }
-                    }
-                  }
-                }
               }
             }
             elsee {
@@ -1490,7 +1490,7 @@ member {
             condition {
               type: VarRef
               varRef {
-                name: "keepGoing3"
+                name: "keepGoing2"
               }
             }
             then {
@@ -1556,7 +1556,7 @@ member {
                       rhs {
                         type: VarRef
                         varRef {
-                          name: "matchRes2"
+                          name: "matchRes3"
                         }
                       }
                     }
@@ -1727,7 +1727,7 @@ member {
               type: Primitive
               primitiveType: Int
             }
-            name: "matchRes2"
+            name: "matchRes3"
             initializer {
               type: Literal
               literal {
@@ -1744,7 +1744,7 @@ member {
               type: Primitive
               primitiveType: Boolean
             }
-            name: "keepGoing3"
+            name: "keepGoing2"
             initializer {
               type: Literal
               literal {
@@ -1786,6 +1786,27 @@ member {
                 then {
                   type: Block
                   block {
+                    statement {
+                      type: Expr
+                      expr {
+                        type: Assignment
+                        assignment {
+                          lhs {
+                            type: VarRef
+                            varRef {
+                              name: "keepGoing2"
+                            }
+                          }
+                          rhs {
+                            type: Literal
+                            literal {
+                              type: Boolean
+                              boolValue: false
+                            }
+                          }
+                        }
+                      }
+                    }
                     statement {
                       type: Block
                       block {
@@ -1861,7 +1882,7 @@ member {
                 condition {
                   type: VarRef
                   varRef {
-                    name: "keepGoing3"
+                    name: "keepGoing2"
                   }
                 }
                 then {
@@ -1875,13 +1896,14 @@ member {
                           lhs {
                             type: VarRef
                             varRef {
-                              name: "matchRes2"
+                              name: "keepGoing2"
                             }
                           }
                           rhs {
-                            type: VarRef
-                            varRef {
-                              name: "x1"
+                            type: Literal
+                            literal {
+                              type: Boolean
+                              boolValue: false
                             }
                           }
                         }
@@ -1895,14 +1917,13 @@ member {
                           lhs {
                             type: VarRef
                             varRef {
-                              name: "keepGoing3"
+                              name: "matchRes3"
                             }
                           }
                           rhs {
-                            type: Literal
-                            literal {
-                              type: Boolean
-                              boolValue: false
+                            type: VarRef
+                            varRef {
+                              name: "x1"
                             }
                           }
                         }
@@ -1965,7 +1986,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "matchRes2"
+                name: "matchRes3"
               }
             }
           }

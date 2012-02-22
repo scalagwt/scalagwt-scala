@@ -38,6 +38,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
                                                                       with Plugins
                                                                       with PhaseAssembly
                                                                       with Trees
+                                                                      with Reifiers
                                                                       with TreePrinters
                                                                       with DocComments
                                                                       with MacroContext
@@ -126,7 +127,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
   /** Print tree in detailed form */
   object nodePrinters extends {
     val global: Global.this.type = Global.this
-  } with NodePrinters {
+  } with NodePrinters with ReifyPrinters {
     infolevel = InfoLevel.Verbose
   }
 
@@ -136,6 +137,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
   } with TreeBrowsers
 
   val nodeToString = nodePrinters.nodeToString
+  val reifiedNodeToString = nodePrinters.reifiedNodeToString
   val treeBrowser = treeBrowsers.create()
 
   // ------------ Hooks for interactive mode-------------------------
@@ -459,17 +461,10 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
     val runsRightAfter = None
   } with RefChecks
 
-  // phaseName = "liftcode"
-  object liftcode extends {
-    val global: Global.this.type = Global.this
-    val runsAfter = List[String]("refchecks")
-    val runsRightAfter = None
-  } with LiftCode
-
   // phaseName = "uncurry"
   override object uncurry extends {
     val global: Global.this.type = Global.this
-    val runsAfter = List[String]("refchecks", "liftcode")
+    val runsAfter = List[String]("refchecks")
     val runsRightAfter = None
   } with UnCurry
 
@@ -689,7 +684,6 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
       superAccessors          -> "add super accessors in traits and nested classes",
       pickler                 -> "serialize symbol tables",
       refChecks               -> "reference/override checking, translate nested objects",
-      liftcode                -> "reify trees",
       uncurry                 -> "uncurry, translate function values to anonymous classes",
       tailCalls               -> "replace tail calls by jumps",
       specializeTypes         -> "@specialized-driven class and method specialization",
@@ -853,6 +847,10 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
   def currentRun: Run              = curRun
   def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
   def currentSource: SourceFile    = if (currentUnit.exists) currentUnit.source else lastSeenSourceFile
+  
+  @inline final def afterTyper[T](op: => T): T = afterPhase(currentRun.typerPhase)(op)
+  @inline final def beforeErasure[T](op: => T): T = beforePhase(currentRun.erasurePhase)(op)
+  @inline final def afterErasure[T](op: => T): T = afterPhase(currentRun.erasurePhase)(op)
 
   /** Don't want to introduce new errors trying to report errors,
    *  so swallow exceptions.
@@ -1122,7 +1120,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
     def compiles(sym: Symbol): Boolean =
       if (sym == NoSymbol) false
       else if (symSource.isDefinedAt(sym)) true
-      else if (!sym.owner.isPackageClass) compiles(sym.toplevelClass)
+      else if (!sym.owner.isPackageClass) compiles(sym.enclosingTopLevelClass)
       else if (sym.isModuleClass) compiles(sym.sourceModule)
       else false
 
@@ -1160,7 +1158,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
       lazy val trackers = currentRun.units.toList map (x => SymbolTracker(x))
       def snapshot() = {
         inform("\n[[symbol layout at end of " + phase + "]]")
-        atPhase(phase.next) {
+        afterPhase(phase) {
           trackers foreach { t =>
             t.snapshot()
             inform(t.show("Heading from " + phase.prev.name + " to " + phase.name))
@@ -1435,7 +1433,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter) extends Symb
 
   def printAllUnits() {
     print("[[syntax trees at end of " + phase + "]]")
-    atPhase(phase.next) { currentRun.units foreach (treePrinter.print(_)) }
+    afterPhase(phase) { currentRun.units foreach (treePrinter.print(_)) }
   }
 
   private def findMemberFromRoot(fullName: Name): Symbol = {

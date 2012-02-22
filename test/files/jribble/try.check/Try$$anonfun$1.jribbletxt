@@ -43,7 +43,7 @@ member {
                 enclosingType {
                   name: "Try$$anonfun$1"
                 }
-                name: "ex$2"
+                name: "ex$1"
                 tpe {
                   type: Named
                   namedType {
@@ -120,7 +120,7 @@ member {
         name: "Exception"
       }
     }
-    name: "ex$2"
+    name: "ex$1"
   }
 }
 member {
@@ -141,7 +141,7 @@ member {
       }
     }
     paramDef {
-      name: "ex$2"
+      name: "ex$1"
       tpe {
         type: Named
         namedType {
@@ -173,7 +173,7 @@ member {
                   enclosingType {
                     name: "Try$$anonfun$1"
                   }
-                  name: "ex$2"
+                  name: "ex$1"
                   tpe {
                     type: Named
                     namedType {
@@ -186,7 +186,7 @@ member {
               rhs {
                 type: VarRef
                 varRef {
-                  name: "ex$2"
+                  name: "ex$1"
                 }
               }
             }

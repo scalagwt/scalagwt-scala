@@ -228,9 +228,9 @@ trait Infer {
       if (sym.isError) {
         tree setSymbol sym setType ErrorType
       } else {
-        val topClass = context.owner.toplevelClass
+        val topClass = context.owner.enclosingTopLevelClass
         if (context.unit.exists)
-          context.unit.depends += sym.toplevelClass
+          context.unit.depends += sym.enclosingTopLevelClass
 
         var sym1 = sym filter (alt => context.isAccessible(alt, pre, site.isInstanceOf[Super]))
         // Console.println("check acc " + (sym, sym1) + ":" + (sym.tpe, sym1.tpe) + " from " + pre);//DEBUG
@@ -640,13 +640,7 @@ trait Infer {
         case ExistentialType(tparams, qtpe) =>
           isApplicable(undetparams, qtpe, argtpes0, pt)
         case MethodType(params, _) =>
-          val formals0 = params map { param =>
-            param.tpe match {
-              case TypeRef(_, sym, List(tpe)) if sym isNonBottomSubClass CodeClass => tpe
-              case tpe => tpe
-            }
-          }
-          val formals = formalTypes(formals0, argtpes0.length)
+          val formals = formalTypes(params map { _.tpe }, argtpes0.length)
 
           def tryTupleApply: Boolean = {
             // if 1 formal, 1 argtpe (a tuple), otherwise unmodified argtpes0
@@ -1394,7 +1388,7 @@ trait Infer {
           NoBestExprAlternativeError(tree, pt)
         } else if (!competing.isEmpty) {
           if (secondTry) NoBestExprAlternativeError(tree, pt)
-          else { if (!pt.isErroneous) AmbiguousExprAlternativeError(tree, pre, best, competing.head, pt) }
+          else if (!pt.isErroneous) AmbiguousExprAlternativeError(tree, pre, best, competing.head, pt)
         } else {
 //          val applicable = alts1 filter (alt =>
 //            global.typer.infer.isWeaklyCompatible(pre.memberType(alt), pt))
@@ -1404,10 +1398,14 @@ trait Infer {
       }
     }
 
-    @inline private def inSilentMode(expr: Typer => Boolean): Boolean = {
-        val silentContext = context.makeSilent(context.ambiguousErrors)
-        val res = expr(newTyper(silentContext))
-        if (silentContext.hasErrors) false else res
+    @inline private def inSilentMode(context: Context)(expr: => Boolean): Boolean = {
+      val oldState = context.state
+      context.setBufferErrors()
+      val res = expr
+      val contextWithErrors = context.hasErrors
+      context.flushBuffer()
+      context.restoreState(oldState)
+      res && !contextWithErrors
     }
 
     // Checks against the name of the parameter and also any @deprecatedName.
@@ -1478,7 +1476,7 @@ trait Infer {
 
           val applicable = resolveOverloadedMethod(argtpes, {
             alts filter { alt =>
-              inSilentMode(typer0 => typer0.infer.isApplicable(undetparams, followApply(pre.memberType(alt)), argtpes, pt)) &&
+              inSilentMode(context)(isApplicable(undetparams, followApply(pre.memberType(alt)), argtpes, pt)) &&
               (!varArgsOnly || isVarArgsList(alt.tpe.params))
             }
           })

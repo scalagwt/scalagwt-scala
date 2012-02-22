@@ -444,29 +444,6 @@ abstract class ExplicitOuter extends InfoTransform
       else Block(nguard.toList, t) setType t.tpe
     }
 
-    /** Checks if given Match can be translated to switch table. */
-    def isSwitchable(tree: Match): Boolean = {
-      val Match(selector, cases) = tree
-      def isSwitchableLiteral(x: Tree): Boolean = x match {
-        case Literal(const) => const.tag match {
-          case ByteTag | ShortTag | IntTag | CharTag => true
-          case _ => false
-        }
-        case _ => false
-      }
-      def isSwitchableCase(x: CaseDef) = x match {
-        case CaseDef(lit: Literal, EmptyTree, _) => isSwitchableLiteral(lit)
-        case CaseDef(Alternative(alts), EmptyTree, _) => alts forall isSwitchableLiteral
-        case CaseDef(Ident(nme.WILDCARD), EmptyTree, _) => true
-        case _ => false
-      }
-      def isSwitchableTpe(tpe: Type): Boolean = {
-        val switchableTpes = Set(ByteClass.tpe, ShortClass.tpe, IntClass.tpe, CharClass.tpe)
-        switchableTpes contains tpe
-      }
-      isSwitchableTpe(tree.selector.tpe) && (cases forall isSwitchableCase)
-    }
-
     /** The main transformation method */
     override def transform(tree: Tree): Tree = {
       val sym = tree.symbol
@@ -540,9 +517,7 @@ abstract class ExplicitOuter extends InfoTransform
           super.transform(treeCopy.Apply(tree, sel, outerVal :: args))
 
         // entry point for pattern matcher translation
-        //TODO(grek): Once Yvirtpatmat handles pattern in try .. catch expressions
-        //we can drop the second condition in the guard as it will always yield true
-        case mch: Match if !(opt.virtPatmat && isSwitchable(mch)) =>
+        case mch: Match if (!opt.virtPatmat) => // don't use old pattern matcher as fallback when the user wants the virtualizing one
           matchTranslation(mch)
 
         case _ =>

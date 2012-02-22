@@ -7,7 +7,7 @@ modifiers {
 }
 ext {
   pkg: "scala.runtime"
-  name: "AbstractFunction1"
+  name: "AbstractFunction1$mcLI$sp"
 }
 implements {
   pkg: "scala"
@@ -479,6 +479,69 @@ member {
     isPublic: true
   }
   method {
+    name: "apply"
+    paramDef {
+      name: "v1"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "Object"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "apply"
+                  owner {
+                    name: "CaseClass$"
+                  }
+                  paramType {
+                    type: Primitive
+                    primitiveType: Int
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      name: "CaseClass"
+                    }
+                  }
+                }
+                argument {
+                  type: VarRef
+                  varRef {
+                    name: "v1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
     isConstructor: true
     name: "new"
     returnType {
@@ -502,13 +565,13 @@ member {
                 name: "new"
                 owner {
                   pkg: "scala.runtime"
-                  name: "AbstractFunction1"
+                  name: "AbstractFunction1$mcLI$sp"
                 }
                 returnType {
                   type: Named
                   namedType {
                     pkg: "scala.runtime"
-                    name: "AbstractFunction1"
+                    name: "AbstractFunction1$mcLI$sp"
                   }
                 }
               }

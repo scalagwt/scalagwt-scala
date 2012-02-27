@@ -38,10 +38,76 @@ member {
                 pkg: "java.lang"
                 name: "Throwable"
               }
-              param: "ex$1"
+              param: "ex8"
               body {
                 type: Block
                 block {
+                  statement {
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Primitive
+                        primitiveType: Boolean
+                      }
+                      name: "rc9"
+                      initializer {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: false
+                        }
+                      }
+                    }
+                  }
+                  statement {
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "java.lang"
+                          name: "Exception"
+                        }
+                      }
+                      name: "x6"
+                      initializer {
+                        type: Literal
+                        literal {
+                          type: Null
+                        }
+                      }
+                    }
+                  }
+                  statement {
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala"
+                          name: "Option"
+                        }
+                      }
+                      name: "zero11"
+                      initializer {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala"
+                            name: "None$"
+                          }
+                          name: "MODULE$"
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "None$"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                   statement {
                     type: VarDef
                     varDef {
@@ -52,42 +118,77 @@ member {
                           name: "Throwable"
                         }
                       }
-                      name: "temp1"
+                      name: "x5"
                       initializer {
                         type: VarRef
                         varRef {
-                          name: "ex$1"
+                          name: "ex8"
                         }
                       }
                     }
                   }
                   statement {
-                    type: If
-                    ifStat {
-                      condition {
-                        type: InstanceOf
-                        instanceOf {
-                          expr {
-                            type: VarRef
-                            varRef {
-                              name: "temp1"
-                            }
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Named
+                        namedType {
+                          pkg: "scala.runtime"
+                          name: "BoxedUnit"
+                        }
+                      }
+                      name: "matchRes12"
+                      initializer {
+                        type: FieldRef
+                        fieldRef {
+                          enclosingType {
+                            pkg: "scala.runtime"
+                            name: "BoxedUnit"
                           }
+                          name: "UNIT"
                           tpe {
                             type: Named
                             namedType {
-                              pkg: "java.lang"
-                              name: "Exception"
+                              pkg: "scala.runtime"
+                              name: "BoxedUnit"
                             }
                           }
                         }
                       }
-                      then {
-                        type: Block
-                        block {
-                          statement {
-                            type: VarDef
-                            varDef {
+                    }
+                  }
+                  statement {
+                    type: VarDef
+                    varDef {
+                      tpe {
+                        type: Primitive
+                        primitiveType: Boolean
+                      }
+                      name: "keepGoing10"
+                      initializer {
+                        type: Literal
+                        literal {
+                          type: Boolean
+                          boolValue: true
+                        }
+                      }
+                    }
+                  }
+                  statement {
+                    type: Block
+                    block {
+                      statement {
+                        type: If
+                        ifStat {
+                          condition {
+                            type: InstanceOf
+                            instanceOf {
+                              expr {
+                                type: VarRef
+                                varRef {
+                                  name: "x5"
+                                }
+                              }
                               tpe {
                                 type: Named
                                 namedType {
@@ -95,260 +196,124 @@ member {
                                   name: "Exception"
                                 }
                               }
-                              name: "temp2"
-                              initializer {
-                                type: Cast
-                                cast {
-                                  expr {
-                                    type: VarRef
-                                    varRef {
-                                      name: "temp1"
+                            }
+                          }
+                          then {
+                            type: Block
+                            block {
+                              statement {
+                                type: Expr
+                                expr {
+                                  type: Assignment
+                                  assignment {
+                                    lhs {
+                                      type: VarRef
+                                      varRef {
+                                        name: "rc9"
+                                      }
+                                    }
+                                    rhs {
+                                      type: Literal
+                                      literal {
+                                        type: Boolean
+                                        boolValue: true
+                                      }
                                     }
                                   }
+                                }
+                              }
+                              statement {
+                                type: Expr
+                                expr {
+                                  type: Assignment
+                                  assignment {
+                                    lhs {
+                                      type: VarRef
+                                      varRef {
+                                        name: "x6"
+                                      }
+                                    }
+                                    rhs {
+                                      type: Cast
+                                      cast {
+                                        expr {
+                                          type: VarRef
+                                          varRef {
+                                            name: "x5"
+                                          }
+                                        }
+                                        tpe {
+                                          type: Named
+                                          namedType {
+                                            pkg: "java.lang"
+                                            name: "Exception"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              statement {
+                                type: VarDef
+                                varDef {
                                   tpe {
                                     type: Named
                                     namedType {
-                                      pkg: "java.lang"
-                                      name: "Exception"
+                                      pkg: "scala"
+                                      name: "Option"
                                     }
                                   }
+                                  name: "$1$"
                                 }
                               }
-                            }
-                          }
-                          statement {
-                            type: VarDef
-                            varDef {
-                              tpe {
-                                type: Named
-                                namedType {
-                                  pkg: "java.lang"
-                                  name: "Exception"
-                                }
-                              }
-                              name: "x"
-                              initializer {
-                                type: VarRef
-                                varRef {
-                                  name: "temp2"
-                                }
-                              }
-                            }
-                          }
-                          statement {
-                            type: If
-                            ifStat {
-                              condition {
-                                type: MethodCall
-                                methodCall {
-                                  receiver {
-                                    type: ThisRef
-                                  }
-                                  signature {
-                                    name: "gd1$1"
-                                    owner {
-                                      name: "Try"
-                                    }
-                                    paramType {
-                                      type: Named
-                                      namedType {
-                                        pkg: "java.lang"
-                                        name: "Exception"
-                                      }
-                                    }
-                                    returnType {
-                                      type: Primitive
-                                      primitiveType: Boolean
-                                    }
-                                  }
-                                  argument {
-                                    type: VarRef
-                                    varRef {
-                                      name: "x"
-                                    }
-                                  }
-                                }
-                              }
-                              then {
-                                type: Block
-                                block {
-                                  statement {
-                                    type: VarDef
-                                    varDef {
-                                      tpe {
-                                        type: Named
-                                        namedType {
-                                          pkg: "java.lang"
-                                          name: "Exception"
+                              statement {
+                                type: If
+                                ifStat {
+                                  condition {
+                                    type: MethodCall
+                                    methodCall {
+                                      signature {
+                                        name: "equals"
+                                        owner {
+                                          pkg: "scala.runtime"
+                                          name: "BoxesRunTime"
                                         }
-                                      }
-                                      name: "$1$"
-                                    }
-                                  }
-                                  statement {
-                                    type: LabelledStat
-                                    labelledStat {
-                                      label: "body$percent01"
-                                      statement {
-                                        type: While
-                                        whileStat {
-                                          condition {
-                                            type: Literal
-                                            literal {
-                                              type: Boolean
-                                              boolValue: true
-                                            }
-                                          }
-                                          body {
-                                            type: Block
-                                            block {
-                                              statement {
-                                                type: Block
-                                                block {
-                                                  statement {
-                                                    type: Expr
-                                                    expr {
-                                                      type: MethodCall
-                                                      methodCall {
-                                                        receiver {
-                                                          type: FieldRef
-                                                          fieldRef {
-                                                            enclosingType {
-                                                              pkg: "scala"
-                                                              name: "Predef$"
-                                                            }
-                                                            name: "MODULE$"
-                                                            tpe {
-                                                              type: Named
-                                                              namedType {
-                                                                pkg: "scala"
-                                                                name: "Predef$"
-                                                              }
-                                                            }
-                                                          }
-                                                        }
-                                                        signature {
-                                                          name: "println"
-                                                          owner {
-                                                            pkg: "scala"
-                                                            name: "Predef$"
-                                                          }
-                                                          paramType {
-                                                            type: Named
-                                                            namedType {
-                                                              pkg: "java.lang"
-                                                              name: "Object"
-                                                            }
-                                                          }
-                                                          returnType {
-                                                            type: Void
-                                                          }
-                                                        }
-                                                        argument {
-                                                          type: Binary
-                                                          binary {
-                                                            op: Concat
-                                                            lhs {
-                                                              type: Literal
-                                                              literal {
-                                                                type: String
-                                                                stringValue: "first case "
-                                                              }
-                                                            }
-                                                            rhs {
-                                                              type: VarRef
-                                                              varRef {
-                                                                name: "x"
-                                                              }
-                                                            }
-                                                            tpe {
-                                                              type: Named
-                                                              namedType {
-                                                                pkg: "java.lang"
-                                                                name: "String"
-                                                              }
-                                                            }
-                                                          }
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                }
-                                              }
-                                              statement {
-                                                type: Break
-                                                break {
-                                                  label: "body$percent01"
-                                                }
-                                              }
-                                            }
+                                        paramType {
+                                          type: Named
+                                          namedType {
+                                            pkg: "java.lang"
+                                            name: "Object"
                                           }
                                         }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                              elsee {
-                                type: Block
-                                block {
-                                  statement {
-                                    type: Expr
-                                    expr {
-                                      type: MethodCall
-                                      methodCall {
-                                        receiver {
-                                          type: FieldRef
-                                          fieldRef {
-                                            enclosingType {
-                                              pkg: "scala"
-                                              name: "Predef$"
-                                            }
-                                            name: "MODULE$"
-                                            tpe {
-                                              type: Named
-                                              namedType {
-                                                pkg: "scala"
-                                                name: "Predef$"
-                                              }
-                                            }
+                                        paramType {
+                                          type: Named
+                                          namedType {
+                                            pkg: "java.lang"
+                                            name: "Object"
                                           }
                                         }
-                                        signature {
-                                          name: "println"
-                                          owner {
-                                            pkg: "scala"
-                                            name: "Predef$"
+                                        returnType {
+                                          type: Primitive
+                                          primitiveType: Boolean
+                                        }
+                                      }
+                                      argument {
+                                        type: MethodCall
+                                        methodCall {
+                                          receiver {
+                                            type: VarRef
+                                            varRef {
+                                              name: "x6"
+                                            }
                                           }
-                                          paramType {
-                                            type: Named
-                                            namedType {
+                                          signature {
+                                            name: "getMessage"
+                                            owner {
                                               pkg: "java.lang"
-                                              name: "Object"
+                                              name: "Throwable"
                                             }
-                                          }
-                                          returnType {
-                                            type: Void
-                                          }
-                                        }
-                                        argument {
-                                          type: Binary
-                                          binary {
-                                            op: Concat
-                                            lhs {
-                                              type: Literal
-                                              literal {
-                                                type: String
-                                                stringValue: "second case "
-                                              }
-                                            }
-                                            rhs {
-                                              type: VarRef
-                                              varRef {
-                                                name: "temp2"
-                                              }
-                                            }
-                                            tpe {
+                                            returnType {
                                               type: Named
                                               namedType {
                                                 pkg: "java.lang"
@@ -358,8 +323,423 @@ member {
                                           }
                                         }
                                       }
+                                      argument {
+                                        type: Literal
+                                        literal {
+                                          type: String
+                                          stringValue: "test"
+                                        }
+                                      }
                                     }
                                   }
+                                  then {
+                                    type: Block
+                                    block {
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: Assignment
+                                          assignment {
+                                            lhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "keepGoing10"
+                                              }
+                                            }
+                                            rhs {
+                                              type: Literal
+                                              literal {
+                                                type: Boolean
+                                                boolValue: false
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: MethodCall
+                                          methodCall {
+                                            receiver {
+                                              type: FieldRef
+                                              fieldRef {
+                                                enclosingType {
+                                                  pkg: "scala"
+                                                  name: "Predef$"
+                                                }
+                                                name: "MODULE$"
+                                                tpe {
+                                                  type: Named
+                                                  namedType {
+                                                    pkg: "scala"
+                                                    name: "Predef$"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                            signature {
+                                              name: "println"
+                                              owner {
+                                                pkg: "scala"
+                                                name: "Predef$"
+                                              }
+                                              paramType {
+                                                type: Named
+                                                namedType {
+                                                  pkg: "java.lang"
+                                                  name: "Object"
+                                                }
+                                              }
+                                              returnType {
+                                                type: Void
+                                              }
+                                            }
+                                            argument {
+                                              type: Binary
+                                              binary {
+                                                op: Concat
+                                                lhs {
+                                                  type: Literal
+                                                  literal {
+                                                    type: String
+                                                    stringValue: "first case "
+                                                  }
+                                                }
+                                                rhs {
+                                                  type: VarRef
+                                                  varRef {
+                                                    name: "x6"
+                                                  }
+                                                }
+                                                tpe {
+                                                  type: Named
+                                                  namedType {
+                                                    pkg: "java.lang"
+                                                    name: "String"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: Assignment
+                                          assignment {
+                                            lhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "$1$"
+                                              }
+                                            }
+                                            rhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "zero11"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  elsee {
+                                    type: Block
+                                    block {
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: Assignment
+                                          assignment {
+                                            lhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "$1$"
+                                              }
+                                            }
+                                            rhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "zero11"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          elsee {
+                            type: Block
+                            block {
+                            }
+                          }
+                        }
+                      }
+                      statement {
+                        type: VarDef
+                        varDef {
+                          tpe {
+                            type: Named
+                            namedType {
+                              pkg: "scala"
+                              name: "Option"
+                            }
+                          }
+                          name: "$2$"
+                        }
+                      }
+                      statement {
+                        type: If
+                        ifStat {
+                          condition {
+                            type: VarRef
+                            varRef {
+                              name: "keepGoing10"
+                            }
+                          }
+                          then {
+                            type: Block
+                            block {
+                              statement {
+                                type: VarDef
+                                varDef {
+                                  tpe {
+                                    type: Named
+                                    namedType {
+                                      pkg: "scala"
+                                      name: "Option"
+                                    }
+                                  }
+                                  name: "$3$"
+                                }
+                              }
+                              statement {
+                                type: If
+                                ifStat {
+                                  condition {
+                                    type: VarRef
+                                    varRef {
+                                      name: "rc9"
+                                    }
+                                  }
+                                  then {
+                                    type: Block
+                                    block {
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: Assignment
+                                          assignment {
+                                            lhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "keepGoing10"
+                                              }
+                                            }
+                                            rhs {
+                                              type: Literal
+                                              literal {
+                                                type: Boolean
+                                                boolValue: false
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: MethodCall
+                                          methodCall {
+                                            receiver {
+                                              type: FieldRef
+                                              fieldRef {
+                                                enclosingType {
+                                                  pkg: "scala"
+                                                  name: "Predef$"
+                                                }
+                                                name: "MODULE$"
+                                                tpe {
+                                                  type: Named
+                                                  namedType {
+                                                    pkg: "scala"
+                                                    name: "Predef$"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                            signature {
+                                              name: "println"
+                                              owner {
+                                                pkg: "scala"
+                                                name: "Predef$"
+                                              }
+                                              paramType {
+                                                type: Named
+                                                namedType {
+                                                  pkg: "java.lang"
+                                                  name: "Object"
+                                                }
+                                              }
+                                              returnType {
+                                                type: Void
+                                              }
+                                            }
+                                            argument {
+                                              type: Binary
+                                              binary {
+                                                op: Concat
+                                                lhs {
+                                                  type: Literal
+                                                  literal {
+                                                    type: String
+                                                    stringValue: "second case "
+                                                  }
+                                                }
+                                                rhs {
+                                                  type: VarRef
+                                                  varRef {
+                                                    name: "x6"
+                                                  }
+                                                }
+                                                tpe {
+                                                  type: Named
+                                                  namedType {
+                                                    pkg: "java.lang"
+                                                    name: "String"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: Assignment
+                                          assignment {
+                                            lhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "$3$"
+                                              }
+                                            }
+                                            rhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "zero11"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  elsee {
+                                    type: Block
+                                    block {
+                                      statement {
+                                        type: Expr
+                                        expr {
+                                          type: Assignment
+                                          assignment {
+                                            lhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "$3$"
+                                              }
+                                            }
+                                            rhs {
+                                              type: VarRef
+                                              varRef {
+                                                name: "zero11"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              statement {
+                                type: Expr
+                                expr {
+                                  type: Assignment
+                                  assignment {
+                                    lhs {
+                                      type: VarRef
+                                      varRef {
+                                        name: "$2$"
+                                      }
+                                    }
+                                    rhs {
+                                      type: VarRef
+                                      varRef {
+                                        name: "$3$"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          elsee {
+                            type: Block
+                            block {
+                              statement {
+                                type: Expr
+                                expr {
+                                  type: Assignment
+                                  assignment {
+                                    lhs {
+                                      type: VarRef
+                                      varRef {
+                                        name: "$2$"
+                                      }
+                                    }
+                                    rhs {
+                                      type: VarRef
+                                      varRef {
+                                        name: "zero11"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  statement {
+                    type: If
+                    ifStat {
+                      condition {
+                        type: VarRef
+                        varRef {
+                          name: "keepGoing10"
+                        }
+                      }
+                      then {
+                        type: Block
+                        block {
+                          statement {
+                            type: Throw
+                            throwStat {
+                              expression {
+                                type: VarRef
+                                varRef {
+                                  name: "ex8"
                                 }
                               }
                             }
@@ -369,17 +749,6 @@ member {
                       elsee {
                         type: Block
                         block {
-                          statement {
-                            type: Throw
-                            throwStat {
-                              expression {
-                                type: VarRef
-                                varRef {
-                                  name: "ex$1"
-                                }
-                              }
-                            }
-                          }
                         }
                       }
                     }
@@ -419,7 +788,7 @@ member {
                 pkg: "java.lang"
                 name: "ClassCastException"
               }
-              param: "$2$"
+              param: "$4$"
               body {
                 type: Block
                 block {
@@ -458,7 +827,7 @@ member {
                 pkg: "java.lang"
                 name: "Throwable"
               }
-              param: "$3$"
+              param: "$5$"
               body {
                 type: Block
                 block {
@@ -578,7 +947,7 @@ member {
                 pkg: "java.lang"
                 name: "Exception"
               }
-              param: "ex$2"
+              param: "ex$1"
               body {
                 type: Block
                 block {
@@ -630,108 +999,12 @@ member {
                           argument {
                             type: VarRef
                             varRef {
-                              name: "ex$2"
+                              name: "ex$1"
                             }
                           }
                         }
                       }
                     }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-member {
-  type: Method
-  modifiers {
-    isPrivate: true
-    isFinal: true
-  }
-  method {
-    name: "gd1$1"
-    paramDef {
-      name: "x$1"
-      tpe {
-        type: Named
-        namedType {
-          pkg: "java.lang"
-          name: "Exception"
-        }
-      }
-    }
-    returnType {
-      type: Primitive
-      primitiveType: Boolean
-    }
-    body {
-      type: Block
-      block {
-        statement {
-          type: Return
-          returnStat {
-            expression {
-              type: MethodCall
-              methodCall {
-                signature {
-                  name: "equals"
-                  owner {
-                    pkg: "scala.runtime"
-                    name: "BoxesRunTime"
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "java.lang"
-                      name: "Object"
-                    }
-                  }
-                  paramType {
-                    type: Named
-                    namedType {
-                      pkg: "java.lang"
-                      name: "Object"
-                    }
-                  }
-                  returnType {
-                    type: Primitive
-                    primitiveType: Boolean
-                  }
-                }
-                argument {
-                  type: MethodCall
-                  methodCall {
-                    receiver {
-                      type: VarRef
-                      varRef {
-                        name: "x$1"
-                      }
-                    }
-                    signature {
-                      name: "getMessage"
-                      owner {
-                        pkg: "java.lang"
-                        name: "Throwable"
-                      }
-                      returnType {
-                        type: Named
-                        namedType {
-                          pkg: "java.lang"
-                          name: "String"
-                        }
-                      }
-                    }
-                  }
-                }
-                argument {
-                  type: Literal
-                  literal {
-                    type: String
-                    stringValue: "test"
                   }
                 }
               }

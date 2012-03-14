@@ -402,6 +402,7 @@ LOCAL REFERENCE BUILD (LOCKER)
     </scalacfork>
     <propertyfile file="${build-locker.dir}/classes/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-locker.dir}/classes/library">
@@ -447,6 +448,7 @@ LOCAL REFERENCE BUILD (LOCKER)
     </scalacfork>
     <propertyfile file="${build-locker.dir}/classes/compiler/compiler.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-locker.dir}/classes/compiler">
@@ -678,6 +680,7 @@ QUICK BUILD (QUICK)
     </scalacfork>
     <propertyfile file="${build-quick.dir}/classes/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-quick.dir}/classes/library">
@@ -743,6 +746,7 @@ QUICK BUILD (QUICK)
     </scalacfork>
     <propertyfile file="${build-quick.dir}/classes/compiler/compiler.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-quick.dir}/classes/compiler">
@@ -1229,6 +1233,7 @@ BOOTSTRAPPING BUILD (STRAP)
     </scalacfork>
     <propertyfile file="${build-strap.dir}/classes/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-strap.dir}/classes/library">
@@ -1273,6 +1278,7 @@ BOOTSTRAPPING BUILD (STRAP)
     </scalacfork>
     <propertyfile file="${build-strap.dir}/classes/compiler/compiler.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-strap.dir}/classes/compiler">

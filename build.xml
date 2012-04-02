@@ -252,7 +252,7 @@ INITIALISATION
     <property name="maven.version.suffix" value=""/>
   </target>
   <target name="init.build.nopatch.release" unless="version.hasbuildnum" depends="init.hasbuildnum">
-    <property name="version.suffix" value=""/>
+    <property name="version.suffix" value="-scalagwt"/>
   </target>
   <!-- funny thing, ant is.  Can only specify *one* property in if check.  Guaranteed that both are true here,
        since properties are immutable.  -->

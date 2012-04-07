@@ -166,6 +166,8 @@ PROPERTIES
 
   <!-- Loads custom properties definitions -->
   <property file="${basedir}/build.properties"/>
+  <!-- Generating version number -->
+  <property file="${basedir}/build.number"/>
 
   <!-- Additional command line arguments for scalac. They are added to all build targets -->
   <property name="scalac.args" value=""/>
@@ -237,15 +239,38 @@ INITIALISATION
     </touch>
   </target>
 
-  <target name="init" depends="init.jars">
+  <!-- Determines OSGi string + maven extension. -->
+  <target name="init.hasbuildnum">
+    <condition property="version.hasbuildnum">
+      <not><equals arg1="${version.bnum}" arg2="0"/></not>
+    </condition>
+  </target>
+  <target name="init.build.snapshot" unless="build.release">
+    <property name="maven.version.suffix" value="-SNAPSHOT"/>
+  </target>
+  <target name="init.build.release" if="build.release" depends="init.hasbuildnum, init.build.snapshot">
+    <property name="maven.version.suffix" value=""/>
+  </target>
+  <target name="init.build.nopatch.release" unless="version.hasbuildnum" depends="init.hasbuildnum">
+    <property name="version.suffix" value="-scalagwt"/>
+  </target>
+  <!-- funny thing, ant is.  Can only specify *one* property in if check.  Guaranteed that both are true here,
+       since properties are immutable.  -->
+  <target name="init.build.patch.release" if="version.hasbuildnum" depends="init.build.nopatch.release">
+    <property name="version.suffix" value="-${version.bnum}"/>
+  </target>
+
+  <target name="init.build.suffix.done" depends="init.build.release, init.build.patch.release"/>
+
+  <target name="init" depends="init.jars, init.build.suffix.done">
   <!-- scalac.args.optimise is selectively overridden in certain antcall tasks. -->
     <property name="scalac.args.optimise" value=""/>
   <!-- scalac.args.quickonly are added to quick.* targets but not others (particularly, locker.)
        This is to facilitate testing new command line options which do not yet exist in starr. -->
   <property name="scalac.args.quickonly" value=""/>
     <property name="scalac.args.all" value="${scalac.args} ${scalac.args.optimise}"/>
-	<property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
-  <!-- Setting-up Ant contrib tasks -->
+    <property name="scalac.args.quick" value="${scalac.args.all} ${scalac.args.quickonly}"/>
+    <!-- Setting-up Ant contrib tasks -->
     <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${lib.dir}/ant/ant-contrib.jar"/>
     <!-- This is the start time for the distribution -->
     <tstamp prefix="time">
@@ -256,22 +281,30 @@ INITIALISATION
     <condition property="os.win">
       <os family="windows"/>
     </condition>
+    
+    <exec osfamily="unix" executable="tools/get-scala-commit-sha" outputproperty="git.commit.sha" failifexecutionfails="false" />
+    <exec osfamily="windows" executable="tools/get-scala-commit-sha.bat" outputproperty="git.commit.sha" failifexecutionfails="false" />
+    <exec osfamily="unix" executable="tools/get-scala-commit-date" outputproperty="git.commit.date" failifexecutionfails="false" />
+    <exec osfamily="windows" executable="tools/get-scala-commit-date.bat" outputproperty="git.commit.date" failifexecutionfails="false" />
+    <exec osfamily="unix" executable="tools/get-scala-commit-drift" outputproperty="git.commit.drift" failifexecutionfails="false" />
+    <exec osfamily="windows" executable="tools/get-scala-commit-drift.bat" outputproperty="git.commit.drift" failifexecutionfails="false" />
+    <!-- some default in case something went wrong getting the revision -->
+    <property name="git.describe" value="-unknown-"/>
 
-    <!-- Generating version string -->
-    <exec osfamily="unix" executable="tools/get-scala-revision" outputproperty="version.number" failifexecutionfails="false" />
-    <exec osfamily="windows" executable="tools/get-scala-revision.bat" outputproperty="version.number" failifexecutionfails="false" />
+    <!-- We use the git describe to determine the OSGi modifier for our build. -->
+    <property
+      name="maven.version.number"
+      value="${version.major}.${version.minor}.${version.patch}${version.suffix}${maven.version.suffix}"/>
+    <property
+      name="version.number"
+      value="${maven.version.number}-${git.commit.date}-${git.commit.drift}-${git.commit.sha}"/>
+    <property
+      name="osgi.version.number"
+      value="${version.major}.${version.minor}.${version.patch}.v${git.commit.date}${version.suffix}-${git.commit.sha}"/>
     <!-- some default in case something went wrong getting the revision -->
     <property name="version.number" value="-unknown-"/>
     <property name="init.avail" value="yes"/>
 
-    <!-- And print-out what we are building -->
-    <echo message="       build time: ${time.human}" />
-    <echo message="     java version: ${java.vm.name} ${java.version}" />
-    <echo message="        java args: ${env.ANT_OPTS} ${jvm.opts}" />
-    <echo message="       javac args: ${javac.args}" />
-    <echo message="      scalac args: ${scalac.args}" />
-    <echo message="     build number: ${version.number}" />
-  
     <!-- Local libs (developer use.) -->
     <mkdir dir="${lib-extra.dir}"/>
     
@@ -294,7 +327,17 @@ INITIALISATION
       <path refid="lib.extra"/>
     </path>
 
-    <!-- Define tasks that can be run with Starr -->
+    <!-- And print-out what we are building -->
+    <echo message="       build time: ${time.human}" />
+    <echo message="     java version: ${java.vm.name} ${java.version}" />
+    <echo message="        java args: ${env.ANT_OPTS} ${jvm.opts}" />
+    <echo message="       javac args: ${javac.args}" />
+    <echo message="      scalac args: ${scalac.args}" />
+    <echo message="    maven version: ${maven.version.number}"/>
+    <echo message="     OSGi version: ${osgi.version.number}" />
+    <echo message="canonical version: ${version.number}" />
+
+  <!-- Define tasks that can be run with Starr -->
     <path id="starr.classpath">
       <pathelement location="${lib.starr.jar}"/>
       <pathelement location="${comp.starr.jar}"/>
@@ -359,6 +402,8 @@ LOCAL REFERENCE BUILD (LOCKER)
     </scalacfork>
     <propertyfile file="${build-locker.dir}/classes/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
+      <entry key="osgi.version.number" value="${osgi.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-locker.dir}/classes/library">
@@ -404,6 +449,8 @@ LOCAL REFERENCE BUILD (LOCKER)
     </scalacfork>
     <propertyfile file="${build-locker.dir}/classes/compiler/compiler.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
+      <entry key="osgi.version.number" value="${osgi.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-locker.dir}/classes/compiler">
@@ -635,6 +682,8 @@ QUICK BUILD (QUICK)
     </scalacfork>
     <propertyfile file="${build-quick.dir}/classes/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
+      <entry key="osgi.version.number" value="${osgi.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-quick.dir}/classes/library">
@@ -648,7 +697,7 @@ QUICK BUILD (QUICK)
     <touch file="${build-quick.dir}/library.complete" verbose="no"/>
     <stopwatch name="quick.lib.timer" action="total"/>
   </target>
-
+  
   <target name="quick.newlibs" depends="quick.lib" if="libs.outdated">
     <antcall target="libs.done" inheritRefs="true"/>
     <property name="fjbg.jar" value="${build-libs.dir}/fjbg.jar"/>
@@ -700,6 +749,8 @@ QUICK BUILD (QUICK)
     </scalacfork>
     <propertyfile file="${build-quick.dir}/classes/compiler/compiler.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
+      <entry key="osgi.version.number" value="${osgi.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-quick.dir}/classes/compiler">
@@ -766,7 +817,7 @@ QUICK BUILD (QUICK)
     <touch file="${build-quick.dir}/plugins.complete" verbose="no"/>
     <stopwatch name="quick.plugins.timer" action="total"/>
   </target>
-
+  
   <target name="quick.pre-scalacheck" depends="quick.plugins">
     <uptodate property="quick.scalacheck.available" targetfile="${build-quick.dir}/scalacheck.complete">
       <srcfiles dir="${src.dir}/scalacheck"/>
@@ -922,7 +973,7 @@ QUICK BUILD (QUICK)
     <chmod perm="ugo+rx" file="${build-quick.dir}/bin/scalap"/>
     <touch file="${build-quick.dir}/bin.complete" verbose="no"/>
   </target>
-
+  
   <target name="quick.done" depends="quick.bin">
     <path id="quick.classpath">
       <pathelement location="${build-quick.dir}/classes/library"/>
@@ -1186,6 +1237,8 @@ BOOTSTRAPPING BUILD (STRAP)
     </scalacfork>
     <propertyfile file="${build-strap.dir}/classes/library/library.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
+      <entry key="osgi.version.number" value="${osgi.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-strap.dir}/classes/library">
@@ -1230,6 +1283,8 @@ BOOTSTRAPPING BUILD (STRAP)
     </scalacfork>
     <propertyfile file="${build-strap.dir}/classes/compiler/compiler.properties">
       <entry key="version.number" value="${version.number}"/>
+      <entry key="maven.version.number" value="${maven.version.number}"/>
+      <entry key="osgi.version.number" value="${osgi.version.number}"/>
       <entry key="copyright.string" value="${copyright.string}"/>
     </propertyfile>
     <copy todir="${build-strap.dir}/classes/compiler">

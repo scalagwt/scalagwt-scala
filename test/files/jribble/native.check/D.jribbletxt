@@ -1,0 +1,176 @@
+name {
+  name: "D"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isNative: true
+  }
+  method {
+    name: "bar"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Primitive
+        primitiveType: Int
+      }
+    }
+    returnType {
+      type: Primitive
+      primitiveType: Int
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "x"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "D"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isFinal: true
+    isStatic: true
+  }
+  method {
+    name: "foo"
+    paramDef {
+      name: "x_0"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "String"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "String"
+      }
+    }
+    body {
+      type: Return
+      returnStat {
+        expression {
+          type: MethodCall
+          methodCall {
+            receiver {
+              type: FieldRef
+              fieldRef {
+                enclosingType {
+                  name: "D$"
+                }
+                name: "MODULE$"
+                tpe {
+                  type: Named
+                  namedType {
+                    name: "D$"
+                  }
+                }
+              }
+            }
+            signature {
+              name: "foo"
+              owner {
+                name: "D$"
+              }
+              paramType {
+                type: Named
+                namedType {
+                  pkg: "java.lang"
+                  name: "String"
+                }
+              }
+              returnType {
+                type: Named
+                namedType {
+                  pkg: "java.lang"
+                  name: "String"
+                }
+              }
+            }
+            argument {
+              type: VarRef
+              varRef {
+                name: "x_0"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

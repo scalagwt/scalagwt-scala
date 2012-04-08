@@ -86,6 +86,9 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
     if ((flags & (DEFERRED | ABSTRACT)) != 0 && !sym.enclClass.hasFlag(INTERFACE))
       proto.setIsAbstract(true)
 
+    if (isNative(sym))
+      proto.setIsNative(true)
+
     proto.build
   }
     

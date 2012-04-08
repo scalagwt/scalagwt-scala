@@ -1,0 +1,42 @@
+name {
+  name: "C"
+}
+isInterface: true
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isNative: true
+  }
+  method {
+    name: "foo"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "String"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "String"
+      }
+    }
+  }
+}

@@ -419,6 +419,18 @@ abstract class ProtobufConverter extends AnyRef with JribbleAnalysis {
         classLiteral.setTpe(convert(x))
         proto.setClassLiteral(classLiteral)
 
+      case Literal(constant: Constant)
+      //reference to Java's enum constant
+      if (constant.tag == EnumTag) =>
+        val sym = constant.symbolValue
+        //enum constants are encoded as references to static fields
+        proto.setType(P.Expr.ExprType.FieldRef)
+        val fieldRef = P.FieldRef.newBuilder
+        fieldRef.setEnclosingType(globalName(sym.owner))
+        fieldRef.setName(sym.javaSimpleName.toString)
+        fieldRef.setTpe(convert(sym.tpe.underlying))
+        proto.setFieldRef(fieldRef)
+
       case Literal(constant: Constant) =>
         proto.setType(P.Expr.ExprType.Literal)
         proto.setLiteral(convertLiteral(constant))

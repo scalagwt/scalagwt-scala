@@ -1,0 +1,166 @@
+name {
+  name: "Bar"
+}
+modifiers {
+  isPublic: true
+}
+ext {
+  pkg: "java.lang"
+  name: "Object"
+}
+implements {
+  pkg: "scala"
+  name: "ScalaObject"
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "m1"
+    paramDef {
+      name: "x"
+      tpe {
+        type: Named
+        namedType {
+          name: "Foo$Foo2"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        name: "Foo$Foo2"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "x"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    name: "m2"
+    returnType {
+      type: Named
+      namedType {
+        name: "Foo$Foo2"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: MethodCall
+              methodCall {
+                receiver {
+                  type: ThisRef
+                }
+                signature {
+                  name: "m1"
+                  owner {
+                    name: "Bar"
+                  }
+                  paramType {
+                    type: Named
+                    namedType {
+                      name: "Foo$Foo2"
+                    }
+                  }
+                  returnType {
+                    type: Named
+                    namedType {
+                      name: "Foo$Foo2"
+                    }
+                  }
+                }
+                argument {
+                  type: FieldRef
+                  fieldRef {
+                    enclosingType {
+                      name: "Foo$Foo2"
+                    }
+                    name: "SomeFoo2"
+                    tpe {
+                      type: Named
+                      namedType {
+                        name: "Foo$Foo2"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+  }
+  method {
+    isConstructor: true
+    name: "new"
+    returnType {
+      type: Named
+      namedType {
+        name: "Bar"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Expr
+          expr {
+            type: MethodCall
+            methodCall {
+              receiver {
+                type: ThisRef
+              }
+              signature {
+                name: "new"
+                owner {
+                  pkg: "java.lang"
+                  name: "Object"
+                }
+                returnType {
+                  type: Named
+                  namedType {
+                    pkg: "java.lang"
+                    name: "Object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

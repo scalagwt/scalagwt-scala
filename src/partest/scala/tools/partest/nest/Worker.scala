@@ -596,7 +596,8 @@ class Worker(val fileManager: FileManager, params: TestRunParams) extends Actor 
         val dir      = file.getParentFile
         val checkDir = Directory(dir) / Directory(fileBase + ".check")
 
-        fileManager.compareDirectories(checkDir, Directory(outDir)) match {
+        // Rule out .class files. Those are the only ones we want to exclude for now.
+        fileManager.compareDirectories(checkDir, Directory(outDir), _.extension != "class") match {
           case Nil => true
           case xs => {
             diff = xs mkString "\n"

@@ -1,0 +1,87 @@
+name {
+  name: "C$class"
+}
+modifiers {
+  isPublic: true
+  isAbstract: true
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isStatic: true
+    isNative: true
+  }
+  method {
+    name: "foo"
+    paramDef {
+      name: "$this"
+      tpe {
+        type: Named
+        namedType {
+          name: "C"
+        }
+      }
+    }
+    paramDef {
+      name: "x"
+      tpe {
+        type: Named
+        namedType {
+          pkg: "java.lang"
+          name: "String"
+        }
+      }
+    }
+    returnType {
+      type: Named
+      namedType {
+        pkg: "java.lang"
+        name: "String"
+      }
+    }
+    body {
+      type: Block
+      block {
+        statement {
+          type: Return
+          returnStat {
+            expression {
+              type: VarRef
+              varRef {
+                name: "x"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+member {
+  type: Method
+  modifiers {
+    isPublic: true
+    isStatic: true
+  }
+  method {
+    name: "$init$"
+    paramDef {
+      name: "$this"
+      tpe {
+        type: Named
+        namedType {
+          name: "C"
+        }
+      }
+    }
+    returnType {
+      type: Void
+    }
+    body {
+      type: Block
+      block {
+      }
+    }
+  }
+}

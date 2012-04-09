@@ -92,6 +92,9 @@ trait JribbleAnalysis {
 
   def isInterface(sym: Symbol): Boolean = sym.hasFlag(INTERFACE)
 
+  /** Checks if symbol has <code>@native</code> annotation attached to it */
+  def isNative(sym: Symbol): Boolean = sym hasAnnotation definitions.NativeAttr
+
   //copied from GenJVM
   def isStaticModule(sym: Symbol): Boolean = {
     import scala.reflect.internal.Flags

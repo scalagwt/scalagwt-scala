@@ -204,19 +204,6 @@ member {
       type: Block
       block {
         statement {
-          type: VarDef
-          varDef {
-            tpe {
-              type: Named
-              namedType {
-                pkg: "scala.runtime"
-                name: "Nothing$"
-              }
-            }
-            name: "$1$"
-          }
-        }
-        statement {
           type: If
           ifStat {
             condition {
@@ -380,7 +367,7 @@ member {
               type: Primitive
               primitiveType: Int
             }
-            name: "$2$"
+            name: "$1$"
           }
         }
         statement {
@@ -436,7 +423,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$2$"
+                          name: "$1$"
                         }
                       }
                       rhs {
@@ -483,7 +470,7 @@ member {
                       lhs {
                         type: VarRef
                         varRef {
-                          name: "$2$"
+                          name: "$1$"
                         }
                       }
                       rhs {
@@ -506,7 +493,7 @@ member {
             expression {
               type: VarRef
               varRef {
-                name: "$2$"
+                name: "$1$"
               }
             }
           }

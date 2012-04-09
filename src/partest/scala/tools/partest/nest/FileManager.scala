@@ -36,14 +36,19 @@ trait FileUtil {
 
   /**
    * Compares two directories using compareFiles method.
+   *
+   * It applies `filter` predicate before comparing contents
+   * of `d1` and `d2`.
    */
-  def compareDirectories(d1: Directory, d2: Directory): List[String] = {
+  def compareDirectories(d1: Directory, d2: Directory, filter: Path => Boolean = (_ => true)): List[String] = {
     def explainNoCorresponding(x: Path, in: Path) =
       "'%s' has no corresponding file in '%s'".format(x, in)
     //obtain relative sets of relative paths that can be compared
     //so we can find files with missing corresponding file in another directory
-    val fs1 = d1.deepFiles.map(d1.relativize(_)).toSet
-    val fs2 = d2.deepFiles.map(d2.relativize(_)).toSet
+    val files1 = Path.onlyFiles(d1.walkFilter(filter))
+    val files2 = Path.onlyFiles(d2.walkFilter(filter))
+    val fs1 = files1.map(d1.relativize(_)).toSet
+    val fs2 = files2.map(d2.relativize(_)).toSet
     val noCorresponding1 = (fs2 -- fs1).toList.map(explainNoCorresponding(_, d1))
     val noCorresponding2 = (fs1 -- fs2).toList.map(explainNoCorresponding(_, d2))
     val noCorresponding = noCorresponding1 ++ noCorresponding2
